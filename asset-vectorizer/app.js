@@ -1234,7 +1234,4 @@ window.AssetVectorizer = {
     return asset ? makeSvgString(asset) : "";
   },
 };
-loadSample().catch(() => {
-  setStatus("准备就绪");
-  renderPreview();
-});
+resetAll();
