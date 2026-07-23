@@ -4,6 +4,7 @@ const ui = {
   fileInput: $("#fileInput"),
   sampleBtn: $("#sampleBtn"),
   analyzeBtn: $("#analyzeBtn"),
+  splitBtn: $("#splitBtn"),
   zipBtn: $("#zipBtn"),
   clearBtn: $("#clearBtn"),
   pickBgBtn: $("#pickBgBtn"),
@@ -497,11 +498,73 @@ function groupComponents(components, mergeGap, minArea) {
     .map((group, index) => ({ ...group, id: index + 1 }));
 }
 
+function componentToGroup(component) {
+  return {
+    id: 0,
+    labels: [component.id],
+    labelSet: new Set([component.id]),
+    minX: component.minX,
+    minY: component.minY,
+    maxX: component.maxX,
+    maxY: component.maxY,
+    area: component.area,
+    partCount: 1,
+  };
+}
+
+function sortAndNumberGroups(groups) {
+  return groups
+    .sort((a, b) => (a.minY === b.minY ? a.minX - b.minX : a.minY - b.minY))
+    .map((group, index) => ({ ...group, id: index + 1 }));
+}
+
+function updateSplitButton() {
+  const selected = state.groups.find((asset) => asset.id === state.selectedId);
+  const canSplit = Boolean(selected && selected.partCount > 1);
+  ui.splitBtn.disabled = !canSplit;
+  ui.splitBtn.title = canSplit
+    ? `将选中素材拆成 ${selected.partCount} 个独立元素`
+    : "请选择包含多个元素的素材";
+}
+
+function splitSelectedAsset() {
+  const selected = state.groups.find((asset) => asset.id === state.selectedId);
+  if (!selected || selected.partCount <= 1) {
+    setStatus("当前素材没有可拆分的独立元素");
+    updateSplitButton();
+    return;
+  }
+
+  const componentById = new Map(state.components.map((component) => [component.id, component]));
+  const splitGroups = selected.labels
+    .map((label) => componentById.get(label))
+    .filter(Boolean)
+    .map(componentToGroup);
+  if (splitGroups.length <= 1) {
+    setStatus("当前素材没有可拆分的独立元素");
+    updateSplitButton();
+    return;
+  }
+
+  const selectedLabel = splitGroups[0].labels[0];
+  state.groups = sortAndNumberGroups([
+    ...state.groups.filter((asset) => asset.id !== selected.id),
+    ...splitGroups,
+  ]);
+  state.selectedId = state.groups.find((asset) => asset.labels[0] === selectedLabel)?.id ?? null;
+  ui.assetCount.textContent = state.groups.length;
+  ui.zipBtn.disabled = false;
+  setStatus(`已将 ${getAssetName(selected)} 拆成 ${splitGroups.length} 个独立 PNG 元素`);
+  renderPreview();
+  renderAssets();
+}
+
 async function analyzeImage() {
   if (!state.imageData) return;
   updateControlText();
   setStatus("正在分离素材...");
   ui.analyzeBtn.disabled = true;
+  ui.splitBtn.disabled = true;
   ui.zipBtn.disabled = true;
   await nextFrame();
 
@@ -878,6 +941,7 @@ function renderAssets() {
     fragment.append(card);
   }
   ui.assetList.append(fragment);
+  updateSplitButton();
   window.lucide?.createIcons();
 }
 
@@ -1109,6 +1173,7 @@ function resetAll() {
   ui.imageMeta.textContent = "等待载入图片";
   ui.assetCount.textContent = "0";
   ui.processTime.textContent = "0 ms";
+  updateSplitButton();
   ui.zipBtn.disabled = true;
   ui.selectedText.textContent = "未选择素材";
   setStatus("准备就绪");
@@ -1129,6 +1194,7 @@ function bindEvents() {
     loadSample().catch((error) => setStatus(error.message));
   });
   ui.analyzeBtn.addEventListener("click", () => analyzeImage());
+  ui.splitBtn.addEventListener("click", splitSelectedAsset);
   ui.zipBtn.addEventListener("click", downloadZip);
   ui.clearBtn.addEventListener("click", resetAll);
 
@@ -1228,7 +1294,9 @@ window.AssetVectorizer = {
     count: state.groups.length,
     imageName: state.imageName,
     selectedId: state.selectedId,
+    parts: state.groups.map((asset) => asset.partCount),
   }),
+  splitSelected: splitSelectedAsset,
   makeSvg: (id) => {
     const asset = getAssetById(Number(id));
     return asset ? makeSvgString(asset) : "";

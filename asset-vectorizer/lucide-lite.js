@@ -51,6 +51,13 @@ const ICONS = {
     '<path d="M10 11v6"/>',
     '<path d="M14 11v6"/>',
   ],
+  "ungroup": [
+    '<rect width="8" height="8" x="3" y="3" rx="2"/>',
+    '<rect width="8" height="8" x="13" y="13" rx="2"/>',
+    '<path d="M11 7h2a4 4 0 0 1 4 4v2"/>',
+    '<path d="m8 15-2 2 2 2"/>',
+    '<path d="M6 17h7"/>',
+  ],
 };
 
 function createIcon(name) {
