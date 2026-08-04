@@ -55,6 +55,8 @@ import encodeMp3 from "./vendor/mp3/encoder.js";
     inputHtml: "",
     zipBytes: null,
     zipLocation: null,
+    resourceFormat: null,
+    adapterResources: null,
     inputStats: null,
     outputs: null,
     processing: false,
@@ -114,20 +116,27 @@ import encodeMp3 from "./vendor/mp3/encoder.js";
     let readyToCompress = false;
     try {
       const inputHtml = await file.text();
-      const zipLocation = findEmbeddedZip(inputHtml);
+      const zipLocation = findEmbeddedResource(inputHtml);
       if (!zipLocation) {
-        throw new Error("没有找到 window.__zip。请选择 Cocos super-html 单文件构建结果。");
+        throw new Error("没有找到 window.__zip 或 window.__adapter_zip__。请选择 Cocos 单文件构建结果。");
       }
 
       const zipBytes = base64ToBytes(zipLocation.base64);
       setProgress(15, "正在检查内嵌资源…");
-      const zip = await window.JSZip.loadAsync(zipBytes);
+      const adapterResources = zipLocation.format === "adapter"
+        ? await readAdapterResources(zipBytes)
+        : null;
+      const zip = adapterResources
+        ? createAdapterZip(adapterResources)
+        : await window.JSZip.loadAsync(zipBytes);
       const inputStats = await inspectZip(zip);
 
       state.inputFile = file;
       state.inputHtml = inputHtml;
       state.zipBytes = zipBytes;
       state.zipLocation = zipLocation;
+      state.resourceFormat = zipLocation.format;
+      state.adapterResources = adapterResources;
       state.inputStats = inputStats;
       elements.beforeSize.textContent = formatBytes(file.size);
       elements.innerSize.textContent = formatBytes(zipBytes.byteLength);
@@ -170,9 +179,42 @@ import encodeMp3 from "./vendor/mp3/encoder.js";
     const relativeStart = match[0].indexOf(match[2]);
     const valueStart = match.index + relativeStart;
     return {
+      format: "zip",
       valueStart,
       valueEnd: valueStart + match[2].length,
       base64: match[2],
+    };
+  }
+
+  function findEmbeddedResource(html) {
+    return findEmbeddedZip(html) || findEmbeddedAdapterZip(html);
+  }
+
+  function findEmbeddedAdapterZip(html) {
+    const chunks = [];
+    const assignment = /window\.__adapter_zip__\s*(\+?=)\s*(["'])([A-Za-z0-9+/=]+)\2/g;
+    let match;
+    while ((match = assignment.exec(html))) {
+      const valueStart = match.index + match[0].indexOf(match[3]);
+      chunks.push({
+        operator: match[1],
+        valueStart,
+        valueEnd: valueStart + match[3].length,
+        base64: match[3],
+      });
+    }
+    if (!chunks.length || chunks[0].operator !== "=" || chunks.slice(1).some((chunk) => chunk.operator !== "+=")) {
+      return null;
+    }
+    const lastChunk = chunks[chunks.length - 1];
+    const scriptEnd = html.indexOf("</script>", lastChunk.valueEnd);
+    if (scriptEnd < 0) return null;
+    return {
+      format: "adapter",
+      base64: chunks.map((chunk) => chunk.base64).join(""),
+      chunks,
+      chunkSize: Math.max(...chunks.map((chunk) => chunk.base64.length)),
+      insertionPoint: scriptEnd + "</script>".length,
     };
   }
 
@@ -211,7 +253,7 @@ import encodeMp3 from "./vendor/mp3/encoder.js";
   }
 
   async function runPreset(preset, presetIndex, presetCount) {
-    const zip = await window.JSZip.loadAsync(state.zipBytes);
+    const zip = await createWorkingZip();
     const obfuscationIndices = await detectObfuscationIndices(zip);
     const runtimePatched = await patchRuntimeObfuscation(zip);
     const pngEntries = Object.values(zip.files).filter((entry) => !entry.dir && getExtension(entry.name) === "png");
@@ -227,7 +269,11 @@ import encodeMp3 from "./vendor/mp3/encoder.js";
       if (index % 2 === 0) await yieldToBrowser();
     }
 
-    const resResult = await compressResDataUrls(zip, preset, obfuscationIndices);
+    let resResult = await compressResDataUrls(zip, preset, obfuscationIndices);
+    const adapterSettingsResult = await patchAdapterSettings(zip);
+    if (adapterSettingsResult.splashRemoved) {
+      resResult = { ...resResult, splashRemoved: true };
+    }
     converted += resResult.converted;
     savedBytes += resResult.savedBytes;
     setPresetProgress(presetIndex, presetCount, 0.66, `${preset.name}：图片压缩完成`);
@@ -239,19 +285,11 @@ import encodeMp3 from "./vendor/mp3/encoder.js";
     await normalizeLooseDataUrls(zip, obfuscationIndices);
 
     setPresetProgress(presetIndex, presetCount, 0.86, `${preset.name}：正在重新打包…`);
-    const innerZipBytes = await zip.generateAsync(
-      { type: "uint8array", compression: "DEFLATE", compressionOptions: { level: 9 } },
-      ({ percent }) => setPresetProgress(
-        presetIndex,
-        presetCount,
-        0.86 + percent * 0.0009,
-        `${preset.name}：正在重新打包…`,
-      ),
-    );
+    const innerZipBytes = await buildInnerPackage(zip, presetIndex, presetCount, preset);
 
-    const commonHtml = replaceEmbeddedZip(setOrientation(state.inputHtml, "portrait,landscape"), innerZipBytes);
-    const landscapeHtml = replaceEmbeddedZip(setOrientation(state.inputHtml, "landscape"), innerZipBytes);
-    const portraitHtml = replaceEmbeddedZip(setOrientation(state.inputHtml, "portrait"), innerZipBytes);
+    const commonHtml = replaceEmbeddedPackage(setOrientation(state.inputHtml, "portrait,landscape"), innerZipBytes);
+    const landscapeHtml = replaceEmbeddedPackage(setOrientation(state.inputHtml, "landscape"), innerZipBytes);
+    const portraitHtml = replaceEmbeddedPackage(setOrientation(state.inputHtml, "portrait"), innerZipBytes);
     const [commonZip, landscapeZip, portraitZip] = await Promise.all([
       createOuterZip(commonHtml),
       createOuterZip(landscapeHtml),
@@ -358,6 +396,22 @@ import encodeMp3 from "./vendor/mp3/encoder.js";
       savedBytes: Math.max(imageSavedBytes, byteLength(beforeText) - byteLength(afterText)),
       splashRemoved,
     };
+  }
+
+  async function patchAdapterSettings(zip) {
+    if (state.resourceFormat !== "adapter") return { splashRemoved: false };
+    const entry = zip.file("src/settings.json");
+    if (!entry) return { splashRemoved: false };
+    try {
+      const settings = JSON.parse(await entry.async("string"));
+      if (!settings.splashScreen) return { splashRemoved: false };
+      settings.splashScreen.totalTime = 0;
+      settings.splashScreen.logo = { type: "none" };
+      zip.file("src/settings.json", JSON.stringify(settings));
+      return { splashRemoved: true };
+    } catch {
+      return { splashRemoved: false };
+    }
   }
 
   async function compressLooseMp3s(zip, preset, obfuscationIndices, onProgress) {
@@ -569,11 +623,113 @@ import encodeMp3 from "./vendor/mp3/encoder.js";
     }
   }
 
-  function replaceEmbeddedZip(html, zipBytes) {
-    const location = findEmbeddedZip(html);
-    if (!location) throw new Error("输出模板中的 window.__zip 已丢失。");
-    const base64 = bytesToBase64(zipBytes);
+  async function createWorkingZip() {
+    if (state.resourceFormat === "adapter") return createAdapterZip(state.adapterResources);
+    return window.JSZip.loadAsync(state.zipBytes);
+  }
+
+  function createAdapterZip(resources) {
+    const zip = new window.JSZip();
+    for (const [name, value] of Object.entries(resources)) zip.file(name, value);
+    return zip;
+  }
+
+  async function buildInnerPackage(zip, presetIndex, presetCount, preset) {
+    if (state.resourceFormat === "adapter") {
+      setPresetProgress(presetIndex, presetCount, 0.93, `${preset.name}：正在写回 adapter 资源包…`);
+      return deflateAdapterResources(await readAdapterResourcesFromZip(zip));
+    }
+    return zip.generateAsync(
+      { type: "uint8array", compression: "DEFLATE", compressionOptions: { level: 9 } },
+      ({ percent }) => setPresetProgress(
+        presetIndex,
+        presetCount,
+        0.86 + percent * 0.0009,
+        `${preset.name}：正在重新打包…`,
+      ),
+    );
+  }
+
+  async function readAdapterResources(zipBytes) {
+    if (!("DecompressionStream" in window)) {
+      throw new Error("当前浏览器不支持解压 window.__adapter_zip__，请使用最新版 Chrome 或 Edge。");
+    }
+    let text;
+    try {
+      const stream = new Blob([zipBytes]).stream().pipeThrough(new DecompressionStream("deflate"));
+      text = await new Response(stream).text();
+    } catch (error) {
+      throw new Error(`无法解压 window.__adapter_zip__：${error instanceof Error ? error.message : "资源包损坏"}`);
+    }
+    try {
+      const resources = JSON.parse(text);
+      if (!resources || Array.isArray(resources) || Object.values(resources).some((value) => typeof value !== "string")) {
+        throw new Error("资源清单不是字符串映射。");
+      }
+      return resources;
+    } catch (error) {
+      throw new Error(`无法读取 window.__adapter_zip__ 资源清单：${error instanceof Error ? error.message : "JSON 无效"}`);
+    }
+  }
+
+  async function readAdapterResourcesFromZip(zip) {
+    const resources = {};
+    for (const name of Object.keys(state.adapterResources || {})) {
+      const entry = zip.file(name);
+      if (!entry) throw new Error(`adapter 资源已丢失：${name}`);
+      resources[name] = await entry.async("string");
+    }
+    return resources;
+  }
+
+  async function deflateAdapterResources(resources) {
+    if (!("CompressionStream" in window)) {
+      throw new Error("当前浏览器不支持写回 window.__adapter_zip__，请使用最新版 Chrome 或 Edge。");
+    }
+    try {
+      const source = textEncoder.encode(JSON.stringify(resources));
+      const stream = new Blob([source]).stream().pipeThrough(new CompressionStream("deflate"));
+      return new Uint8Array(await new Response(stream).arrayBuffer());
+    } catch (error) {
+      throw new Error(`无法写回 window.__adapter_zip__：${error instanceof Error ? error.message : "压缩失败"}`);
+    }
+  }
+
+  function replaceEmbeddedPackage(html, packageBytes) {
+    const location = findEmbeddedResource(html);
+    if (!location) throw new Error("输出模板中的内嵌资源包已丢失。");
+    if (location.format === "adapter") return replaceEmbeddedAdapterZip(html, location, packageBytes);
+    const base64 = bytesToBase64(packageBytes);
     return `${html.slice(0, location.valueStart)}${base64}${html.slice(location.valueEnd)}`;
+  }
+
+  function replaceEmbeddedAdapterZip(html, location, zipBytes) {
+    const pieces = splitString(bytesToBase64(zipBytes), location.chunkSize);
+    const replacements = location.chunks.map((chunk, index) => pieces[index] || "");
+    let output = "";
+    let cursor = 0;
+    location.chunks.forEach((chunk, index) => {
+      output += html.slice(cursor, chunk.valueStart);
+      output += replacements[index];
+      cursor = chunk.valueEnd;
+      if (index === location.chunks.length - 1 && pieces.length > location.chunks.length) {
+        output += html.slice(cursor, location.insertionPoint);
+        output += pieces.slice(location.chunks.length).map((piece, pieceIndex) => {
+          const id = location.chunks.length + pieceIndex;
+          return `<script data-id="adapter-zip-${id}">window.__adapter_zip__+="${piece}";</script>`;
+        }).join("");
+        cursor = location.insertionPoint;
+      }
+    });
+    return `${output}${html.slice(cursor)}`;
+  }
+
+  function splitString(value, chunkSize) {
+    const chunks = [];
+    for (let offset = 0; offset < value.length; offset += chunkSize) {
+      chunks.push(value.slice(offset, offset + chunkSize));
+    }
+    return chunks.length ? chunks : [""];
   }
 
   function setOrientation(html, orientation) {
@@ -684,6 +840,8 @@ import encodeMp3 from "./vendor/mp3/encoder.js";
     state.inputHtml = "";
     state.zipBytes = null;
     state.zipLocation = null;
+    state.resourceFormat = null;
+    state.adapterResources = null;
     state.inputStats = null;
     state.outputs = null;
   }
