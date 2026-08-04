@@ -389,6 +389,14 @@ select:focus-visible {
   transition: background-color 150ms ease, border-color 150ms ease, transform 150ms ease;
 }
 
+.export-button.is-hidden {
+  display: none;
+}
+
+.download-link {
+  text-decoration: none;
+}
+
 .export-button svg {
   width: 18px;
   height: 18px;

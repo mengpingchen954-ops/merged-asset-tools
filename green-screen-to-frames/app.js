@@ -23,6 +23,8 @@ const elements = {
   frameRateInput: $("#frameRateInput"),
   sizeModeInput: $("#sizeModeInput"),
   exportButton: $("#exportButton"),
+  exportLabel: $("#exportLabel"),
+  downloadLink: $("#downloadLink"),
   progressBar: $("#progressBar"),
   exportStatus: $("#exportStatus"),
   headerStatus: $("#headerStatus"),
@@ -40,6 +42,7 @@ const state = {
   keyColor: { r: 0, g: 169, b: 79 },
   previewRequest: 0,
   isExporting: false,
+  outputUrl: "",
   keyCanvas: document.createElement("canvas"),
 };
 
@@ -116,6 +119,16 @@ function setExporting(isExporting) {
   elements.exportButton.disabled = isExporting || !state.file;
   elements.frameRateInput.disabled = isExporting;
   elements.sizeModeInput.disabled = isExporting;
+}
+
+function clearExportOutput() {
+  if (state.outputUrl) URL.revokeObjectURL(state.outputUrl);
+  state.outputUrl = "";
+  elements.exportLabel.textContent = "导出透明 PNG 序列";
+  elements.exportButton.classList.remove("is-hidden");
+  elements.downloadLink.classList.add("is-hidden");
+  elements.downloadLink.removeAttribute("href");
+  elements.downloadLink.removeAttribute("download");
 }
 
 function drawSourceFrame() {
@@ -336,6 +349,7 @@ async function handleVideo(file) {
   state.previewRequest += 1;
   if (state.objectUrl) URL.revokeObjectURL(state.objectUrl);
   state.file = file;
+  clearExportOutput();
   state.objectUrl = URL.createObjectURL(file);
   setExporting(false);
   setProgress(0, "正在读取视频信息...");
@@ -375,6 +389,7 @@ async function handleVideo(file) {
     setExporting(false);
   } catch (error) {
     state.file = null;
+    clearExportOutput();
     elements.videoName.textContent = "未能读取视频";
     elements.videoMeta.textContent = "请确认浏览器支持该 MP4 编码";
     elements.dropZone.classList.remove("is-hidden");
@@ -391,17 +406,6 @@ function canvasToPng(canvas) {
       else reject(new Error("PNG 编码失败。"));
     }, "image/png");
   });
-}
-
-function downloadBlob(blob, name) {
-  const link = document.createElement("a");
-  const url = URL.createObjectURL(blob);
-  link.href = url;
-  link.download = name;
-  document.body.append(link);
-  link.click();
-  link.remove();
-  window.setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
 function nextFrame() {
@@ -455,9 +459,13 @@ async function exportFrames() {
       { type: "blob", compression: "STORE" },
       (metadata) => setProgress(86 + metadata.percent * 0.14, "正在打包透明 PNG 序列 ZIP..."),
     );
-    downloadBlob(zipBlob, `${baseName}_transparent_png_frames.zip`);
-    setProgress(100, `完成 ${frameCount} 帧 · ${output.width} x ${output.height} · ZIP ${formatBytes(zipBlob.size)}`);
-    setHeaderStatus("透明 PNG 序列已下载");
+    state.outputUrl = URL.createObjectURL(zipBlob);
+    elements.downloadLink.href = state.outputUrl;
+    elements.downloadLink.download = `${baseName}_transparent_png_frames.zip`;
+    elements.exportButton.classList.add("is-hidden");
+    elements.downloadLink.classList.remove("is-hidden");
+    setProgress(100, `完成 ${frameCount} 帧 · ${output.width} x ${output.height} · ZIP ${formatBytes(zipBlob.size)}，点击下载链接。`);
+    setHeaderStatus("透明 PNG 序列已生成，点击下载链接");
     elements.timeInput.value = String(Math.min((frameCount - 1) / frameRate, Math.max(0, state.duration - 0.001)));
     elements.timeValue.textContent = formatDuration(Number(elements.timeInput.value));
     renderPreview();
@@ -502,8 +510,17 @@ function bindEvents() {
 
   for (const input of [elements.thresholdInput, elements.softnessInput, elements.spillInput]) {
     input.addEventListener("input", () => {
+      clearExportOutput();
       updateValueLabels();
       renderPreview();
+      if (state.file) setProgress(0, "参数已更新，请重新导出 PNG 序列。");
+    });
+  }
+
+  for (const input of [elements.frameRateInput, elements.sizeModeInput]) {
+    input.addEventListener("change", () => {
+      clearExportOutput();
+      if (state.file) setProgress(0, "输出设置已更新，请重新导出 PNG 序列。");
     });
   }
 }
