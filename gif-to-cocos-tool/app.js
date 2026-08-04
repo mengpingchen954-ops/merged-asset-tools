@@ -1060,16 +1060,18 @@ async function processPngSequence(files) {
   state.sourceWidth = firstSize.width;
   state.sourceHeight = firstSize.height;
   elements.sourceSize.textContent = `${firstSize.width}x${firstSize.height}`;
-  elements.statusText.textContent = `正在打包 ${finalized.frames.length} 帧 Cocos 资源`;
+  elements.statusText.textContent = `正在打包 ${finalized.frames.length} 帧压缩序列与 Cocos 资源`;
+  const sequenceFiles = await buildSequenceFrameFiles(finalized.frames);
   const cocosFiles = await buildCocosFiles(exportSettings, finalized.frames, delays);
   const cocosZipBlob = await createZip(cocosFiles);
+  const sequenceZipBlob = await createZip(sequenceFiles);
 
   return {
     inputSettings: settings,
     settings: exportSettings,
     frames: finalized.frames,
     cocosZipBlob,
-    sequenceZipBlob: null,
+    sequenceZipBlob,
     totalDuration: delays.reduce((sum, delay) => sum + delay, 0) / 1000,
   };
 }
@@ -1835,7 +1837,7 @@ async function convertCurrentFile() {
   setBusy(true);
   setMessage(
     state.fileKind === "png"
-      ? "正在把 PNG 序列打包为 Cocos 资源。"
+      ? "正在无损压缩 PNG 序列并生成 Cocos 资源。"
       : state.fileKind === "mp4"
         ? "正在从 MP4 抽帧并生成 PNG 序列帧和 Cocos 资源。"
         : "正在拆分 GIF 并生成 PNG 序列帧和 Cocos 资源。"
@@ -1873,14 +1875,28 @@ async function convertCurrentFile() {
     renderFilmStrip();
     renderPreview(0);
     const dimensionSummary = `${state.sourceWidth}×${state.sourceHeight} → ${state.outputWidth}×${state.outputHeight}`;
-    const savings =
-      state.sourceBytes > 0 && result.cocosZipBlob.size < state.sourceBytes
-        ? `，比源文件小 ${Math.round((1 - result.cocosZipBlob.size / state.sourceBytes) * 100)}%`
-        : "";
-    setMessage(
-      `极致无损完成：${dimensionSummary}，Cocos ${formatBytes(result.cocosZipBlob.size)}${savings}，轴心已对齐每帧脚底中心（Clip: ${stateName}）。`,
-      "ok"
-    );
+    const comparisonBlob = state.fileKind === "png" && result.sequenceZipBlob
+      ? result.sequenceZipBlob
+      : result.cocosZipBlob;
+    const savingsRatio = state.sourceBytes > 0
+      ? Math.max(0, 1 - comparisonBlob.size / state.sourceBytes)
+      : 0;
+    const savings = savingsRatio > 0
+      ? `，体积减少${savingsRatio < 0.01 ? "不足 1%" : `${Math.round(savingsRatio * 100)}%`}`
+      : "";
+    if (state.fileKind === "png" && result.sequenceZipBlob) {
+      const dimensionsUnchanged = state.sourceWidth === state.outputWidth && state.sourceHeight === state.outputHeight;
+      const completionLabel = dimensionsUnchanged ? "原尺寸无损压缩完成" : "序列帧处理完成";
+      setMessage(
+        `${completionLabel}：${dimensionSummary}，序列帧 ZIP ${formatBytes(result.sequenceZipBlob.size)}${savings}，Cocos ${formatBytes(result.cocosZipBlob.size)}。`,
+        "ok"
+      );
+    } else {
+      setMessage(
+        `极致无损完成：${dimensionSummary}，Cocos ${formatBytes(result.cocosZipBlob.size)}${savings}，轴心已对齐每帧脚底中心（Clip: ${stateName}）。`,
+        "ok"
+      );
+    }
   } catch (error) {
     console.error(error);
     setMessage(error.message || "转换失败。", "error");
@@ -1911,7 +1927,7 @@ function handleFile(file) {
   convertCurrentFile();
 }
 
-function handlePngFiles(fileList) {
+function handlePngFiles(fileList, sequenceNameOverride = "") {
   const files = [...fileList]
     .filter((file) => /\.png$/i.test(file.name) || file.type === "image/png")
     .sort((a, b) => naturalFileNameCollator.compare(a.name, b.name));
@@ -1920,7 +1936,9 @@ function handlePngFiles(fileList) {
     return;
   }
 
-  const sequenceName = inferPngSequenceName(files);
+  const sequenceName = sequenceNameOverride
+    ? sanitizeName(sequenceNameOverride, "png_sequence")
+    : inferPngSequenceName(files);
   state.file = files[0];
   state.pngFiles = files;
   state.sourceBytes = files.reduce((sum, file) => sum + file.size, 0);
@@ -1933,6 +1951,73 @@ function handlePngFiles(fileList) {
   if (!elements.clipInput.dataset.touched) elements.clipInput.value = sequenceName;
   elements.convertBtn.disabled = false;
   convertCurrentFile();
+}
+
+function readFileEntry(entry) {
+  return new Promise((resolve, reject) => entry.file(resolve, reject));
+}
+
+function readDirectoryEntryBatch(reader) {
+  return new Promise((resolve, reject) => reader.readEntries(resolve, reject));
+}
+
+async function readAllDirectoryEntries(directoryEntry) {
+  const reader = directoryEntry.createReader();
+  const entries = [];
+  while (true) {
+    const batch = await readDirectoryEntryBatch(reader);
+    if (!batch.length) return entries;
+    entries.push(...batch);
+  }
+}
+
+async function collectDroppedEntryFiles(entry, parentPath = "") {
+  const entryPath = parentPath ? `${parentPath}/${entry.name}` : entry.name;
+  if (entry.isFile) {
+    return [{ file: await readFileEntry(entry), path: entryPath }];
+  }
+  if (!entry.isDirectory) return [];
+
+  const records = [];
+  const children = await readAllDirectoryEntries(entry);
+  for (const child of children) {
+    records.push(...(await collectDroppedEntryFiles(child, entryPath)));
+  }
+  return records;
+}
+
+async function readDroppedInput(dataTransfer) {
+  const entries = [...(dataTransfer.items || [])]
+    .filter((item) => item.kind === "file")
+    .map((item) => (typeof item.webkitGetAsEntry === "function" ? item.webkitGetAsEntry() : null))
+    .filter(Boolean);
+
+  if (!entries.length) {
+    return { files: [...(dataTransfer.files || [])], sequenceName: "" };
+  }
+
+  const records = [];
+  for (const entry of entries) {
+    records.push(...(await collectDroppedEntryFiles(entry)));
+  }
+
+  const pngRecords = records.filter(({ file }) => getFileKind(file) === "png");
+  if (!pngRecords.length) {
+    return { files: records.map(({ file }) => file), sequenceName: "" };
+  }
+
+  const parentPaths = [
+    ...new Set(pngRecords.map(({ path }) => path.split("/").slice(0, -1).join("/"))),
+  ];
+  if (parentPaths.length > 1) {
+    throw new Error(`检测到 ${parentPaths.length} 个 PNG 序列文件夹，请一次拖入一个动画文件夹。`);
+  }
+
+  const folderParts = (parentPaths[0] || "").split("/").filter(Boolean);
+  return {
+    files: pngRecords.map(({ file }) => file),
+    sequenceName: folderParts[folderParts.length - 1] || "",
+  };
 }
 
 function inferPngSequenceName(files) {
@@ -2167,11 +2252,27 @@ function bindEvents() {
     });
   }
 
-  elements.dropZone.addEventListener("drop", (event) => {
-    const files = [...event.dataTransfer.files];
-    const pngFiles = files.filter((file) => getFileKind(file) === "png");
-    if (pngFiles.length && pngFiles.length === files.length) handlePngFiles(pngFiles);
-    else handleFile(files[0]);
+  elements.dropZone.addEventListener("drop", async (event) => {
+    elements.fileName.textContent = "正在读取拖入内容...";
+    try {
+      const { files, sequenceName } = await readDroppedInput(event.dataTransfer);
+      const pngFiles = files.filter((file) => getFileKind(file) === "png");
+      if (pngFiles.length) {
+        handlePngFiles(pngFiles, sequenceName);
+        return;
+      }
+
+      const supportedFile = files.find((file) => getFileKind(file));
+      if (supportedFile) handleFile(supportedFile);
+      else {
+        elements.fileName.textContent = "未选择文件";
+        setMessage("拖入内容中没有 GIF、MP4 或 PNG 文件。", "error");
+      }
+    } catch (error) {
+      console.error(error);
+      elements.fileName.textContent = "未选择文件";
+      setMessage(error.message || "文件夹读取失败。", "error");
+    }
   });
 }
 
