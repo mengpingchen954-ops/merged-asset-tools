@@ -22,6 +22,7 @@ const elements = {
   spillValue: $("#spillValue"),
   timeInput: $("#timeInput"),
   timeValue: $("#timeValue"),
+  playButton: $("#playButton"),
   frameRateInput: $("#frameRateInput"),
   originalSize: $("#originalSize"),
   outputWidthInput: $("#outputWidthInput"),
@@ -57,6 +58,8 @@ const state = {
   cropStart: null,
   cropPointerId: null,
   isCropMode: false,
+  isPlaying: false,
+  playbackRequest: 0,
 };
 
 const sourceContext = elements.sourceCanvas.getContext("2d", { willReadFrequently: true });
@@ -135,7 +138,9 @@ function setExporting(isExporting) {
   elements.outputHeightInput.disabled = isExporting || !hasLoadedVideo;
   elements.cropModeButton.disabled = isExporting || !hasLoadedVideo;
   elements.resetCropButton.disabled = isExporting || !hasLoadedVideo;
+  elements.playButton.disabled = isExporting || !hasLoadedVideo;
   updateCropUi();
+  updatePlaybackUi();
 }
 
 function clearExportOutput() {
@@ -205,6 +210,51 @@ function applyChromaKey(targetCanvas) {
 function renderPreview() {
   if (!drawSourceFrame()) return;
   applyChromaKey(elements.previewCanvas);
+}
+
+function updatePlaybackUi() {
+  const hasLoadedVideo = Boolean(state.file && state.sourceWidth && state.sourceHeight);
+  elements.playButton.classList.toggle("is-playing", state.isPlaying);
+  elements.playButton.setAttribute("aria-label", state.isPlaying ? "暂停预览" : "播放预览");
+  elements.playButton.title = state.isPlaying ? "暂停预览" : "播放预览";
+  elements.playButton.disabled = !hasLoadedVideo || state.isExporting;
+}
+
+function renderPlaybackFrame() {
+  if (!state.isPlaying || elements.sourceVideo.paused) return;
+  const currentTime = elements.sourceVideo.currentTime;
+  elements.timeInput.value = String(currentTime);
+  elements.timeValue.textContent = formatDuration(currentTime);
+  renderPreview();
+  state.playbackRequest = window.requestAnimationFrame(renderPlaybackFrame);
+}
+
+function setPlaybackState(isPlaying) {
+  if (state.playbackRequest) window.cancelAnimationFrame(state.playbackRequest);
+  state.playbackRequest = 0;
+  state.isPlaying = isPlaying;
+  updatePlaybackUi();
+  if (isPlaying) state.playbackRequest = window.requestAnimationFrame(renderPlaybackFrame);
+}
+
+function stopPlayback() {
+  if (!elements.sourceVideo.paused) elements.sourceVideo.pause();
+  setPlaybackState(false);
+}
+
+async function togglePlayback() {
+  if (!state.file || state.isExporting) return;
+  if (state.isPlaying) {
+    stopPlayback();
+    return;
+  }
+
+  try {
+    await elements.sourceVideo.play();
+  } catch (error) {
+    setProgress(0, "预览播放失败，请再次点击播放按钮重试。");
+    setPlaybackState(false);
+  }
 }
 
 function getCropRect() {
@@ -502,6 +552,7 @@ async function seekVideo(time, force = false) {
 }
 
 async function updatePreviewPosition() {
+  if (state.isPlaying) stopPlayback();
   const requestId = ++state.previewRequest;
   try {
     const requestedTime = Number(elements.timeInput.value);
@@ -519,6 +570,7 @@ async function handleVideo(file) {
     return;
   }
 
+  stopPlayback();
   state.previewRequest += 1;
   if (state.objectUrl) URL.revokeObjectURL(state.objectUrl);
   state.file = file;
@@ -630,6 +682,8 @@ async function exportFrames() {
     setProgress(0, "压缩组件没有加载，请刷新页面后重试。");
     return;
   }
+
+  stopPlayback();
 
   const { frameRate } = getSettings();
   const frameCount = Math.max(1, Math.ceil(state.duration * frameRate - 0.00001));
@@ -765,6 +819,9 @@ function bindEvents() {
     setProgress(0, "裁剪区域已重置，请重新导出 PNG 序列。");
     setHeaderStatus("裁剪区域已重置");
   });
+  elements.playButton.addEventListener("click", togglePlayback);
+  elements.sourceVideo.addEventListener("play", () => setPlaybackState(true));
+  elements.sourceVideo.addEventListener("pause", () => setPlaybackState(false));
   elements.timeInput.addEventListener("input", updatePreviewPosition);
   elements.exportButton.addEventListener("click", exportFrames);
 
@@ -791,6 +848,7 @@ function init() {
   updateValueLabels();
   updateKeyColorUi();
   updateCropUi();
+  updatePlaybackUi();
   bindEvents();
 }
 

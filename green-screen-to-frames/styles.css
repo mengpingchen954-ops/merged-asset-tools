@@ -339,6 +339,27 @@ svg {
   font-weight: 680;
 }
 
+.playback-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.playback-header > span {
+  display: flex;
+  justify-content: space-between;
+  flex: 1 1 auto;
+  gap: 12px;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 680;
+}
+
+.playback-slider {
+  margin-top: 8px;
+}
+
 output {
   color: var(--accent-strong);
   font-weight: 720;
@@ -483,6 +504,18 @@ input[type="number"]:focus-visible {
 .tool-icon-button svg {
   width: 17px;
   height: 17px;
+}
+
+.pause-icon {
+  display: none;
+}
+
+#playButton.is-playing .play-icon {
+  display: none;
+}
+
+#playButton.is-playing .pause-icon {
+  display: block;
 }
 
 .tool-icon-button:hover:not(:disabled),

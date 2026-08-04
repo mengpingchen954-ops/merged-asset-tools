@@ -81,8 +81,16 @@
           </section>
 
           <section class="playback">
-            <label class="control-row">
+            <div class="playback-header">
               <span>预览位置 <output id="timeValue" for="timeInput">0.0s</output></span>
+              <button id="playButton" class="tool-icon-button" type="button" aria-label="播放预览" title="播放预览" disabled>
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                  <path class="play-icon" d="m9 5 10 7-10 7V5Z" />
+                  <path class="pause-icon" d="M8 6v12M16 6v12" />
+                </svg>
+              </button>
+            </div>
+            <label class="control-row playback-slider">
               <input id="timeInput" type="range" min="0" max="0" value="0" step="0.001" disabled />
             </label>
           </section>
@@ -158,9 +166,9 @@
       </section>
     </main>
 
-    <video id="sourceVideo" class="source-video" muted playsinline preload="metadata"></video>
+    <video id="sourceVideo" class="source-video" muted playsinline loop preload="metadata"></video>
     <canvas id="sourceCanvas" class="offscreen" aria-hidden="true"></canvas>
     <script src="../cocos-html-compressor/vendor/jszip.min.js"></script>
-    <script src="./app.js?v=crop-output-3"></script>
+    <script src="./app.js?v=sequence-playback-2"></script>
   </body>
 </html>
