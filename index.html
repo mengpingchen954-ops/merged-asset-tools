@@ -26,37 +26,6 @@
         </div>
 
         <nav class="tool-tabs" aria-label="工具切换">
-          <button class="tool-tab" type="button" data-tool="gif">
-            <span class="tab-icon" aria-hidden="true">
-              <svg viewBox="0 0 24 24">
-                <path d="M4 6h16" />
-                <path d="M4 12h16" />
-                <path d="M4 18h16" />
-              </svg>
-            </span>
-            <span class="tab-copy">
-              <span class="tab-title">序列帧动画</span>
-              <span class="tab-subtitle">GIF / MP4 / PNG 转 Cocos</span>
-            </span>
-          </button>
-          <button class="tool-tab" type="button" data-tool="compress">
-            <span class="tab-icon" aria-hidden="true">
-              <svg viewBox="0 0 24 24">
-                <path d="M8 3v5H3" />
-                <path d="m3 8 6-6" />
-                <path d="M16 21v-5h5" />
-                <path d="m21 16-6 6" />
-                <path d="M16 3v5h5" />
-                <path d="m21 8-6-6" />
-                <path d="M8 21v-5H3" />
-                <path d="m3 16 6 6" />
-              </svg>
-            </span>
-            <span class="tab-copy">
-              <span class="tab-title">图片自动压缩</span>
-              <span class="tab-subtitle">批量压缩 / 保持尺寸</span>
-            </span>
-          </button>
           <button class="tool-tab" type="button" data-tool="cocos">
             <span class="tab-icon" aria-hidden="true">
               <svg viewBox="0 0 24 24">
@@ -68,6 +37,19 @@
             <span class="tab-copy">
               <span class="tab-title">Cocos HTML 压缩</span>
               <span class="tab-subtitle">拖入 HTML / 输出 5MB 包</span>
+            </span>
+          </button>
+          <button class="tool-tab" type="button" data-tool="gif">
+            <span class="tab-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24">
+                <path d="M4 6h16" />
+                <path d="M4 12h16" />
+                <path d="M4 18h16" />
+              </svg>
+            </span>
+            <span class="tab-copy">
+              <span class="tab-title">序列帧动画</span>
+              <span class="tab-subtitle">GIF / MP4 / PNG 转 Cocos</span>
             </span>
           </button>
           <button class="tool-tab is-active" type="button" data-tool="vector">
@@ -122,21 +104,15 @@
         <section class="frame-stack" aria-live="polite">
           <iframe
             class="tool-frame"
-            data-tool="gif"
-            title="序列帧动画"
-            src="./gif-to-cocos-tool/index.html"
-          ></iframe>
-          <iframe
-            class="tool-frame"
-            data-tool="compress"
-            title="图片自动压缩"
-            src="./image-compressor/index.html"
-          ></iframe>
-          <iframe
-            class="tool-frame"
             data-tool="cocos"
             title="Cocos HTML 压缩"
             src="./cocos-html-compressor/index.html"
+          ></iframe>
+          <iframe
+            class="tool-frame"
+            data-tool="gif"
+            title="序列帧动画"
+            src="./gif-to-cocos-tool/index.html"
           ></iframe>
           <iframe
             class="tool-frame is-active"
