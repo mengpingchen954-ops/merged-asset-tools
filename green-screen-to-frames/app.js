@@ -7,6 +7,8 @@ const elements = {
   sourceCanvas: $("#sourceCanvas"),
   previewCanvas: $("#previewCanvas"),
   canvasWrap: $("#canvasWrap"),
+  previewStage: $("#previewStage"),
+  cropSelection: $("#cropSelection"),
   previewPanel: $("#previewPanel"),
   sampleHint: $("#sampleHint"),
   sampleButton: $("#sampleButton"),
@@ -21,7 +23,12 @@ const elements = {
   timeInput: $("#timeInput"),
   timeValue: $("#timeValue"),
   frameRateInput: $("#frameRateInput"),
-  sizeModeInput: $("#sizeModeInput"),
+  originalSize: $("#originalSize"),
+  outputWidthInput: $("#outputWidthInput"),
+  outputHeightInput: $("#outputHeightInput"),
+  cropModeButton: $("#cropModeButton"),
+  resetCropButton: $("#resetCropButton"),
+  cropMeta: $("#cropMeta"),
   exportButton: $("#exportButton"),
   exportLabel: $("#exportLabel"),
   downloadLink: $("#downloadLink"),
@@ -33,6 +40,8 @@ const elements = {
 };
 
 const MAX_EXPORT_FRAMES = 600;
+const MAX_OUTPUT_DIMENSION = 8192;
+const MAX_OUTPUT_PIXELS = 33_554_432;
 const state = {
   file: null,
   objectUrl: "",
@@ -44,6 +53,10 @@ const state = {
   isExporting: false,
   outputUrl: "",
   keyCanvas: document.createElement("canvas"),
+  crop: null,
+  cropStart: null,
+  cropPointerId: null,
+  isCropMode: false,
 };
 
 const sourceContext = elements.sourceCanvas.getContext("2d", { willReadFrequently: true });
@@ -88,7 +101,6 @@ function getSettings() {
     softness: Number(elements.softnessInput.value) / 100,
     spill: Number(elements.spillInput.value) / 100,
     frameRate: Number(elements.frameRateInput.value),
-    sizeMode: elements.sizeModeInput.value,
   };
 }
 
@@ -116,9 +128,14 @@ function setHeaderStatus(text) {
 
 function setExporting(isExporting) {
   state.isExporting = isExporting;
-  elements.exportButton.disabled = isExporting || !state.file;
-  elements.frameRateInput.disabled = isExporting;
-  elements.sizeModeInput.disabled = isExporting;
+  const hasLoadedVideo = Boolean(state.file && state.sourceWidth && state.sourceHeight);
+  elements.exportButton.disabled = isExporting || !hasLoadedVideo;
+  elements.frameRateInput.disabled = isExporting || !hasLoadedVideo;
+  elements.outputWidthInput.disabled = isExporting || !hasLoadedVideo;
+  elements.outputHeightInput.disabled = isExporting || !hasLoadedVideo;
+  elements.cropModeButton.disabled = isExporting || !hasLoadedVideo;
+  elements.resetCropButton.disabled = isExporting || !hasLoadedVideo;
+  updateCropUi();
 }
 
 function clearExportOutput() {
@@ -190,17 +207,96 @@ function renderPreview() {
   applyChromaKey(elements.previewCanvas);
 }
 
-function getOutputDimensions() {
-  const { sizeMode } = getSettings();
-  const limit = Number(sizeMode);
-  if (!limit || Math.max(state.sourceWidth, state.sourceHeight) <= limit) {
-    return { width: state.sourceWidth, height: state.sourceHeight };
-  }
-  const scale = limit / Math.max(state.sourceWidth, state.sourceHeight);
-  return {
-    width: Math.max(1, Math.round(state.sourceWidth * scale)),
-    height: Math.max(1, Math.round(state.sourceHeight * scale)),
+function getCropRect() {
+  return state.crop || {
+    x: 0,
+    y: 0,
+    width: state.sourceWidth,
+    height: state.sourceHeight,
   };
+}
+
+function isFullCrop(crop = getCropRect()) {
+  return crop.x === 0
+    && crop.y === 0
+    && crop.width === state.sourceWidth
+    && crop.height === state.sourceHeight;
+}
+
+function updatePreviewStageSize() {
+  if (!state.sourceWidth || !state.sourceHeight || !elements.canvasWrap.offsetWidth) return;
+  const availableWidth = elements.canvasWrap.clientWidth;
+  const availableHeight = elements.canvasWrap.clientHeight;
+  const scale = Math.min(availableWidth / state.sourceWidth, availableHeight / state.sourceHeight);
+  const width = Math.max(1, Math.floor(state.sourceWidth * scale));
+  const height = Math.max(1, Math.floor(state.sourceHeight * scale));
+
+  elements.previewStage.style.width = `${width}px`;
+  elements.previewStage.style.height = `${height}px`;
+}
+
+function updateCropUi() {
+  const hasVideo = Boolean(state.file && state.sourceWidth && state.sourceHeight);
+  const crop = getCropRect();
+  const fullCrop = !hasVideo || isFullCrop(crop);
+  const showSelection = hasVideo && (state.isCropMode || !fullCrop);
+
+  elements.canvasWrap.classList.toggle("is-cropping", state.isCropMode);
+  elements.cropSelection.classList.toggle("is-hidden", !showSelection);
+  elements.cropModeButton.classList.toggle("is-active", state.isCropMode);
+  elements.cropModeButton.setAttribute("aria-pressed", String(state.isCropMode));
+  elements.cropModeButton.disabled = !hasVideo || state.isExporting;
+  elements.resetCropButton.disabled = !hasVideo || state.isExporting || fullCrop;
+  elements.sampleHint.textContent = state.isCropMode ? "拖动框选裁剪区域" : "点击画面取样背景色";
+
+  if (!hasVideo) {
+    elements.cropMeta.textContent = "完整画面";
+    return;
+  }
+
+  if (showSelection) {
+    elements.cropSelection.style.left = `${(crop.x / state.sourceWidth) * 100}%`;
+    elements.cropSelection.style.top = `${(crop.y / state.sourceHeight) * 100}%`;
+    elements.cropSelection.style.width = `${(crop.width / state.sourceWidth) * 100}%`;
+    elements.cropSelection.style.height = `${(crop.height / state.sourceHeight) * 100}%`;
+  }
+
+  elements.cropMeta.textContent = fullCrop
+    ? `完整画面 · ${state.sourceWidth} x ${state.sourceHeight} px`
+    : `裁剪 ${crop.width} x ${crop.height} px`;
+}
+
+function setCropMode(enabled) {
+  state.isCropMode = Boolean(enabled && state.file && !state.isExporting);
+  state.cropStart = null;
+  state.cropPointerId = null;
+  updateCropUi();
+}
+
+function resetCrop() {
+  state.crop = null;
+  setCropMode(false);
+}
+
+function setOutputDimensions(width, height) {
+  elements.originalSize.textContent = `${state.sourceWidth} x ${state.sourceHeight} px`;
+  elements.outputWidthInput.value = String(width);
+  elements.outputHeightInput.value = String(height);
+}
+
+function getOutputDimensions() {
+  const width = Math.round(Number(elements.outputWidthInput.value));
+  const height = Math.round(Number(elements.outputHeightInput.value));
+  if (!Number.isFinite(width) || width < 1 || width > MAX_OUTPUT_DIMENSION) {
+    throw new Error(`输出宽度应在 1 到 ${MAX_OUTPUT_DIMENSION} px 之间。`);
+  }
+  if (!Number.isFinite(height) || height < 1 || height > MAX_OUTPUT_DIMENSION) {
+    throw new Error(`输出高度应在 1 到 ${MAX_OUTPUT_DIMENSION} px 之间。`);
+  }
+  if (width * height > MAX_OUTPUT_PIXELS) {
+    throw new Error("输出尺寸过大，请降低宽度或高度。");
+  }
+  return { width, height };
 }
 
 function sampleBackdropColor() {
@@ -253,11 +349,70 @@ function median(values) {
   return Math.round(sorted[Math.floor(sorted.length / 2)]);
 }
 
-function sampleColorAtEvent(event) {
-  if (!state.file || state.isExporting) return;
+function getSourcePoint(event, includeEdge = false) {
   const rect = elements.previewCanvas.getBoundingClientRect();
-  const x = clamp(Math.floor(((event.clientX - rect.left) / rect.width) * state.sourceWidth), 0, state.sourceWidth - 1);
-  const y = clamp(Math.floor(((event.clientY - rect.top) / rect.height) * state.sourceHeight), 0, state.sourceHeight - 1);
+  const maxX = includeEdge ? state.sourceWidth : state.sourceWidth - 1;
+  const maxY = includeEdge ? state.sourceHeight : state.sourceHeight - 1;
+  return {
+    x: clamp(Math.floor(((event.clientX - rect.left) / rect.width) * state.sourceWidth), 0, maxX),
+    y: clamp(Math.floor(((event.clientY - rect.top) / rect.height) * state.sourceHeight), 0, maxY),
+  };
+}
+
+function updateCropFromPoints(start, end) {
+  const left = Math.min(start.x, end.x);
+  const top = Math.min(start.y, end.y);
+  state.crop = {
+    x: left,
+    y: top,
+    width: Math.max(1, Math.abs(end.x - start.x)),
+    height: Math.max(1, Math.abs(end.y - start.y)),
+  };
+  updateCropUi();
+}
+
+function startCropSelection(event) {
+  if (!state.isCropMode || state.isExporting) return;
+  event.preventDefault();
+  const point = getSourcePoint(event, true);
+  state.cropStart = { point, previousCrop: state.crop };
+  state.cropPointerId = event.pointerId;
+  elements.previewCanvas.setPointerCapture(event.pointerId);
+  updateCropFromPoints(point, point);
+}
+
+function moveCropSelection(event) {
+  if (!state.cropStart || event.pointerId !== state.cropPointerId) return;
+  updateCropFromPoints(state.cropStart.point, getSourcePoint(event, true));
+}
+
+function finishCropSelection(event) {
+  if (!state.cropStart || event.pointerId !== state.cropPointerId) return;
+  const previousCrop = state.cropStart.previousCrop || {
+    x: 0,
+    y: 0,
+    width: state.sourceWidth,
+    height: state.sourceHeight,
+  };
+  const crop = getCropRect();
+  if (crop.width < 2 || crop.height < 2) state.crop = state.cropStart.previousCrop;
+  const currentCrop = getCropRect();
+  const cropChanged = previousCrop.x !== currentCrop.x
+    || previousCrop.y !== currentCrop.y
+    || previousCrop.width !== currentCrop.width
+    || previousCrop.height !== currentCrop.height;
+  state.cropStart = null;
+  state.cropPointerId = null;
+  updateCropUi();
+  if (cropChanged) {
+    clearExportOutput();
+    setProgress(0, "裁剪区域已更新，请重新导出 PNG 序列。");
+  }
+}
+
+function sampleColorAtEvent(event) {
+  if (!state.file || state.isExporting || state.isCropMode) return;
+  const { x, y } = getSourcePoint(event);
   drawSourceFrame();
   const radius = 4;
   const startX = clamp(x - radius, 0, state.sourceWidth - 1);
@@ -367,6 +522,10 @@ async function handleVideo(file) {
   state.previewRequest += 1;
   if (state.objectUrl) URL.revokeObjectURL(state.objectUrl);
   state.file = file;
+  state.sourceWidth = 0;
+  state.sourceHeight = 0;
+  state.duration = 0;
+  state.crop = null;
   clearExportOutput();
   state.objectUrl = URL.createObjectURL(file);
   setExporting(false);
@@ -374,6 +533,11 @@ async function handleVideo(file) {
   setHeaderStatus("正在读取 MP4 元数据");
   elements.videoName.textContent = file.name;
   elements.videoMeta.textContent = `${formatBytes(file.size)} · 正在读取视频`;
+  elements.originalSize.textContent = "-- x -- px";
+  elements.outputWidthInput.value = "";
+  elements.outputHeightInput.value = "";
+  elements.previewStage.style.width = "";
+  elements.previewStage.style.height = "";
   elements.canvasWrap.classList.add("is-hidden");
   elements.dropZone.classList.remove("is-hidden");
   elements.sourceVideo.src = state.objectUrl;
@@ -393,6 +557,8 @@ async function handleVideo(file) {
     elements.sourceCanvas.height = state.sourceHeight;
     elements.previewCanvas.width = state.sourceWidth;
     elements.previewCanvas.height = state.sourceHeight;
+    setOutputDimensions(state.sourceWidth, state.sourceHeight);
+    resetCrop();
     await seekVideo(Math.min(0.001, Math.max(0, state.duration - 0.001)), true);
     elements.timeInput.max = String(state.duration);
     elements.timeInput.value = "0";
@@ -403,6 +569,10 @@ async function handleVideo(file) {
     elements.dropZone.classList.add("is-hidden");
     sampleBackdropColor();
     renderPreview();
+    requestAnimationFrame(() => {
+      updatePreviewStageSize();
+      updateCropUi();
+    });
     setProgress(0, "预览已生成，可调节参数后导出 ZIP。");
     setHeaderStatus("已自动取样四角背景色");
     setExporting(false);
@@ -468,7 +638,14 @@ async function exportFrames() {
     return;
   }
 
-  const output = getOutputDimensions();
+  let output;
+  try {
+    output = getOutputDimensions();
+  } catch (error) {
+    setProgress(0, error.message);
+    return;
+  }
+  const crop = getCropRect();
   const exportCanvas = document.createElement("canvas");
   exportCanvas.width = output.width;
   exportCanvas.height = output.height;
@@ -495,7 +672,17 @@ async function exportFrames() {
       drawSourceFrame();
       applyChromaKey(state.keyCanvas);
       exportContext.clearRect(0, 0, output.width, output.height);
-      exportContext.drawImage(state.keyCanvas, 0, 0, output.width, output.height);
+      exportContext.drawImage(
+        state.keyCanvas,
+        crop.x,
+        crop.y,
+        crop.width,
+        crop.height,
+        0,
+        0,
+        output.width,
+        output.height,
+      );
       const png = await canvasToPng(exportCanvas);
       zip.file(`${baseName}_${String(index + 1).padStart(frameDigits, "0")}.png`, png, { compression: "STORE" });
 
@@ -555,12 +742,29 @@ function bindEvents() {
   }
 
   elements.dropZone.addEventListener("drop", (event) => handleVideo(event.dataTransfer.files?.[0]));
+  elements.previewCanvas.addEventListener("pointerdown", startCropSelection);
+  elements.previewCanvas.addEventListener("pointermove", moveCropSelection);
+  elements.previewCanvas.addEventListener("pointerup", finishCropSelection);
+  elements.previewCanvas.addEventListener("pointercancel", finishCropSelection);
   elements.previewCanvas.addEventListener("click", sampleColorAtEvent);
   elements.sampleHint.addEventListener("click", () => {
-    setHeaderStatus("在预览画面的背景区域点击取样");
+    setHeaderStatus(state.isCropMode ? "拖动预览画面框选裁剪区域" : "在预览画面的背景区域点击取样");
     elements.previewCanvas.focus();
   });
-  elements.sampleButton.addEventListener("click", () => setHeaderStatus("在预览画面的背景区域点击取样"));
+  elements.sampleButton.addEventListener("click", () => {
+    setCropMode(false);
+    setHeaderStatus("在预览画面的背景区域点击取样");
+  });
+  elements.cropModeButton.addEventListener("click", () => {
+    setCropMode(!state.isCropMode);
+    setHeaderStatus(state.isCropMode ? "拖动预览画面框选裁剪区域" : "已退出裁剪模式");
+  });
+  elements.resetCropButton.addEventListener("click", () => {
+    resetCrop();
+    clearExportOutput();
+    setProgress(0, "裁剪区域已重置，请重新导出 PNG 序列。");
+    setHeaderStatus("裁剪区域已重置");
+  });
   elements.timeInput.addEventListener("input", updatePreviewPosition);
   elements.exportButton.addEventListener("click", exportFrames);
 
@@ -573,17 +777,20 @@ function bindEvents() {
     });
   }
 
-  for (const input of [elements.frameRateInput, elements.sizeModeInput]) {
+  for (const input of [elements.frameRateInput, elements.outputWidthInput, elements.outputHeightInput]) {
     input.addEventListener("change", () => {
       clearExportOutput();
       if (state.file) setProgress(0, "输出设置已更新，请重新导出 PNG 序列。");
     });
   }
+
+  window.addEventListener("resize", updatePreviewStageSize);
 }
 
 function init() {
   updateValueLabels();
   updateKeyColorUi();
+  updateCropUi();
   bindEvents();
 }
 

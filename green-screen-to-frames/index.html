@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>背景抠像序列帧</title>
     <link rel="icon" href="data:," />
-    <link rel="stylesheet" href="./styles.css?v=preview-contain-1" />
+    <link rel="stylesheet" href="./styles.css?v=crop-output-1" />
   </head>
   <body>
     <main class="app-shell">
@@ -40,8 +40,11 @@
           </label>
 
           <div id="canvasWrap" class="canvas-wrap is-hidden">
-            <canvas id="previewCanvas" width="960" height="960" aria-label="抠像预览，点击画面可以取样背景色"></canvas>
-            <button id="sampleHint" class="sample-hint" type="button">点击画面取样背景色</button>
+            <div id="previewStage" class="preview-stage">
+              <canvas id="previewCanvas" width="960" height="960" aria-label="抠像预览，点击画面可以取样背景色"></canvas>
+              <div id="cropSelection" class="crop-selection is-hidden" aria-hidden="true"></div>
+              <button id="sampleHint" class="sample-hint" type="button">点击画面取样背景色</button>
+            </div>
           </div>
         </section>
 
@@ -94,14 +97,40 @@
                 <option value="30">30 fps</option>
               </select>
             </label>
-            <label>
-              <span>输出尺寸</span>
-              <select id="sizeModeInput">
-                <option value="native" selected>保持原尺寸</option>
-                <option value="1080">最长边 1080 px</option>
-                <option value="720">最长边 720 px</option>
-              </select>
-            </label>
+            <div class="source-size">
+              <span>原尺寸</span>
+              <strong id="originalSize">-- x -- px</strong>
+            </div>
+            <div class="dimension-fields">
+              <label>
+                <span>输出宽度</span>
+                <input id="outputWidthInput" type="number" min="1" max="8192" step="1" inputmode="numeric" disabled />
+              </label>
+              <label>
+                <span>输出高度</span>
+                <input id="outputHeightInput" type="number" min="1" max="8192" step="1" inputmode="numeric" disabled />
+              </label>
+            </div>
+            <div class="crop-controls">
+              <div>
+                <span>裁剪区域</span>
+                <p id="cropMeta">完整画面</p>
+              </div>
+              <div class="crop-actions" role="group" aria-label="裁剪工具">
+                <button id="cropModeButton" class="tool-icon-button" type="button" aria-label="框选裁剪" title="框选裁剪" aria-pressed="false" disabled>
+                  <svg viewBox="0 0 24 24" aria-hidden="true">
+                    <path d="M8 4H5a1 1 0 0 0-1 1v3M16 4h3a1 1 0 0 1 1 1v3M20 16v3a1 1 0 0 1-1 1h-3M8 20H5a1 1 0 0 1-1-1v-3" />
+                    <path d="M8 8h8v8H8z" />
+                  </svg>
+                </button>
+                <button id="resetCropButton" class="tool-icon-button" type="button" aria-label="重置裁剪" title="重置裁剪" disabled>
+                  <svg viewBox="0 0 24 24" aria-hidden="true">
+                    <path d="M20 12a8 8 0 1 1-2.3-5.7" />
+                    <path d="M20 4v6h-6" />
+                  </svg>
+                </button>
+              </div>
+            </div>
           </section>
 
           <button id="exportButton" class="export-button" type="button" disabled>
@@ -132,6 +161,6 @@
     <video id="sourceVideo" class="source-video" muted playsinline preload="metadata"></video>
     <canvas id="sourceCanvas" class="offscreen" aria-hidden="true"></canvas>
     <script src="../cocos-html-compressor/vendor/jszip.min.js"></script>
-    <script src="./app.js?v=one-click-save-1"></script>
+    <script src="./app.js?v=crop-output-3"></script>
   </body>
 </html>
