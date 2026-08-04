@@ -52,6 +52,18 @@
               <span class="tab-subtitle">GIF / MP4 / PNG 转 Cocos</span>
             </span>
           </button>
+          <button class="tool-tab" type="button" data-tool="green-screen">
+            <span class="tab-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24">
+                <rect x="4" y="4" width="16" height="16" rx="2" />
+                <path d="M8 4v16M16 4v16M4 9h16M4 15h16" />
+              </svg>
+            </span>
+            <span class="tab-copy">
+              <span class="tab-title">绿幕序列帧</span>
+              <span class="tab-subtitle">MP4 扣绿 / 透明 PNG 序列</span>
+            </span>
+          </button>
           <button class="tool-tab is-active" type="button" data-tool="vector">
             <span class="tab-icon" aria-hidden="true">
               <svg viewBox="0 0 24 24">
@@ -113,6 +125,12 @@
             data-tool="gif"
             title="序列帧动画"
             src="./gif-to-cocos-tool/index.html"
+          ></iframe>
+          <iframe
+            class="tool-frame"
+            data-tool="green-screen"
+            title="绿幕序列帧"
+            src="./green-screen-to-frames/index.html?v=1"
           ></iframe>
           <iframe
             class="tool-frame is-active"
