@@ -118,6 +118,15 @@
               <input id="frameRateInput" type="number" min="1" max="60" value="12" />
             </label>
             <label>
+              <span>PNG 压缩</span>
+              <select id="pngCompressionSelect">
+                <option value="256" selected>高质量（256 色）</option>
+                <option value="128">均衡（128 色）</option>
+                <option value="64">高压缩（64 色）</option>
+                <option value="0">无损（原像素）</option>
+              </select>
+            </label>
+            <label>
               <span>PNG 序列 FPS</span>
               <input id="pngFrameRateInput" type="number" min="1" max="60" value="30" />
             </label>
@@ -211,6 +220,8 @@
       </section>
     </main>
 
+    <script src="./vendor/pako_deflate.min.js"></script>
+    <script src="./vendor/UPNG.js"></script>
     <script src="./app.js"></script>
   </body>
 </html>

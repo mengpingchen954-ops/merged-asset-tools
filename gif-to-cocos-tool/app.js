@@ -16,6 +16,7 @@ const elements = {
   loopSelect: $("#loopSelect"),
   alphaSelect: $("#alphaSelect"),
   frameRateInput: $("#frameRateInput"),
+  pngCompressionSelect: $("#pngCompressionSelect"),
   pngFrameRateInput: $("#pngFrameRateInput"),
   convertBtn: $("#convertBtn"),
   downloadBtn: $("#downloadBtn"),
@@ -91,11 +92,14 @@ function getSettings() {
   const clip = sanitizeName(elements.clipInput.value, "dog_idle");
   const cropPadding = clampNumber(parseInt(elements.cropPaddingInput.value, 10), 0, 512, 12);
   const frameRate = clampNumber(parseInt(elements.frameRateInput.value, 10), 1, 60, 12);
+  const requestedPngColors = parseInt(elements.pngCompressionSelect.value, 10);
+  const pngColors = [0, 64, 128, 256].includes(requestedPngColors) ? requestedPngColors : 256;
   const pngFrameRate = clampNumber(parseInt(elements.pngFrameRateInput.value, 10), 1, 60, 30);
   elements.folderInput.value = folder;
   elements.clipInput.value = clip;
   elements.cropPaddingInput.value = String(cropPadding);
   elements.frameRateInput.value = String(frameRate);
+  elements.pngCompressionSelect.value = String(pngColors);
   elements.pngFrameRateInput.value = String(pngFrameRate);
   updateCropControlState();
 
@@ -110,6 +114,7 @@ function getSettings() {
     loop: elements.loopSelect.value === "loop",
     alphaMode: elements.alphaSelect.value,
     frameRate,
+    pngColors,
     pngFrameRate,
   };
 }
@@ -126,6 +131,7 @@ function updateFileKindControls() {
   elements.fitSelect.disabled = false;
   elements.alphaSelect.disabled = state.fileKind === "mp4" || isPng;
   elements.frameRateInput.disabled = state.fileKind !== "mp4";
+  elements.pngCompressionSelect.disabled = !isPng;
   elements.pngFrameRateInput.disabled = !isPng;
   updateCropControlState();
 }
@@ -142,6 +148,7 @@ function makeSettingsSignature(settings) {
     loop: settings.loop,
     alphaMode: settings.alphaMode,
     frameRate: settings.frameRate,
+    pngColors: settings.pngColors,
     pngFrameRate: settings.pngFrameRate,
   });
 }
@@ -474,9 +481,26 @@ async function canvasToBlob(canvas) {
   });
 }
 
-async function canvasToOptimizedPngBlob(canvas, fallbackBlob = null) {
+function canvasToQuantizedPngBlob(canvas, colors) {
+  if (!window.UPNG?.encode) throw new Error("PNG 量化器加载失败，请刷新页面后重试。");
+  const context = canvas.getContext("2d", { alpha: true, willReadFrequently: true });
+  const imageData = context.getImageData(0, 0, canvas.width, canvas.height);
+  const rgba = imageData.data.buffer.slice(
+    imageData.data.byteOffset,
+    imageData.data.byteOffset + imageData.data.byteLength
+  );
+  const encoded = window.UPNG.encode([rgba], canvas.width, canvas.height, colors);
+  return new Blob([encoded], { type: "image/png" });
+}
+
+async function canvasToOptimizedPngBlob(canvas, fallbackBlob = null, paletteColors = 0) {
   const browserBlob = await canvasToBlob(canvas);
   let smallest = fallbackBlob && fallbackBlob.size < browserBlob.size ? fallbackBlob : browserBlob;
+
+  if (paletteColors > 0) {
+    const quantizedBlob = canvasToQuantizedPngBlob(canvas, paletteColors);
+    if (quantizedBlob.size < smallest.size) smallest = quantizedBlob;
+  }
 
   try {
     const context = canvas.getContext("2d", { alpha: true, willReadFrequently: true });
@@ -715,9 +739,11 @@ async function finalizeFramesForExport(frames, settings, cropBounds) {
   const cropWidth = bounds.maxX - bounds.minX + 1;
   const cropHeight = bounds.maxY - bounds.minY + 1;
   const shouldCrop = hasCommonSize && (cropWidth < settings.width || cropHeight < settings.height);
+  const pngPaletteColors = state.fileKind === "png" ? settings.pngColors : 0;
+  const compressionLabel = getPngCompressionLabel(pngPaletteColors);
   elements.statusText.textContent = shouldCrop
     ? `无损裁剪并压缩到 ${cropWidth}×${cropHeight}`
-    : "正在进行极致无损 PNG 压缩";
+    : `正在进行 PNG ${compressionLabel}`;
   const optimizedFrames = [];
   const cropCanvas = document.createElement("canvas");
   const cropContext = cropCanvas.getContext("2d", { alpha: true });
@@ -749,7 +775,11 @@ async function finalizeFramesForExport(frames, settings, cropBounds) {
     closeFrameImage(source);
 
     const footPivot = findFootPivot(cropCanvas);
-    const blob = await canvasToOptimizedPngBlob(cropCanvas, shouldCrop ? null : frame.blob);
+    const blob = await canvasToOptimizedPngBlob(
+      cropCanvas,
+      shouldCrop ? null : frame.blob,
+      pngPaletteColors
+    );
     optimizedFrames.push({
       ...frame,
       blob,
@@ -760,7 +790,7 @@ async function finalizeFramesForExport(frames, settings, cropBounds) {
     });
 
     elements.progressText.textContent = `${Math.round(((index + 1) / frames.length) * 100)}%`;
-    elements.statusText.textContent = `无损优化第 ${index + 1} / ${frames.length} 帧`;
+    elements.statusText.textContent = `PNG ${compressionLabel}第 ${index + 1} / ${frames.length} 帧`;
     if ((index + 1) % 4 === 0) {
       await new Promise((resolve) => requestAnimationFrame(resolve));
     }
@@ -1837,7 +1867,7 @@ async function convertCurrentFile() {
   setBusy(true);
   setMessage(
     state.fileKind === "png"
-      ? "正在无损压缩 PNG 序列并生成 Cocos 资源。"
+      ? "正在压缩 PNG 序列并生成 Cocos 资源。"
       : state.fileKind === "mp4"
         ? "正在从 MP4 抽帧并生成 PNG 序列帧和 Cocos 资源。"
         : "正在拆分 GIF 并生成 PNG 序列帧和 Cocos 资源。"
@@ -1886,7 +1916,10 @@ async function convertCurrentFile() {
       : "";
     if (state.fileKind === "png" && result.sequenceZipBlob) {
       const dimensionsUnchanged = state.sourceWidth === state.outputWidth && state.sourceHeight === state.outputHeight;
-      const completionLabel = dimensionsUnchanged ? "原尺寸无损压缩完成" : "序列帧处理完成";
+      const compressionLabel = getPngCompressionLabel(result.settings.pngColors);
+      const completionLabel = dimensionsUnchanged
+        ? `原尺寸 PNG ${compressionLabel}完成`
+        : "序列帧处理完成";
       setMessage(
         `${completionLabel}：${dimensionSummary}，序列帧 ZIP ${formatBytes(result.sequenceZipBlob.size)}${savings}，Cocos ${formatBytes(result.cocosZipBlob.size)}。`,
         "ok"
@@ -2064,6 +2097,13 @@ function inferClipStateName(clipName) {
   return normalized;
 }
 
+function getPngCompressionLabel(colors) {
+  if (colors === 256) return "高质量压缩";
+  if (colors === 128) return "均衡压缩";
+  if (colors === 64) return "高压缩";
+  return "无损压缩";
+}
+
 async function createZip(files) {
   const encoder = new TextEncoder();
   const localParts = [];
@@ -2230,6 +2270,7 @@ function bindEvents() {
     elements.loopSelect,
     elements.alphaSelect,
     elements.frameRateInput,
+    elements.pngCompressionSelect,
     elements.pngFrameRateInput,
   ]) {
     input.addEventListener("change", () => {
