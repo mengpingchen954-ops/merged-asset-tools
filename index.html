@@ -6,7 +6,7 @@
     <title>素材工具台</title>
     <link rel="icon" href="data:," />
     <link rel="stylesheet" href="./styles.css" />
-    <script src="./app.js?v=universal-key-2" defer></script>
+    <script src="./app.js?v=tool-names-1" defer></script>
   </head>
   <body>
     <div class="merged-shell">
@@ -21,7 +21,7 @@
           </div>
           <div>
             <h1>素材工具台</h1>
-            <p id="toolStatus">素材矢量分离器</p>
+            <p id="toolStatus">一键抠图</p>
           </div>
         </div>
 
@@ -35,7 +35,7 @@
               </svg>
             </span>
             <span class="tab-copy">
-              <span class="tab-title">素材矢量分离器</span>
+              <span class="tab-title">一键抠图</span>
               <span class="tab-subtitle">抠图 / 分离 / 导出</span>
             </span>
           </button>
@@ -47,7 +47,7 @@
               </svg>
             </span>
             <span class="tab-copy">
-              <span class="tab-title">背景抠像序列帧</span>
+              <span class="tab-title">绿幕视频转序列帧</span>
               <span class="tab-subtitle">任意纯色背景 / 透明 PNG 序列</span>
             </span>
           </button>
@@ -60,7 +60,7 @@
               </svg>
             </span>
             <span class="tab-copy">
-              <span class="tab-title">序列帧动画</span>
+              <span class="tab-title">序列帧压缩</span>
               <span class="tab-subtitle">GIF / MP4 / PNG 转 Cocos</span>
             </span>
           </button>
@@ -101,7 +101,7 @@
       <main class="tool-workspace">
         <header class="workspace-header">
           <div>
-            <h2 id="toolHeading">素材矢量分离器</h2>
+            <h2 id="toolHeading">一键抠图</h2>
             <p id="toolDescription">载入图片后自动抠图分离素材，支持 SVG、PNG 和批量导出。</p>
           </div>
           <div class="status-pill" aria-label="处理方式">
@@ -117,20 +117,20 @@
           <iframe
             class="tool-frame is-active"
             data-tool="vector"
-            title="素材矢量分离器"
-            src="./asset-vectorizer/index.html"
+            title="一键抠图"
+            src="./asset-vectorizer/index.html?v=tool-names-1"
           ></iframe>
           <iframe
             class="tool-frame"
             data-tool="green-screen"
-            title="背景抠像序列帧"
-            src="./green-screen-to-frames/index.html?v=sequence-playback-2"
+            title="绿幕视频转序列帧"
+            src="./green-screen-to-frames/index.html?v=tool-names-1"
           ></iframe>
           <iframe
             class="tool-frame"
             data-tool="gif"
-            title="序列帧动画"
-            src="./gif-to-cocos-tool/index.html"
+            title="序列帧压缩"
+            src="./gif-to-cocos-tool/index.html?v=tool-names-1"
           ></iframe>
           <iframe
             class="tool-frame"

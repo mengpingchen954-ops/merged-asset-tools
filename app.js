@@ -8,9 +8,9 @@ const openButton = document.querySelector("#openTool");
 
 const toolLabels = {
   cocos: "Cocos HTML 压缩",
-  gif: "序列帧动画",
-  "green-screen": "背景抠像序列帧",
-  vector: "素材矢量分离器",
+  gif: "序列帧压缩",
+  "green-screen": "绿幕视频转序列帧",
+  vector: "一键抠图",
 };
 
 const toolDescriptions = {
