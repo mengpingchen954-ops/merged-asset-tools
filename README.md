@@ -6,7 +6,7 @@
 
 - 序列帧动画：处理 GIF、MP4 和 PNG 序列并导出 Cocos 资源。
 - 图片自动压缩：批量压缩 PNG、JPG 和 WebP 图片。
-- Cocos HTML 压缩：拖入包含 `window.__zip` 的单文件 HTML，导出 5MB HTML 和三种方向提交包。
+- Cocos HTML 压缩：拖入包含 `window.__zip` 的单文件 HTML，使用本地 WebP WASM 压缩并导出 5MB HTML 和三种方向提交包。
 - 素材矢量分离器：从图片中分离素材并导出 SVG 或 PNG。
 
 ## 在线使用

@@ -1,3 +1,5 @@
+import { encodeWebp } from "./vendor/webp/encoder.js";
+
 (() => {
   "use strict";
 
@@ -6,14 +8,15 @@
     "png", "jpg", "jpeg", "webp", "bmp", "gif", "mp3", "m4a", "ogg", "wav", "cconb",
   ]);
   const PRESETS = {
-    balanced: { name: "均衡", quality: 0.35 },
-    strict: { name: "强力", quality: 0.23 },
-    "very-strict": { name: "更强", quality: 0.2 },
-    tiny: { name: "极限", quality: 0.16 },
+    balanced: { name: "均衡", quality: 35, alphaQuality: 55 },
+    strict: { name: "强力", quality: 23, alphaQuality: 38 },
+    "very-strict": { name: "更强", quality: 20, alphaQuality: 32 },
+    tiny: { name: "极限", quality: 16, alphaQuality: 24 },
   };
   const AUTO_PRESETS = ["balanced", "strict", "very-strict", "tiny"];
   const textEncoder = new TextEncoder();
   const textDecoder = new TextDecoder();
+  let wasmFallbackReported = false;
 
   const elements = {
     dropZone: document.querySelector("#dropZone"),
@@ -263,7 +266,7 @@
       return { converted: 0, savedBytes: Math.max(0, original.byteLength - normalized.byteLength) };
     }
 
-    const webp = await compressImageToWebp(sourceBytes, preset.quality);
+    const webp = await compressImageToWebp(sourceBytes, preset);
     if (!webp) return { converted: 0, savedBytes: 0 };
     const next = textEncoder.encode(makeDataUrl("image/webp", webp));
     if (next.byteLength >= original.byteLength) return { converted: 0, savedBytes: 0 };
@@ -295,7 +298,7 @@
         continue;
       }
 
-      const webp = await compressImageToWebp(parsed.data, preset.quality);
+      const webp = await compressImageToWebp(parsed.data, preset);
       if (!webp) {
         res[key] = makeDataUrl(parsed.mime, parsed.data);
         continue;
@@ -436,7 +439,7 @@
     return true;
   }
 
-  async function compressImageToWebp(bytes, quality) {
+  async function compressImageToWebp(bytes, preset) {
     let bitmap;
     try {
       const blob = new Blob([bytes], { type: "image/png" });
@@ -447,7 +450,23 @@
       const context = canvas.getContext("2d", { alpha: true });
       if (!context) return null;
       context.drawImage(bitmap, 0, 0);
-      const webpBlob = await new Promise((resolve) => canvas.toBlob(resolve, "image/webp", quality));
+      try {
+        const imageData = context.getImageData(0, 0, canvas.width, canvas.height);
+        return await encodeWebp(imageData, {
+          quality: preset.quality,
+          alpha_quality: preset.alphaQuality,
+          method: 6,
+          use_sharp_yuv: 1,
+        });
+      } catch (wasmError) {
+        if (!wasmFallbackReported) {
+          console.warn("WebP WASM encoder unavailable; using browser encoder.", wasmError);
+          wasmFallbackReported = true;
+        }
+      }
+      const webpBlob = await new Promise((resolve) => {
+        canvas.toBlob(resolve, "image/webp", preset.quality / 100);
+      });
       return webpBlob ? new Uint8Array(await webpBlob.arrayBuffer()) : null;
     } catch {
       return null;
