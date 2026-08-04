@@ -26,17 +26,29 @@
         </div>
 
         <nav class="tool-tabs" aria-label="工具切换">
-          <button class="tool-tab" type="button" data-tool="cocos">
+          <button class="tool-tab is-active" type="button" data-tool="vector">
             <span class="tab-icon" aria-hidden="true">
               <svg viewBox="0 0 24 24">
-                <path d="M5 4h10l4 4v12H5z" />
-                <path d="M15 4v5h5" />
-                <path d="m9 14 2 2 4-4" />
+                <path d="M4 5h6v6H4z" />
+                <path d="M14 13h6v6h-6z" />
+                <path d="M10 8c4.6.4 7.4 2.8 8 7" />
               </svg>
             </span>
             <span class="tab-copy">
-              <span class="tab-title">Cocos HTML 压缩</span>
-              <span class="tab-subtitle">拖入 HTML / 输出 5MB 包</span>
+              <span class="tab-title">素材矢量分离器</span>
+              <span class="tab-subtitle">抠图 / 分离 / 导出</span>
+            </span>
+          </button>
+          <button class="tool-tab" type="button" data-tool="green-screen">
+            <span class="tab-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24">
+                <rect x="4" y="4" width="16" height="16" rx="2" />
+                <path d="M8 4v16M16 4v16M4 9h16M4 15h16" />
+              </svg>
+            </span>
+            <span class="tab-copy">
+              <span class="tab-title">背景抠像序列帧</span>
+              <span class="tab-subtitle">任意纯色背景 / 透明 PNG 序列</span>
             </span>
           </button>
           <button class="tool-tab" type="button" data-tool="gif">
@@ -52,29 +64,17 @@
               <span class="tab-subtitle">GIF / MP4 / PNG 转 Cocos</span>
             </span>
           </button>
-          <button class="tool-tab" type="button" data-tool="green-screen">
+          <button class="tool-tab" type="button" data-tool="cocos">
             <span class="tab-icon" aria-hidden="true">
               <svg viewBox="0 0 24 24">
-                <rect x="4" y="4" width="16" height="16" rx="2" />
-                <path d="M8 4v16M16 4v16M4 9h16M4 15h16" />
+                <path d="M5 4h10l4 4v12H5z" />
+                <path d="M15 4v5h5" />
+                <path d="m9 14 2 2 4-4" />
               </svg>
             </span>
             <span class="tab-copy">
-              <span class="tab-title">背景抠像序列帧</span>
-              <span class="tab-subtitle">任意纯色背景 / 透明 PNG 序列</span>
-            </span>
-          </button>
-          <button class="tool-tab is-active" type="button" data-tool="vector">
-            <span class="tab-icon" aria-hidden="true">
-              <svg viewBox="0 0 24 24">
-                <path d="M4 5h6v6H4z" />
-                <path d="M14 13h6v6h-6z" />
-                <path d="M10 8c4.6.4 7.4 2.8 8 7" />
-              </svg>
-            </span>
-            <span class="tab-copy">
-              <span class="tab-title">素材矢量分离器</span>
-              <span class="tab-subtitle">抠图 / 分离 / 导出</span>
+              <span class="tab-title">Cocos HTML 压缩</span>
+              <span class="tab-subtitle">拖入 HTML / 输出 5MB 包</span>
             </span>
           </button>
         </nav>
@@ -115,10 +115,16 @@
 
         <section class="frame-stack" aria-live="polite">
           <iframe
+            class="tool-frame is-active"
+            data-tool="vector"
+            title="素材矢量分离器"
+            src="./asset-vectorizer/index.html"
+          ></iframe>
+          <iframe
             class="tool-frame"
-            data-tool="cocos"
-            title="Cocos HTML 压缩"
-            src="./cocos-html-compressor/index.html?v=mp3-wasm-2"
+            data-tool="green-screen"
+            title="背景抠像序列帧"
+            src="./green-screen-to-frames/index.html?v=preview-contain-1"
           ></iframe>
           <iframe
             class="tool-frame"
@@ -128,15 +134,9 @@
           ></iframe>
           <iframe
             class="tool-frame"
-            data-tool="green-screen"
-            title="背景抠像序列帧"
-            src="./green-screen-to-frames/index.html?v=preview-contain-1"
-          ></iframe>
-          <iframe
-            class="tool-frame is-active"
-            data-tool="vector"
-            title="素材矢量分离器"
-            src="./asset-vectorizer/index.html"
+            data-tool="cocos"
+            title="Cocos HTML 压缩"
+            src="./cocos-html-compressor/index.html?v=mp3-wasm-2"
           ></iframe>
         </section>
       </main>
