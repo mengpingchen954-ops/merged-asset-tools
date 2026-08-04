@@ -148,8 +148,11 @@ svg {
 }
 
 .drop-zone {
-  width: min(540px, 100%);
-  min-height: 310px;
+  width: 100%;
+  min-height: 0;
+  height: 100%;
+  align-self: stretch;
+  justify-self: stretch;
   display: grid;
   justify-items: center;
   align-content: center;
