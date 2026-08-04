@@ -296,10 +296,10 @@ async function ensureVideoFrame() {
   await waitForVideoEvent("loadeddata");
 }
 
-async function seekVideo(time) {
+async function seekVideo(time, force = false) {
   const video = elements.sourceVideo;
   const boundedTime = clamp(time, 0, Math.max(0, state.duration - 0.001));
-  if (Math.abs(video.currentTime - boundedTime) < 0.002 && video.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA) {
+  if (!force && Math.abs(video.currentTime - boundedTime) < 0.002 && video.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA) {
     return;
   }
 
@@ -375,6 +375,7 @@ async function handleVideo(file) {
     elements.sourceCanvas.height = state.sourceHeight;
     elements.previewCanvas.width = state.sourceWidth;
     elements.previewCanvas.height = state.sourceHeight;
+    await seekVideo(Math.min(0.001, Math.max(0, state.duration - 0.001)), true);
     elements.timeInput.max = String(state.duration);
     elements.timeInput.value = "0";
     elements.timeInput.disabled = false;
