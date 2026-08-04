@@ -1,0 +1,165 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Cocos HTML 压缩</title>
+    <link rel="icon" href="data:," />
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <main class="app-shell">
+      <header class="toolbar">
+        <div class="brand">
+          <div class="brand-mark" aria-hidden="true">
+            <svg viewBox="0 0 24 24">
+              <path d="M5 3h10l4 4v14H5z" />
+              <path d="M15 3v5h5" />
+              <path d="m8.5 14 2.3 2.3 4.8-5" />
+            </svg>
+          </div>
+          <div>
+            <h1>Cocos HTML 压缩</h1>
+            <p>压缩 super-html 内嵌资源，输出 HTML 与 Google 提交包。</p>
+          </div>
+        </div>
+        <button id="downloadAllBtn" class="primary-action" type="button" disabled>
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M12 3v12m0 0 4.5-4.5M12 15l-4.5-4.5M5 20h14" />
+          </svg>
+          下载全部 ZIP
+        </button>
+      </header>
+
+      <section class="workspace">
+        <aside class="panel control-panel">
+          <label id="dropZone" class="drop-zone" for="fileInput">
+            <input id="fileInput" type="file" accept="text/html,.html" />
+            <span class="drop-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24">
+                <path d="M5 3h10l4 4v14H5z" />
+                <path d="M15 3v5h5" />
+                <path d="M12 17V10m-3 3 3-3 3 3" />
+              </svg>
+            </span>
+            <strong>拖入 Cocos 单文件 HTML</strong>
+            <span>支持包含 window.__zip 的 super-html</span>
+          </label>
+
+          <div class="settings">
+            <label>
+              <span>目标体积</span>
+              <div class="number-input">
+                <input id="targetInput" type="number" min="1" max="20" step="0.1" value="5" />
+                <span>MB</span>
+              </div>
+            </label>
+            <label>
+              <span>压缩强度</span>
+              <select id="presetSelect">
+                <option value="auto" selected>自动达到目标</option>
+                <option value="balanced">均衡</option>
+                <option value="strict">强力</option>
+                <option value="tiny">极限</option>
+              </select>
+            </label>
+          </div>
+
+          <div class="hint-box">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M12 3 5 6v5c0 4.4 2.8 8.2 7 9.8 4.2-1.6 7-5.4 7-9.8V6z" />
+              <path d="M9 12l2 2 4-4" />
+            </svg>
+            <p>文件只在当前浏览器处理。原始 HTML 不会被覆盖，也不会上传服务器。</p>
+          </div>
+
+          <button id="compressBtn" class="secondary-action" type="button" disabled>
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M4 4h16v16H4z" />
+              <path d="M8 12h8m-4-4v8" />
+            </svg>
+            开始压缩
+          </button>
+          <button id="clearBtn" class="text-action" type="button" disabled>移除文件</button>
+        </aside>
+
+        <section class="panel results-panel" aria-live="polite">
+          <div class="summary">
+            <div><span>原始 HTML</span><strong id="beforeSize">0 B</strong></div>
+            <div><span>内嵌资源包</span><strong id="innerSize">0 B</strong></div>
+            <div><span>PNG 资源</span><strong id="imageCount">0</strong></div>
+            <div class="saved"><span>压缩后</span><strong id="afterSize">-</strong></div>
+          </div>
+
+          <div class="results-head">
+            <div>
+              <h2>处理结果</h2>
+              <p id="statusText">等待选择 HTML</p>
+            </div>
+            <span id="progressText" class="progress">0%</span>
+          </div>
+          <div class="progress-track" aria-hidden="true"><span id="progressBar"></span></div>
+
+          <div id="emptyState" class="empty-state">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M5 3h10l4 4v14H5z" />
+              <path d="M15 3v5h5" />
+              <path d="M8 13h8M8 17h5" />
+            </svg>
+            <strong>选择文件后检查资源包</strong>
+            <span>支持 HTML、通用 ZIP、横版 ZIP 与竖版 ZIP 下载。</span>
+          </div>
+
+          <div id="errorState" class="message error-message" role="alert" hidden></div>
+          <div id="warningState" class="message warning-message" hidden></div>
+
+          <div id="resultList" class="result-list" hidden>
+            <article class="result-item primary-result">
+              <span class="result-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24"><path d="M5 3h10l4 4v14H5zM15 3v5h5M8 14h8M8 17h5" /></svg>
+              </span>
+              <div class="item-copy">
+                <p id="htmlName" class="item-name"></p>
+                <p id="htmlMeta" class="item-meta"></p>
+              </div>
+              <button class="item-download" type="button" data-download="html">下载 HTML</button>
+            </article>
+            <article class="result-item">
+              <span class="result-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24"><path d="M4 7h16v13H4zM8 7V4h8v3M12 10v7m-2-5h4" /></svg>
+              </span>
+              <div class="item-copy">
+                <p id="zipName" class="item-name"></p>
+                <p id="zipMeta" class="item-meta"></p>
+              </div>
+              <button class="item-download" type="button" data-download="zip">下载 ZIP</button>
+            </article>
+            <article class="result-item compact-result">
+              <span class="result-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24"><path d="M4 7h16v13H4zM8 7V4h8v3M8 14h8" /></svg>
+              </span>
+              <div class="item-copy">
+                <p id="landscapeName" class="item-name"></p>
+                <p id="landscapeMeta" class="item-meta"></p>
+              </div>
+              <button class="item-download" type="button" data-download="landscape">横版 ZIP</button>
+            </article>
+            <article class="result-item compact-result">
+              <span class="result-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24"><path d="M7 4h10v16H7zM10 7h4M10 17h4" /></svg>
+              </span>
+              <div class="item-copy">
+                <p id="portraitName" class="item-name"></p>
+                <p id="portraitMeta" class="item-meta"></p>
+              </div>
+              <button class="item-download" type="button" data-download="portrait">竖版 ZIP</button>
+            </article>
+          </div>
+        </section>
+      </section>
+    </main>
+
+    <script src="./vendor/jszip.min.js"></script>
+    <script src="./app.js"></script>
+  </body>
+</html>

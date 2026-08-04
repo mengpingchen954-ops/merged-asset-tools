@@ -57,6 +57,19 @@
               <span class="tab-subtitle">批量压缩 / 保持尺寸</span>
             </span>
           </button>
+          <button class="tool-tab" type="button" data-tool="cocos">
+            <span class="tab-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24">
+                <path d="M5 4h10l4 4v12H5z" />
+                <path d="M15 4v5h5" />
+                <path d="m9 14 2 2 4-4" />
+              </svg>
+            </span>
+            <span class="tab-copy">
+              <span class="tab-title">Cocos HTML 压缩</span>
+              <span class="tab-subtitle">拖入 HTML / 输出 5MB 包</span>
+            </span>
+          </button>
           <button class="tool-tab is-active" type="button" data-tool="vector">
             <span class="tab-icon" aria-hidden="true">
               <svg viewBox="0 0 24 24">
@@ -118,6 +131,12 @@
             data-tool="compress"
             title="图片自动压缩"
             src="./image-compressor/index.html"
+          ></iframe>
+          <iframe
+            class="tool-frame"
+            data-tool="cocos"
+            title="Cocos HTML 压缩"
+            src="./cocos-html-compressor/index.html"
           ></iframe>
           <iframe
             class="tool-frame is-active"

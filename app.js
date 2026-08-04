@@ -9,12 +9,14 @@ const openButton = document.querySelector("#openTool");
 const toolLabels = {
   gif: "序列帧动画",
   compress: "图片自动压缩",
+  cocos: "Cocos HTML 压缩",
   vector: "素材矢量分离器",
 };
 
 const toolDescriptions = {
   gif: "本地处理 GIF、MP4 和 PNG 序列，导出 PNG 序列帧或 Cocos 资源。",
   compress: "批量载入 PNG、JPG 或 WebP，自动压缩并保持原始画布尺寸。",
+  cocos: "拖入 Cocos 单文件 HTML，压缩内嵌图片并导出 5MB 提交包。",
   vector: "载入图片后自动抠图分离素材，支持 SVG、PNG 和批量导出。",
 };
 
