@@ -5,13 +5,18 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>绿幕序列帧</title>
     <link rel="icon" href="data:," />
-    <link rel="stylesheet" href="./styles.css?v=first-frame-2" />
+    <link rel="stylesheet" href="./styles.css?v=unified-1" />
   </head>
   <body>
     <main class="app-shell">
       <header class="app-header">
         <div class="brand">
-          <span class="brand-mark" aria-hidden="true">G</span>
+          <span class="brand-mark" aria-hidden="true">
+            <svg viewBox="0 0 28 28">
+              <path d="M5 8.5h11.8c3.5 0 6.2 2.7 6.2 6.1 0 3.5-2.7 6.2-6.2 6.2H5V8.5Z" />
+              <path d="M9 12.4h7.3a2.2 2.2 0 1 1 0 4.4H9v-4.4Z" />
+            </svg>
+          </span>
           <div>
             <h1>绿幕序列帧</h1>
             <p>本地透明 PNG 导出工具</p>
@@ -127,6 +132,6 @@
     <video id="sourceVideo" class="source-video" muted playsinline preload="metadata"></video>
     <canvas id="sourceCanvas" class="offscreen" aria-hidden="true"></canvas>
     <script src="../cocos-html-compressor/vendor/jszip.min.js"></script>
-    <script src="./app.js?v=first-frame-2"></script>
+    <script src="./app.js?v=unified-1"></script>
   </body>
 </html>
