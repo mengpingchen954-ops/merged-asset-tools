@@ -124,7 +124,7 @@ function setExporting(isExporting) {
 function clearExportOutput() {
   if (state.outputUrl) URL.revokeObjectURL(state.outputUrl);
   state.outputUrl = "";
-  elements.exportLabel.textContent = "导出透明 PNG 序列";
+  elements.exportLabel.textContent = "导出并保存透明 PNG 序列";
   elements.exportButton.classList.remove("is-hidden");
   elements.downloadLink.classList.add("is-hidden");
   elements.downloadLink.removeAttribute("href");
@@ -427,6 +427,29 @@ function canvasToPng(canvas) {
   });
 }
 
+async function requestSaveHandle(fileName) {
+  if (typeof window.showSaveFilePicker !== "function") return null;
+
+  try {
+    return await window.showSaveFilePicker({
+      suggestedName: fileName,
+      types: [{
+        description: "ZIP archive",
+        accept: { "application/zip": [".zip"] },
+      }],
+    });
+  } catch (error) {
+    if (error?.name === "AbortError") return false;
+    return null;
+  }
+}
+
+async function saveWithHandle(handle, blob) {
+  const writable = await handle.createWritable();
+  await writable.write(blob);
+  await writable.close();
+}
+
 function nextFrame() {
   return new Promise((resolve) => window.setTimeout(resolve, 0));
 }
@@ -453,6 +476,14 @@ async function exportFrames() {
   const zip = new window.JSZip();
   const frameDigits = Math.max(4, String(frameCount).length);
   const baseName = sanitizeName(state.file.name);
+  const outputFileName = `${baseName}_transparent_png_frames.zip`;
+  setHeaderStatus("请选择 ZIP 的保存位置");
+  const saveHandle = await requestSaveHandle(outputFileName);
+  if (saveHandle === false) {
+    setProgress(0, "已取消选择保存位置。");
+    setHeaderStatus("导出已取消");
+    return;
+  }
 
   setExporting(true);
   setProgress(0, `正在抠像并编码 0 / ${frameCount} 帧`);
@@ -480,11 +511,17 @@ async function exportFrames() {
     );
     state.outputUrl = URL.createObjectURL(zipBlob);
     elements.downloadLink.href = state.outputUrl;
-    elements.downloadLink.download = `${baseName}_transparent_png_frames.zip`;
+    elements.downloadLink.download = outputFileName;
     elements.exportButton.classList.add("is-hidden");
     elements.downloadLink.classList.remove("is-hidden");
-    setProgress(100, `完成 ${frameCount} 帧 · ${output.width} x ${output.height} · ZIP ${formatBytes(zipBlob.size)}，点击下载链接。`);
-    setHeaderStatus("透明 PNG 序列已生成，点击下载链接");
+    if (saveHandle) {
+      await saveWithHandle(saveHandle, zipBlob);
+      setProgress(100, `完成 ${frameCount} 帧 · ${output.width} x ${output.height} · ZIP ${formatBytes(zipBlob.size)}，已保存。`);
+      setHeaderStatus("透明 PNG 序列已保存");
+    } else {
+      setProgress(100, `完成 ${frameCount} 帧 · ${output.width} x ${output.height} · ZIP ${formatBytes(zipBlob.size)}，点击重新下载。`);
+      setHeaderStatus("透明 PNG 序列已生成，点击重新下载");
+    }
     elements.timeInput.value = String(Math.min((frameCount - 1) / frameRate, Math.max(0, state.duration - 0.001)));
     elements.timeValue.textContent = formatDuration(Number(elements.timeInput.value));
     renderPreview();
