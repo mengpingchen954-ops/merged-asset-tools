@@ -1,4 +1,5 @@
 import { encodeWebp } from "./vendor/webp/encoder.js";
+import encodeMp3 from "./vendor/mp3/encoder.js";
 
 (() => {
   "use strict";
@@ -8,15 +9,17 @@ import { encodeWebp } from "./vendor/webp/encoder.js";
     "png", "jpg", "jpeg", "webp", "bmp", "gif", "mp3", "m4a", "ogg", "wav", "cconb",
   ]);
   const PRESETS = {
-    balanced: { name: "均衡", quality: 35, alphaQuality: 55 },
-    strict: { name: "强力", quality: 23, alphaQuality: 38 },
-    "very-strict": { name: "更强", quality: 20, alphaQuality: 32 },
-    tiny: { name: "极限", quality: 16, alphaQuality: 24 },
+    balanced: { name: "均衡", quality: 35, alphaQuality: 55, audioBitrate: 64 },
+    strict: { name: "强力", quality: 23, alphaQuality: 38, audioBitrate: 48 },
+    "very-strict": { name: "更强", quality: 20, alphaQuality: 32, audioBitrate: 40 },
+    tiny: { name: "极限", quality: 16, alphaQuality: 24, audioBitrate: 32 },
   };
   const AUTO_PRESETS = ["balanced", "strict", "very-strict", "tiny"];
   const textEncoder = new TextEncoder();
   const textDecoder = new TextDecoder();
   let wasmFallbackReported = false;
+  let mp3EncoderFailureReported = false;
+  let audioContext = null;
 
   const elements = {
     dropZone: document.querySelector("#dropZone"),
@@ -81,11 +84,17 @@ import { encodeWebp } from "./vendor/webp/encoder.js";
       if (file) loadInput(file);
     });
     elements.compressBtn.addEventListener("click", compressInput);
+    elements.targetInput.addEventListener("change", recompressWithNewSettings);
+    elements.presetSelect.addEventListener("change", recompressWithNewSettings);
     elements.clearBtn.addEventListener("click", resetInput);
     elements.downloadAllBtn.addEventListener("click", downloadAll);
     document.querySelectorAll("[data-download]").forEach((button) => {
       button.addEventListener("click", () => downloadOutput(button.dataset.download));
     });
+  }
+
+  function recompressWithNewSettings() {
+    if (state.inputFile && !state.processing) compressInput();
   }
 
   async function loadInput(file) {
@@ -149,8 +158,10 @@ import { encodeWebp } from "./vendor/webp/encoder.js";
         // A malformed __res will be left untouched during compression.
       }
     }
-    const audioCount = Object.values(zip.files).filter((entry) => !entry.dir && getExtension(entry.name) === "m4a").length;
-    return { pngCount, audioCount };
+    const audioEntries = Object.values(zip.files).filter((entry) => !entry.dir);
+    const mp3Count = audioEntries.filter((entry) => getExtension(entry.name) === "mp3").length;
+    const m4aCount = audioEntries.filter((entry) => getExtension(entry.name) === "m4a").length;
+    return { pngCount, mp3Count, m4aCount };
   }
 
   function findEmbeddedZip(html) {
@@ -188,8 +199,8 @@ import { encodeWebp } from "./vendor/webp/encoder.js";
 
       if (!bestResult) throw new Error("没有生成压缩结果。");
       state.outputs = buildOutputRecords(bestResult);
-      renderResults(bestResult, targetBytes);
       setProgress(100, "压缩完成");
+      renderResults(bestResult, targetBytes);
     } catch (error) {
       showError(error instanceof Error ? error.message : "压缩失败。");
       setProgress(0, "压缩失败", false);
@@ -212,20 +223,30 @@ import { encodeWebp } from "./vendor/webp/encoder.js";
       converted += result.converted;
       savedBytes += result.savedBytes;
       const fraction = pngEntries.length ? (index + 1) / pngEntries.length : 1;
-      const passProgress = ((presetIndex + fraction * 0.62) / presetCount) * 82;
-      setProgress(6 + passProgress, `${preset.name}：正在压缩 ${pngEntries[index].name}`);
+      setPresetProgress(presetIndex, presetCount, fraction * 0.58, `${preset.name}：正在压缩 ${pngEntries[index].name}`);
       if (index % 2 === 0) await yieldToBrowser();
     }
 
     const resResult = await compressResDataUrls(zip, preset, obfuscationIndices);
     converted += resResult.converted;
     savedBytes += resResult.savedBytes;
+    setPresetProgress(presetIndex, presetCount, 0.66, `${preset.name}：图片压缩完成`);
+
+    const audioResult = await compressLooseMp3s(zip, preset, obfuscationIndices, (fraction, name) => {
+      setPresetProgress(presetIndex, presetCount, 0.66 + fraction * 0.18, `${preset.name}：正在压缩 ${name}`);
+    });
+    savedBytes += audioResult.savedBytes;
     await normalizeLooseDataUrls(zip, obfuscationIndices);
 
-    setProgress(88, `${preset.name}：正在重新打包…`);
+    setPresetProgress(presetIndex, presetCount, 0.86, `${preset.name}：正在重新打包…`);
     const innerZipBytes = await zip.generateAsync(
       { type: "uint8array", compression: "DEFLATE", compressionOptions: { level: 9 } },
-      ({ percent }) => setProgress(88 + percent * 0.06, `${preset.name}：正在重新打包…`),
+      ({ percent }) => setPresetProgress(
+        presetIndex,
+        presetCount,
+        0.86 + percent * 0.0009,
+        `${preset.name}：正在重新打包…`,
+      ),
     );
 
     const commonHtml = replaceEmbeddedZip(setOrientation(state.inputHtml, "portrait,landscape"), innerZipBytes);
@@ -251,6 +272,7 @@ import { encodeWebp } from "./vendor/webp/encoder.js";
       savedBytes,
       runtimePatched,
       resResult,
+      audioResult,
     };
   }
 
@@ -336,6 +358,76 @@ import { encodeWebp } from "./vendor/webp/encoder.js";
       savedBytes: Math.max(imageSavedBytes, byteLength(beforeText) - byteLength(afterText)),
       splashRemoved,
     };
+  }
+
+  async function compressLooseMp3s(zip, preset, obfuscationIndices, onProgress) {
+    const entries = Object.values(zip.files).filter((entry) => {
+      return !entry.dir && getExtension(entry.name) === "mp3";
+    });
+    let converted = 0;
+    let savedBytes = 0;
+
+    for (let index = 0; index < entries.length; index += 1) {
+      const entry = entries[index];
+      const original = await entry.async("uint8array");
+      const originalText = bytesStartWith(original, "data:") ? textDecoder.decode(original) : null;
+      const parsed = originalText ? parseDataUrl(originalText, obfuscationIndices) : null;
+      const sourceBytes = parsed ? parsed.data : original;
+      const encoded = await compressMp3(sourceBytes, preset.audioBitrate);
+
+      if (encoded) {
+        const next = parsed ? textEncoder.encode(makeDataUrl("audio/mpeg", encoded)) : encoded;
+        if (next.byteLength < original.byteLength) {
+          zip.file(entry.name, next);
+          converted += 1;
+          savedBytes += original.byteLength - next.byteLength;
+        }
+      }
+
+      onProgress((index + 1) / Math.max(1, entries.length), entry.name);
+      await yieldToBrowser();
+    }
+
+    return { converted, savedBytes };
+  }
+
+  async function compressMp3(bytes, bitrate) {
+    const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+    if (!AudioContextClass) return null;
+
+    try {
+      audioContext ||= new AudioContextClass();
+      const decoded = await audioContext.decodeAudioData(bytes.slice().buffer);
+      const expectedBytes = decoded.duration * bitrate * 125;
+      if (bytes.byteLength <= expectedBytes * 1.08) return null;
+
+      const mono = new Float32Array(decoded.length);
+      for (let channel = 0; channel < decoded.numberOfChannels; channel += 1) {
+        const channelData = decoded.getChannelData(channel);
+        for (let index = 0; index < mono.length; index += 1) mono[index] += channelData[index];
+      }
+      if (decoded.numberOfChannels > 1) {
+        const scale = 1 / decoded.numberOfChannels;
+        for (let index = 0; index < mono.length; index += 1) mono[index] *= scale;
+      }
+
+      const encoder = await encodeMp3({
+        sampleRate: decoded.sampleRate,
+        channels: 1,
+        bitrate,
+      });
+      try {
+        return concatenateBytes(encoder.encode([mono]), encoder.flush());
+      } finally {
+        encoder.free?.();
+      }
+    } catch (error) {
+      if (!mp3EncoderFailureReported) {
+        console.warn("MP3 encoder unavailable; keeping original audio.", error);
+        mp3EncoderFailureReported = true;
+      }
+      return null;
+    }
   }
 
   async function normalizeLooseDataUrls(zip, obfuscationIndices) {
@@ -435,7 +527,9 @@ import { encodeWebp } from "./vendor/webp/encoder.js";
     if (mime === "image/jpeg") return data[0] === 0xff && data[1] === 0xd8;
     if (mime === "image/webp") return ascii(data, 0, 4) === "RIFF" && ascii(data, 8, 12) === "WEBP";
     if (mime === "audio/mp4" || mime === "audio/x-m4a") return ascii(data, 4, 8) === "ftyp";
-    if (mime === "audio/mpeg") return ascii(data, 0, 3) === "ID3" || (data[0] === 0xff && (data[1] & 0xe0) === 0xe0);
+    if (mime === "audio/mpeg" || mime === "audio/mp3") {
+      return ascii(data, 0, 3) === "ID3" || (data[0] === 0xff && (data[1] & 0xe0) === 0xe0);
+    }
     return true;
   }
 
@@ -523,10 +617,11 @@ import { encodeWebp } from "./vendor/webp/encoder.js";
     const underTarget = allOutputsUnder(result, targetBytes);
     const savings = Math.max(0, state.inputFile.size - result.htmlBlob.size);
     const savedPercent = state.inputFile.size ? Math.round((savings / state.inputFile.size) * 100) : 0;
-    elements.statusText.textContent = `${result.converted} 张 PNG 已优化，HTML 减少 ${savedPercent}%`;
+    const audioSummary = result.audioResult.converted > 0 ? `、${result.audioResult.converted} 个 MP3` : "";
+    elements.statusText.textContent = `${result.converted} 张 PNG${audioSummary} 已优化，HTML 减少 ${savedPercent}%`;
     const warnings = [];
     if (!underTarget) warnings.push(`最小结果仍超过 ${formatBytes(targetBytes)}，请检查大音频或不可压缩资源。`);
-    if (state.inputStats.audioCount > 0) warnings.push(`浏览器版保留了 ${state.inputStats.audioCount} 个 M4A 音频文件。`);
+    if (state.inputStats.m4aCount > 0) warnings.push(`浏览器版保留了 ${state.inputStats.m4aCount} 个 M4A 音频文件。`);
     if (warnings.length) showWarning(warnings.join(" "));
   }
 
@@ -634,6 +729,11 @@ import { encodeWebp } from "./vendor/webp/encoder.js";
     elements.statusText.textContent = text;
   }
 
+  function setPresetProgress(presetIndex, presetCount, fraction, text) {
+    const overall = (presetIndex + clamp(fraction, 0, 1)) / presetCount;
+    setProgress(6 + overall * 92, text);
+  }
+
   function makeDataUrl(mime, bytes) {
     return `data:${mime};base64,${bytesToBase64(bytes)}`;
   }
@@ -652,6 +752,17 @@ import { encodeWebp } from "./vendor/webp/encoder.js";
       chunks.push(String.fromCharCode(...bytes.subarray(offset, Math.min(offset + chunkSize, bytes.length))));
     }
     return btoa(chunks.join(""));
+  }
+
+  function concatenateBytes(...parts) {
+    const total = parts.reduce((sum, part) => sum + part.byteLength, 0);
+    const result = new Uint8Array(total);
+    let offset = 0;
+    for (const part of parts) {
+      result.set(part, offset);
+      offset += part.byteLength;
+    }
+    return result;
   }
 
   function bytesStartWith(bytes, value) {

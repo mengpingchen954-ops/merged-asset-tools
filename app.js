@@ -13,7 +13,7 @@ const toolLabels = {
 };
 
 const toolDescriptions = {
-  cocos: "拖入 Cocos 单文件 HTML，压缩内嵌图片并导出 5MB 提交包。",
+  cocos: "拖入 Cocos 单文件 HTML，压缩内嵌图片与 MP3 并导出 5MB 提交包。",
   gif: "本地处理 GIF、MP4 和 PNG 序列，导出 PNG 序列帧或 Cocos 资源。",
   vector: "载入图片后自动抠图分离素材，支持 SVG、PNG 和批量导出。",
 };

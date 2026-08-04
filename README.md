@@ -4,7 +4,7 @@
 
 一个完全在浏览器本地运行的素材处理工具集合，包含：
 
-- Cocos HTML 压缩：拖入包含 `window.__zip` 的单文件 HTML，使用本地 WebP WASM 压缩并导出 5MB HTML 和三种方向提交包。
+- Cocos HTML 压缩：拖入包含 `window.__zip` 的单文件 HTML，使用本地 WebP 与 MP3 WASM 压缩并导出 5MB HTML 和三种方向提交包。
 - 序列帧动画：处理 GIF、MP4 和 PNG 序列，支持拖入单个 PNG 序列文件夹，以 256、128、64 色或原像素无损档位导出原尺寸压缩序列 ZIP 和 Cocos 资源。
 - 素材矢量分离器：从图片中分离素材并导出 SVG 或 PNG。
 
