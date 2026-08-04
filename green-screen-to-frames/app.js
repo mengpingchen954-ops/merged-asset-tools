@@ -149,6 +149,12 @@ function applyChromaKey(targetCanvas) {
   const keyRed = state.keyColor.r / 255;
   const keyGreen = state.keyColor.g / 255;
   const keyBlue = state.keyColor.b / 255;
+  const keyBase = Math.min(state.keyColor.r, state.keyColor.g, state.keyColor.b);
+  const keyChroma = {
+    r: state.keyColor.r - keyBase,
+    g: state.keyColor.g - keyBase,
+    b: state.keyColor.b - keyBase,
+  };
   const keyDistance = 0.12 + threshold * 0.5;
   const feather = 0.006 + softness * 0.19;
 
@@ -162,16 +168,15 @@ function applyChromaKey(targetCanvas) {
     const distance = Math.sqrt(
       (red - keyRed) ** 2 + (green - keyGreen) ** 2 + (blue - keyBlue) ** 2,
     ) / Math.sqrt(3);
-    const greenDominance = clamp((green - Math.max(red, blue)) * 2.6, 0, 1);
     const keySimilarity = 1 - smoothstep(keyDistance - feather, keyDistance + feather, distance);
-    const chromaAmount = keySimilarity * smoothstep(0.03, 0.2, greenDominance);
+    const chromaAmount = keySimilarity;
 
     if (chromaAmount <= 0) continue;
 
-    const unwantedGreen = Math.max(0, pixels[offset + 1] - Math.max(pixels[offset], pixels[offset + 2]));
-    pixels[offset + 1] = Math.round(
-      pixels[offset + 1] - unwantedGreen * spill * Math.min(1, chromaAmount * 1.35),
-    );
+    const spillAmount = spill * Math.min(1, chromaAmount * 1.35);
+    pixels[offset] = Math.round(pixels[offset] - keyChroma.r * spillAmount);
+    pixels[offset + 1] = Math.round(pixels[offset + 1] - keyChroma.g * spillAmount);
+    pixels[offset + 2] = Math.round(pixels[offset + 2] - keyChroma.b * spillAmount);
     pixels[offset + 3] = Math.round(alpha * (1 - chromaAmount));
   }
 
@@ -207,25 +212,38 @@ function sampleBackdropColor() {
     [0, state.sourceHeight - sampleSize],
     [state.sourceWidth - sampleSize, state.sourceHeight - sampleSize],
   ];
-  const channels = [[], [], []];
+  const samples = [];
+  const bins = new Map();
 
   for (const [x, y] of corners) {
     const pixels = sourceContext.getImageData(x, y, sampleSize, sampleSize).data;
     for (let offset = 0; offset < pixels.length; offset += 4) {
-      const [red, green, blue, alpha] = pixels.slice(offset, offset + 4);
-      if (alpha > 0 && green > red * 1.08 && green > blue * 1.08) {
-        channels[0].push(red);
-        channels[1].push(green);
-        channels[2].push(blue);
-      }
+      const red = pixels[offset];
+      const green = pixels[offset + 1];
+      const blue = pixels[offset + 2];
+      const alpha = pixels[offset + 3];
+      if (alpha < 128) continue;
+
+      const sample = { r: red, g: green, b: blue };
+      const bin = `${red >> 4}:${green >> 4}:${blue >> 4}`;
+      samples.push(sample);
+      bins.set(bin, (bins.get(bin) || 0) + 1);
     }
   }
 
-  if (channels[0].length < 12) return;
+  if (samples.length < 12) return;
+  const dominantBin = [...bins.entries()].reduce((best, entry) => (entry[1] > best[1] ? entry : best));
+  const [binRed, binGreen, binBlue] = dominantBin[0].split(":").map(Number);
+  const center = { r: binRed * 16 + 8, g: binGreen * 16 + 8, b: binBlue * 16 + 8 };
+  const backdropSamples = samples.filter((sample) => (
+    (sample.r - center.r) ** 2 + (sample.g - center.g) ** 2 + (sample.b - center.b) ** 2 <= 48 ** 2
+  ));
+  const selectedSamples = backdropSamples.length >= 12 ? backdropSamples : samples;
+
   state.keyColor = {
-    r: median(channels[0]),
-    g: median(channels[1]),
-    b: median(channels[2]),
+    r: median(selectedSamples.map((sample) => sample.r)),
+    g: median(selectedSamples.map((sample) => sample.g)),
+    b: median(selectedSamples.map((sample) => sample.b)),
   };
   updateKeyColorUi();
 }
@@ -268,7 +286,7 @@ function sampleColorAtEvent(event) {
   };
   updateKeyColorUi();
   renderPreview();
-  setHeaderStatus("已从预览画面取样绿幕颜色");
+  setHeaderStatus("已从预览画面取样背景色");
 }
 
 function waitForVideoEvent(name) {
@@ -342,7 +360,7 @@ async function updatePreviewPosition() {
 
 async function handleVideo(file) {
   if (!isMp4(file)) {
-    setProgress(0, "请选择 .mp4 格式的绿幕视频。");
+    setProgress(0, "请选择 .mp4 格式的纯色背景视频。");
     return;
   }
 
@@ -386,7 +404,7 @@ async function handleVideo(file) {
     sampleBackdropColor();
     renderPreview();
     setProgress(0, "预览已生成，可调节参数后导出 ZIP。");
-    setHeaderStatus("已自动取样四角绿幕颜色");
+    setHeaderStatus("已自动取样四角背景色");
     setExporting(false);
   } catch (error) {
     state.file = null;
@@ -437,7 +455,7 @@ async function exportFrames() {
   const baseName = sanitizeName(state.file.name);
 
   setExporting(true);
-  setProgress(0, `正在扣绿并编码 0 / ${frameCount} 帧`);
+  setProgress(0, `正在抠像并编码 0 / ${frameCount} 帧`);
   setHeaderStatus("正在导出透明 PNG 序列");
 
   try {
@@ -451,7 +469,7 @@ async function exportFrames() {
       zip.file(`${baseName}_${String(index + 1).padStart(frameDigits, "0")}.png`, png, { compression: "STORE" });
 
       const progress = ((index + 1) / frameCount) * 84;
-      setProgress(progress, `正在扣绿并编码 ${index + 1} / ${frameCount} 帧`);
+      setProgress(progress, `正在抠像并编码 ${index + 1} / ${frameCount} 帧`);
       if (index % 3 === 2) await nextFrame();
     }
 
@@ -502,10 +520,10 @@ function bindEvents() {
   elements.dropZone.addEventListener("drop", (event) => handleVideo(event.dataTransfer.files?.[0]));
   elements.previewCanvas.addEventListener("click", sampleColorAtEvent);
   elements.sampleHint.addEventListener("click", () => {
-    setHeaderStatus("在预览画面的绿幕区域点击取样");
+    setHeaderStatus("在预览画面的背景区域点击取样");
     elements.previewCanvas.focus();
   });
-  elements.sampleButton.addEventListener("click", () => setHeaderStatus("在预览画面的绿幕区域点击取样"));
+  elements.sampleButton.addEventListener("click", () => setHeaderStatus("在预览画面的背景区域点击取样"));
   elements.timeInput.addEventListener("input", updatePreviewPosition);
   elements.exportButton.addEventListener("click", exportFrames);
 
