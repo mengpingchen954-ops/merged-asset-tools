@@ -22,20 +22,20 @@
             <p>本地透明 PNG 导出工具</p>
           </div>
         </div>
-        <p id="headerStatus" class="header-status">拖入纯色背景 MP4 开始处理</p>
+        <p id="headerStatus" class="header-status">拖入纯色背景 MP4、MOV 或 GIF 开始处理</p>
       </header>
 
       <section class="workspace" aria-live="polite">
         <section id="previewPanel" class="preview-panel" aria-label="透明预览">
           <label id="dropZone" class="drop-zone" for="videoInput">
-            <input id="videoInput" type="file" accept="video/mp4,.mp4" />
+            <input id="videoInput" type="file" accept="video/mp4,video/quicktime,image/gif,.mp4,.mov,.gif" />
             <span class="upload-icon" aria-hidden="true">
               <svg viewBox="0 0 24 24">
                 <path d="M12 15V4m0 0L8 8m4-4 4 4" />
                 <path d="M5 15.5V20h14v-4.5" />
               </svg>
             </span>
-            <strong>拖入纯色背景 MP4</strong>
+            <strong>拖入纯色背景 MP4、MOV 或 GIF</strong>
             <span>或点击选择文件</span>
           </label>
 
@@ -50,9 +50,9 @@
 
         <aside class="inspector" aria-label="抠像参数">
           <section class="source-info">
-            <span class="section-label">视频信息</span>
-            <strong id="videoName">未选择视频</strong>
-            <span id="videoMeta">MP4 视频将在此浏览器本地处理</span>
+            <span class="section-label">素材信息</span>
+            <strong id="videoName">未选择素材</strong>
+            <span id="videoMeta">MP4、MOV 或 GIF 将在此浏览器本地处理</span>
           </section>
 
           <section class="controls">
@@ -161,7 +161,7 @@
             <p id="exportStatus">导出后将下载 PNG 序列 ZIP</p>
           </div>
 
-          <p class="help-text">视频不会上传。建议先在预览中点击背景区域取样并微调参数，确认边缘干净后再导出。</p>
+          <p class="help-text">素材不会上传。建议先在预览中点击背景区域取样并微调参数，确认边缘干净后再导出。</p>
         </aside>
       </section>
     </main>
@@ -169,6 +169,7 @@
     <video id="sourceVideo" class="source-video" muted playsinline loop preload="metadata"></video>
     <canvas id="sourceCanvas" class="offscreen" aria-hidden="true"></canvas>
     <script src="../cocos-html-compressor/vendor/jszip.min.js"></script>
-    <script src="./app.js?v=sequence-playback-2"></script>
+    <script src="./gif-decoder.js?v=gif-input-1"></script>
+    <script src="./app.js?v=gif-input-1"></script>
   </body>
 </html>

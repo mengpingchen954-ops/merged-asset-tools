@@ -41,14 +41,20 @@ const elements = {
 };
 
 const MAX_EXPORT_FRAMES = 600;
+const MAX_GIF_SOURCE_FRAMES = 600;
 const MAX_OUTPUT_DIMENSION = 8192;
 const MAX_OUTPUT_PIXELS = 33_554_432;
 const state = {
   file: null,
+  sourceType: null,
   objectUrl: "",
   sourceWidth: 0,
   sourceHeight: 0,
   duration: 0,
+  gifBytes: null,
+  gifFrame: null,
+  gifPlaybackImage: null,
+  gifPlaybackStartedAt: 0,
   keyColor: { r: 0, g: 169, b: 79 },
   previewRequest: 0,
   isExporting: false,
@@ -75,8 +81,17 @@ function smoothstep(edge0, edge1, value) {
   return t * t * (3 - 2 * t);
 }
 
-function isMp4(file) {
-  return Boolean(file && (file.type === "video/mp4" || /\.mp4$/i.test(file.name)));
+function getSourceType(file) {
+  if (!file) return null;
+  if (file.type === "image/gif" || /\.gif$/i.test(file.name)) return "gif";
+  if (file.type === "video/mp4" || file.type === "video/quicktime" || /\.(mp4|mov)$/i.test(file.name)) {
+    return "video";
+  }
+  return null;
+}
+
+function hasLoadedSource() {
+  return Boolean(state.file && state.sourceType && state.sourceWidth && state.sourceHeight);
 }
 
 function formatDuration(seconds) {
@@ -131,14 +146,14 @@ function setHeaderStatus(text) {
 
 function setExporting(isExporting) {
   state.isExporting = isExporting;
-  const hasLoadedVideo = Boolean(state.file && state.sourceWidth && state.sourceHeight);
-  elements.exportButton.disabled = isExporting || !hasLoadedVideo;
-  elements.frameRateInput.disabled = isExporting || !hasLoadedVideo;
-  elements.outputWidthInput.disabled = isExporting || !hasLoadedVideo;
-  elements.outputHeightInput.disabled = isExporting || !hasLoadedVideo;
-  elements.cropModeButton.disabled = isExporting || !hasLoadedVideo;
-  elements.resetCropButton.disabled = isExporting || !hasLoadedVideo;
-  elements.playButton.disabled = isExporting || !hasLoadedVideo;
+  const hasSource = hasLoadedSource();
+  elements.exportButton.disabled = isExporting || !hasSource;
+  elements.frameRateInput.disabled = isExporting || !hasSource;
+  elements.outputWidthInput.disabled = isExporting || !hasSource;
+  elements.outputHeightInput.disabled = isExporting || !hasSource;
+  elements.cropModeButton.disabled = isExporting || !hasSource;
+  elements.resetCropButton.disabled = isExporting || !hasSource;
+  elements.playButton.disabled = isExporting || !hasSource;
   updateCropUi();
   updatePlaybackUi();
 }
@@ -154,8 +169,17 @@ function clearExportOutput() {
 }
 
 function drawSourceFrame() {
-  if (!state.file || !state.sourceWidth || !state.sourceHeight) return false;
+  if (!hasLoadedSource()) return false;
   sourceContext.clearRect(0, 0, state.sourceWidth, state.sourceHeight);
+  if (state.sourceType === "gif") {
+    if (state.isPlaying && state.gifPlaybackImage?.complete && state.gifPlaybackImage.naturalWidth) {
+      sourceContext.drawImage(state.gifPlaybackImage, 0, 0, state.sourceWidth, state.sourceHeight);
+      return true;
+    }
+    if (!state.gifFrame) return false;
+    sourceContext.putImageData(new ImageData(state.gifFrame, state.sourceWidth, state.sourceHeight), 0, 0);
+    return true;
+  }
   sourceContext.drawImage(elements.sourceVideo, 0, 0, state.sourceWidth, state.sourceHeight);
   return true;
 }
@@ -213,16 +237,19 @@ function renderPreview() {
 }
 
 function updatePlaybackUi() {
-  const hasLoadedVideo = Boolean(state.file && state.sourceWidth && state.sourceHeight);
+  const hasSource = hasLoadedSource();
   elements.playButton.classList.toggle("is-playing", state.isPlaying);
   elements.playButton.setAttribute("aria-label", state.isPlaying ? "暂停预览" : "播放预览");
   elements.playButton.title = state.isPlaying ? "暂停预览" : "播放预览";
-  elements.playButton.disabled = !hasLoadedVideo || state.isExporting;
+  elements.playButton.disabled = !hasSource || state.isExporting;
 }
 
-function renderPlaybackFrame() {
-  if (!state.isPlaying || elements.sourceVideo.paused) return;
-  const currentTime = elements.sourceVideo.currentTime;
+function renderPlaybackFrame(timestamp) {
+  if (!state.isPlaying) return;
+  if (state.sourceType === "video" && elements.sourceVideo.paused) return;
+  const currentTime = state.sourceType === "gif"
+    ? ((timestamp - state.gifPlaybackStartedAt) / 1000) % state.duration
+    : elements.sourceVideo.currentTime;
   elements.timeInput.value = String(currentTime);
   elements.timeValue.textContent = formatDuration(currentTime);
   renderPreview();
@@ -238,7 +265,11 @@ function setPlaybackState(isPlaying) {
 }
 
 function stopPlayback() {
-  if (!elements.sourceVideo.paused) elements.sourceVideo.pause();
+  if (state.sourceType === "video" && !elements.sourceVideo.paused) elements.sourceVideo.pause();
+  if (state.sourceType === "gif" && state.isPlaying && drawSourceFrame()) {
+    state.gifFrame = new Uint8ClampedArray(sourceContext.getImageData(0, 0, state.sourceWidth, state.sourceHeight).data);
+    state.gifPlaybackImage = null;
+  }
   setPlaybackState(false);
 }
 
@@ -246,6 +277,19 @@ async function togglePlayback() {
   if (!state.file || state.isExporting) return;
   if (state.isPlaying) {
     stopPlayback();
+    return;
+  }
+
+  if (state.sourceType === "gif") {
+    const image = new Image();
+    state.gifPlaybackImage = image;
+    state.gifPlaybackStartedAt = performance.now();
+    image.addEventListener("load", () => {
+      if (state.gifPlaybackImage !== image || !state.isPlaying) return;
+      state.gifPlaybackStartedAt = performance.now();
+    }, { once: true });
+    image.src = state.objectUrl;
+    setPlaybackState(true);
     return;
   }
 
@@ -286,20 +330,20 @@ function updatePreviewStageSize() {
 }
 
 function updateCropUi() {
-  const hasVideo = Boolean(state.file && state.sourceWidth && state.sourceHeight);
+  const hasSource = hasLoadedSource();
   const crop = getCropRect();
-  const fullCrop = !hasVideo || isFullCrop(crop);
-  const showSelection = hasVideo && (state.isCropMode || !fullCrop);
+  const fullCrop = !hasSource || isFullCrop(crop);
+  const showSelection = hasSource && (state.isCropMode || !fullCrop);
 
   elements.canvasWrap.classList.toggle("is-cropping", state.isCropMode);
   elements.cropSelection.classList.toggle("is-hidden", !showSelection);
   elements.cropModeButton.classList.toggle("is-active", state.isCropMode);
   elements.cropModeButton.setAttribute("aria-pressed", String(state.isCropMode));
-  elements.cropModeButton.disabled = !hasVideo || state.isExporting;
-  elements.resetCropButton.disabled = !hasVideo || state.isExporting || fullCrop;
+  elements.cropModeButton.disabled = !hasSource || state.isExporting;
+  elements.resetCropButton.disabled = !hasSource || state.isExporting || fullCrop;
   elements.sampleHint.textContent = state.isCropMode ? "拖动框选裁剪区域" : "点击画面取样背景色";
 
-  if (!hasVideo) {
+  if (!hasSource) {
     elements.cropMeta.textContent = "完整画面";
     return;
   }
@@ -317,7 +361,7 @@ function updateCropUi() {
 }
 
 function setCropMode(enabled) {
-  state.isCropMode = Boolean(enabled && state.file && !state.isExporting);
+  state.isCropMode = Boolean(enabled && hasLoadedSource() && !state.isExporting);
   state.cropStart = null;
   state.cropPointerId = null;
   updateCropUi();
@@ -507,7 +551,7 @@ function waitForVideoEvent(name) {
     };
     const onError = () => {
       cleanup();
-      reject(new Error("浏览器无法解码这个 MP4 视频。请尝试 H.264 编码的 MP4。"));
+      reject(new Error("浏览器无法解码这个 MP4/MOV 视频。请尝试 H.264 编码的视频。"));
     };
     video.addEventListener(name, onSuccess, { once: true });
     video.addEventListener("error", onError, { once: true });
@@ -557,34 +601,31 @@ async function updatePreviewPosition() {
   try {
     const requestedTime = Number(elements.timeInput.value);
     elements.timeValue.textContent = formatDuration(requestedTime);
-    await seekVideo(requestedTime);
+    if (state.sourceType === "gif") await seekGif(requestedTime);
+    else await seekVideo(requestedTime);
     if (requestId === state.previewRequest) renderPreview();
   } catch (error) {
     if (requestId === state.previewRequest) setProgress(0, error.message);
   }
 }
 
-async function handleVideo(file) {
-  if (!isMp4(file)) {
-    setProgress(0, "请选择 .mp4 格式的纯色背景视频。");
-    return;
-  }
-
+function resetSource(file, sourceType) {
   stopPlayback();
   state.previewRequest += 1;
   if (state.objectUrl) URL.revokeObjectURL(state.objectUrl);
   state.file = file;
+  state.sourceType = sourceType;
   state.sourceWidth = 0;
   state.sourceHeight = 0;
   state.duration = 0;
+  state.gifBytes = null;
+  state.gifFrame = null;
+  state.gifPlaybackImage = null;
   state.crop = null;
   clearExportOutput();
   state.objectUrl = URL.createObjectURL(file);
   setExporting(false);
-  setProgress(0, "正在读取视频信息...");
-  setHeaderStatus("正在读取 MP4 元数据");
   elements.videoName.textContent = file.name;
-  elements.videoMeta.textContent = `${formatBytes(file.size)} · 正在读取视频`;
   elements.originalSize.textContent = "-- x -- px";
   elements.outputWidthInput.value = "";
   elements.outputHeightInput.value = "";
@@ -592,6 +633,110 @@ async function handleVideo(file) {
   elements.previewStage.style.height = "";
   elements.canvasWrap.classList.add("is-hidden");
   elements.dropZone.classList.remove("is-hidden");
+}
+
+function initializeLoadedSource() {
+  elements.sourceCanvas.width = state.sourceWidth;
+  elements.sourceCanvas.height = state.sourceHeight;
+  elements.previewCanvas.width = state.sourceWidth;
+  elements.previewCanvas.height = state.sourceHeight;
+  setOutputDimensions(state.sourceWidth, state.sourceHeight);
+  resetCrop();
+  elements.timeInput.max = String(state.duration);
+  elements.timeInput.value = "0";
+  elements.timeInput.disabled = false;
+  elements.timeValue.textContent = formatDuration(0);
+  elements.canvasWrap.classList.remove("is-hidden");
+  elements.dropZone.classList.add("is-hidden");
+  sampleBackdropColor();
+  renderPreview();
+  requestAnimationFrame(() => {
+    updatePreviewStageSize();
+    updateCropUi();
+  });
+  setProgress(0, "预览已生成，可调节参数后导出 ZIP。");
+  setHeaderStatus("已自动取样四角背景色");
+  setExporting(false);
+}
+
+async function seekGif(time) {
+  if (!state.gifBytes) throw new Error("GIF 数据未加载。");
+  const boundedTime = clamp(time, 0, Math.max(0, state.duration - 0.001));
+  let elapsed = 0;
+  let selectedFrame = null;
+  await window.decodeGifFrames(state.gifBytes, ({ data, delayMs }) => {
+    const frameEnd = elapsed + delayMs / 1000;
+    if (boundedTime < frameEnd) {
+      selectedFrame = new Uint8ClampedArray(data);
+      return false;
+    }
+    elapsed = frameEnd;
+    return true;
+  });
+  if (!selectedFrame) throw new Error("未能读取 GIF 预览帧。");
+  state.gifFrame = selectedFrame;
+}
+
+async function handleGif(file) {
+  resetSource(file, "gif");
+  elements.sourceVideo.removeAttribute("src");
+  elements.sourceVideo.load();
+  setProgress(0, "正在读取 GIF 帧...");
+  setHeaderStatus("正在读取 GIF 帧");
+  elements.videoMeta.textContent = `${formatBytes(file.size)} · 正在读取 GIF`;
+
+  try {
+    state.gifBytes = await file.arrayBuffer();
+    let frameCount = 0;
+    await window.decodeGifFrames(state.gifBytes, ({ data, width, height, delayMs, index }) => {
+      if (index >= MAX_GIF_SOURCE_FRAMES) {
+        throw new Error(`GIF 超过 ${MAX_GIF_SOURCE_FRAMES} 帧上限，请先缩短动画后重试。`);
+      }
+      if (!state.sourceWidth) {
+        state.sourceWidth = width;
+        state.sourceHeight = height;
+        state.gifFrame = new Uint8ClampedArray(data);
+      }
+      state.duration += delayMs / 1000;
+      frameCount += 1;
+      return true;
+    });
+    if (!frameCount || !state.sourceWidth || !state.sourceHeight || !state.duration) {
+      throw new Error("未能读取 GIF 尺寸、帧数或时长。");
+    }
+
+    elements.videoMeta.textContent = `${state.sourceWidth} x ${state.sourceHeight} · ${frameCount} 帧 · ${formatDuration(state.duration)} · ${formatBytes(file.size)}`;
+    initializeLoadedSource();
+  } catch (error) {
+    state.file = null;
+    state.sourceType = null;
+    state.gifBytes = null;
+    state.gifFrame = null;
+    clearExportOutput();
+    elements.videoName.textContent = "未能读取 GIF";
+    elements.videoMeta.textContent = "请确认文件是有效的 GIF 动画";
+    elements.dropZone.classList.remove("is-hidden");
+    setProgress(0, error.message || "GIF 读取失败。");
+    setHeaderStatus("GIF 读取失败");
+    setExporting(false);
+  }
+}
+
+async function handleVideo(file) {
+  const sourceType = getSourceType(file);
+  if (!sourceType) {
+    setProgress(0, "请选择 .mp4、.mov 或 .gif 格式的纯色背景素材。");
+    return;
+  }
+  if (sourceType === "gif") {
+    await handleGif(file);
+    return;
+  }
+
+  resetSource(file, "video");
+  setProgress(0, "正在读取视频信息...");
+  setHeaderStatus("正在读取 MP4/MOV 元数据");
+  elements.videoMeta.textContent = `${formatBytes(file.size)} · 正在读取视频`;
   elements.sourceVideo.src = state.objectUrl;
   elements.sourceVideo.load();
 
@@ -605,34 +750,15 @@ async function handleVideo(file) {
       throw new Error("未能读取视频尺寸或时长。");
     }
 
-    elements.sourceCanvas.width = state.sourceWidth;
-    elements.sourceCanvas.height = state.sourceHeight;
-    elements.previewCanvas.width = state.sourceWidth;
-    elements.previewCanvas.height = state.sourceHeight;
-    setOutputDimensions(state.sourceWidth, state.sourceHeight);
-    resetCrop();
     await seekVideo(Math.min(0.001, Math.max(0, state.duration - 0.001)), true);
-    elements.timeInput.max = String(state.duration);
-    elements.timeInput.value = "0";
-    elements.timeInput.disabled = false;
-    elements.timeValue.textContent = formatDuration(0);
     elements.videoMeta.textContent = `${state.sourceWidth} x ${state.sourceHeight} · ${formatDuration(state.duration)} · ${formatBytes(file.size)}`;
-    elements.canvasWrap.classList.remove("is-hidden");
-    elements.dropZone.classList.add("is-hidden");
-    sampleBackdropColor();
-    renderPreview();
-    requestAnimationFrame(() => {
-      updatePreviewStageSize();
-      updateCropUi();
-    });
-    setProgress(0, "预览已生成，可调节参数后导出 ZIP。");
-    setHeaderStatus("已自动取样四角背景色");
-    setExporting(false);
+    initializeLoadedSource();
   } catch (error) {
     state.file = null;
+    state.sourceType = null;
     clearExportOutput();
     elements.videoName.textContent = "未能读取视频";
-    elements.videoMeta.textContent = "请确认浏览器支持该 MP4 编码";
+    elements.videoMeta.textContent = "请确认浏览器支持该 MP4/MOV 编码";
     elements.dropZone.classList.remove("is-hidden");
     setProgress(0, error.message || "视频读取失败。");
     setHeaderStatus("视频读取失败");
@@ -688,7 +814,7 @@ async function exportFrames() {
   const { frameRate } = getSettings();
   const frameCount = Math.max(1, Math.ceil(state.duration * frameRate - 0.00001));
   if (frameCount > MAX_EXPORT_FRAMES) {
-    setProgress(0, `当前设置会导出 ${frameCount} 帧，超过 ${MAX_EXPORT_FRAMES} 帧上限。请降低帧率或缩短视频。`);
+    setProgress(0, `当前设置会导出 ${frameCount} 帧，超过 ${MAX_EXPORT_FRAMES} 帧上限。请降低帧率或缩短素材。`);
     return;
   }
 
@@ -721,9 +847,12 @@ async function exportFrames() {
   setHeaderStatus("正在导出透明 PNG 序列");
 
   try {
-    for (let index = 0; index < frameCount; index += 1) {
-      await seekVideo(index / frameRate);
-      drawSourceFrame();
+    const addFrame = async (index, gifFrame = null) => {
+      if (gifFrame) {
+        sourceContext.putImageData(new ImageData(gifFrame, state.sourceWidth, state.sourceHeight), 0, 0);
+      } else {
+        drawSourceFrame();
+      }
       applyChromaKey(state.keyCanvas);
       exportContext.clearRect(0, 0, output.width, output.height);
       exportContext.drawImage(
@@ -743,6 +872,26 @@ async function exportFrames() {
       const progress = ((index + 1) / frameCount) * 84;
       setProgress(progress, `正在抠像并编码 ${index + 1} / ${frameCount} 帧`);
       if (index % 3 === 2) await nextFrame();
+    };
+
+    if (state.sourceType === "gif") {
+      let elapsed = 0;
+      let outputIndex = 0;
+      await window.decodeGifFrames(state.gifBytes, async ({ data, delayMs }) => {
+        const frameEnd = elapsed + delayMs / 1000;
+        while (outputIndex < frameCount && outputIndex / frameRate < frameEnd) {
+          await addFrame(outputIndex, data);
+          outputIndex += 1;
+        }
+        elapsed = frameEnd;
+        return outputIndex < frameCount;
+      });
+      if (outputIndex !== frameCount) throw new Error("未能从 GIF 中抽取完整序列。");
+    } else {
+      for (let index = 0; index < frameCount; index += 1) {
+        await seekVideo(index / frameRate);
+        await addFrame(index);
+      }
     }
 
     setProgress(86, "正在打包透明 PNG 序列 ZIP...");
@@ -763,8 +912,10 @@ async function exportFrames() {
       setProgress(100, `完成 ${frameCount} 帧 · ${output.width} x ${output.height} · ZIP ${formatBytes(zipBlob.size)}，点击重新下载。`);
       setHeaderStatus("透明 PNG 序列已生成，点击重新下载");
     }
-    elements.timeInput.value = String(Math.min((frameCount - 1) / frameRate, Math.max(0, state.duration - 0.001)));
+    const finalTime = Math.min((frameCount - 1) / frameRate, Math.max(0, state.duration - 0.001));
+    elements.timeInput.value = String(finalTime);
     elements.timeValue.textContent = formatDuration(Number(elements.timeInput.value));
+    if (state.sourceType === "gif") await seekGif(finalTime);
     renderPreview();
   } catch (error) {
     console.error(error);
