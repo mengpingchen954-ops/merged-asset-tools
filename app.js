@@ -10,6 +10,7 @@ const toolLabels = {
   cocos: "Cocos HTML 压缩",
   gif: "序列帧压缩",
   "green-screen": "绿幕视频转序列帧",
+  model: "GLB 模型压缩",
   vector: "一键抠图",
 };
 
@@ -17,6 +18,7 @@ const toolDescriptions = {
   cocos: "拖入 Cocos 单文件 HTML，压缩内嵌图片与 MP3 并导出 5MB 提交包。",
   gif: "本地处理 GIF、MP4 和 PNG 序列，导出 PNG 序列帧或 Cocos 资源。",
   "green-screen": "拖入任意纯色背景 MP4、MOV 或 GIF，在浏览器本地抠像并导出透明 PNG 序列 ZIP。",
+  model: "缩小 GLB 内嵌贴图并降低 iPhone 解码内存，保持 Cocos 模型结构与子资源索引不变。",
   vector: "载入图片后自动抠图分离素材，支持 SVG、PNG 和批量导出。",
 };
 

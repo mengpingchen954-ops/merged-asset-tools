@@ -1,0 +1,136 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>GLB 模型压缩</title>
+    <link rel="icon" href="data:," />
+    <link rel="stylesheet" href="./styles.css?v=1" />
+  </head>
+  <body>
+    <main class="app-shell">
+      <header class="toolbar">
+        <div class="brand">
+          <div class="brand-mark" aria-hidden="true">
+            <svg viewBox="0 0 24 24">
+              <path d="m12 3 8 4.5v9L12 21l-8-4.5v-9z" />
+              <path d="m4.4 7.7 7.6 4.4 7.6-4.4M12 12.1V21" />
+            </svg>
+          </div>
+          <div>
+            <h1>GLB 模型压缩</h1>
+            <p>缩小模型内嵌贴图，降低 iPhone 解码内存。</p>
+          </div>
+        </div>
+        <button id="downloadBtn" class="primary-action" type="button" disabled>
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M12 3v12m0 0 4.5-4.5M12 15l-4.5-4.5M5 20h14" />
+          </svg>
+          下载优化 GLB
+        </button>
+      </header>
+
+      <section class="workspace">
+        <aside class="panel control-panel">
+          <label id="dropZone" class="drop-zone" for="fileInput">
+            <input id="fileInput" type="file" accept="model/gltf-binary,.glb" />
+            <span class="drop-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24">
+                <path d="m12 3 8 4.5v9L12 21l-8-4.5v-9z" />
+                <path d="M12 16V8m-3 3 3-3 3 3" />
+              </svg>
+            </span>
+            <strong>拖入 GLB 模型</strong>
+            <span>仅支持内嵌 PNG、JPEG、WebP 贴图</span>
+          </label>
+
+          <div class="settings">
+            <label>
+              <span>贴图最长边</span>
+              <select id="maxSizeSelect">
+                <option value="1024">1024 px</option>
+                <option value="512">512 px</option>
+                <option value="256" selected>256 px（推荐 iPhone）</option>
+                <option value="128">128 px</option>
+              </select>
+            </label>
+            <label>
+              <span>JPEG / WebP 质量 <output id="qualityValue">82%</output></span>
+              <input id="qualityInput" type="range" min="50" max="95" step="1" value="82" />
+            </label>
+          </div>
+
+          <div class="hint-box">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M12 3 5 6v5c0 4.4 2.8 8.2 7 9.8 4.2-1.6 7-5.4 7-9.8V6z" />
+              <path d="M9 12l2 2 4-4" />
+            </svg>
+            <p>文件只在当前浏览器处理，不会上传。工具只调整贴图，不删除网格、材质或节点。</p>
+          </div>
+
+          <button id="optimizeBtn" class="secondary-action" type="button" disabled>
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="m12 3 8 4.5v9L12 21l-8-4.5v-9z" />
+              <path d="M8.5 12h7M12 8.5v7" />
+            </svg>
+            开始压缩模型
+          </button>
+          <button id="clearBtn" class="text-action" type="button" disabled>移除文件</button>
+        </aside>
+
+        <section class="panel results-panel" aria-live="polite">
+          <div class="summary">
+            <div><span>原始 GLB</span><strong id="beforeSize">0 B</strong></div>
+            <div class="saved"><span>优化后</span><strong id="afterSize">-</strong></div>
+            <div><span>内嵌贴图</span><strong id="textureCount">0</strong></div>
+            <div><span>已缩小 / 跳过</span><strong id="resizeCount">0 / 0</strong></div>
+            <div><span>原贴图内存</span><strong id="memoryBefore">-</strong></div>
+            <div class="saved"><span>新贴图内存</span><strong id="memoryAfter">-</strong></div>
+          </div>
+
+          <div class="results-head">
+            <div>
+              <h2>处理结果</h2>
+              <p id="statusText">等待选择 GLB</p>
+            </div>
+            <span id="progressText" class="progress">0%</span>
+          </div>
+          <div class="progress-track" aria-hidden="true"><span id="progressBar"></span></div>
+
+          <div id="emptyState" class="empty-state">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="m12 3 8 4.5v9L12 21l-8-4.5v-9z" />
+              <path d="m4.4 7.7 7.6 4.4 7.6-4.4M12 12.1V21" />
+            </svg>
+            <strong>先选择需要优化的 GLB 模型</strong>
+            <span>输出文件可重新导入 Cocos，再构建 HTML。</span>
+          </div>
+
+          <div id="errorState" class="message error-message" role="alert" hidden></div>
+          <div id="warningState" class="message warning-message" hidden></div>
+
+          <div id="resultState" hidden>
+            <div class="result-file">
+              <span class="result-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24"><path d="m12 3 8 4.5v9L12 21l-8-4.5v-9zM4.4 7.7l7.6 4.4 7.6-4.4M12 12.1V21" /></svg>
+              </span>
+              <div>
+                <p id="outputName" class="item-name"></p>
+                <p id="outputMeta" class="item-meta"></p>
+              </div>
+            </div>
+
+            <div class="structure-block">
+              <div class="section-title">
+                <h3>结构校验</h3>
+                <span id="structureBadge" class="check-badge">等待校验</span>
+              </div>
+              <div id="structureGrid" class="structure-grid"></div>
+            </div>
+          </div>
+        </section>
+      </section>
+    </main>
+    <script src="./app.js?v=1"></script>
+  </body>
+</html>

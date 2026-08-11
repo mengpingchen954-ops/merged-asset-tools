@@ -6,7 +6,7 @@
     <title>素材工具台</title>
     <link rel="icon" href="data:," />
     <link rel="stylesheet" href="./styles.css" />
-    <script src="./app.js?v=tool-names-1" defer></script>
+    <script src="./app.js?v=glb-optimizer-1" defer></script>
   </head>
   <body>
     <div class="merged-shell">
@@ -77,6 +77,18 @@
               <span class="tab-subtitle">拖入 HTML / 输出 5MB 包</span>
             </span>
           </button>
+          <button class="tool-tab" type="button" data-tool="model">
+            <span class="tab-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24">
+                <path d="m12 3 8 4.5v9L12 21l-8-4.5v-9z" />
+                <path d="m4.4 7.7 7.6 4.4 7.6-4.4M12 12.1V21" />
+              </svg>
+            </span>
+            <span class="tab-copy">
+              <span class="tab-title">GLB 模型压缩</span>
+              <span class="tab-subtitle">缩小贴图 / 降低 iPhone 内存</span>
+            </span>
+          </button>
         </nav>
 
         <div class="sidebar-actions">
@@ -137,6 +149,12 @@
             data-tool="cocos"
             title="Cocos HTML 压缩"
             src="./cocos-html-compressor/index.html?v=mp3-wasm-2"
+          ></iframe>
+          <iframe
+            class="tool-frame"
+            data-tool="model"
+            title="GLB 模型压缩"
+            src="./glb-model-optimizer/index.html?v=glb-optimizer-1"
           ></iframe>
         </section>
       </main>
