@@ -211,6 +211,14 @@ h1 {
   color: rgba(255, 255, 255, 0.82);
 }
 
+.vfx-tab-icon {
+  color: #ef5144;
+}
+
+.tool-tab.is-active .vfx-tab-icon {
+  color: #d43c31;
+}
+
 .sidebar-actions {
   display: grid;
   gap: 10px;

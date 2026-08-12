@@ -6,7 +6,7 @@
     <title>素材工具台</title>
     <link rel="icon" href="data:," />
     <link rel="stylesheet" href="./styles.css" />
-    <script src="./app.js?v=vfx-textures-1" defer></script>
+    <script src="./app.js?v=split-vfx-entry-1" defer></script>
   </head>
   <body>
     <div class="merged-shell">
@@ -85,8 +85,19 @@
               </svg>
             </span>
             <span class="tab-copy">
-              <span class="tab-title">模型 / 特效贴图</span>
-              <span class="tab-subtitle">GLB 压缩 / 透明 PNG 粒子</span>
+              <span class="tab-title">GLB 模型压缩</span>
+              <span class="tab-subtitle">缩小贴图 / 降低 iPhone 内存</span>
+            </span>
+          </button>
+          <button class="tool-tab" type="button" data-tool="vfx">
+            <span class="tab-icon vfx-tab-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24">
+                <path d="m12 2-1.2 6.8L6 4l3.1 6.1L2 12l7.1 1.9L6 20l4.8-4.8L12 22l1.2-6.8L18 20l-3.1-6.1L22 12l-7.1-1.9L18 4l-4.8 4.8z" />
+              </svg>
+            </span>
+            <span class="tab-copy">
+              <span class="tab-title">特效贴图生成</span>
+              <span class="tab-subtitle">参考图 / 透明 PNG 粒子</span>
             </span>
           </button>
         </nav>
@@ -153,8 +164,14 @@
           <iframe
             class="tool-frame"
             data-tool="model"
-            title="模型 / 特效贴图"
-            src="./glb-model-optimizer/index.html?v=vfx-textures-2"
+            title="GLB 模型压缩"
+            src="./glb-model-optimizer/index.html?mode=model&v=vfx-textures-3"
+          ></iframe>
+          <iframe
+            class="tool-frame"
+            data-tool="vfx"
+            title="特效贴图生成"
+            src="./glb-model-optimizer/index.html?mode=vfx&v=vfx-textures-3"
           ></iframe>
         </section>
       </main>

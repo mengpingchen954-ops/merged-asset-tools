@@ -887,5 +887,8 @@
   }
 
   syncControls();
-  setMode("vfx");
+  const initialMode = new URLSearchParams(window.location.search).get("mode") === "model" ? "model" : "vfx";
+  document.querySelector(".mode-switch")?.setAttribute("hidden", "");
+  document.title = initialMode === "model" ? "GLB 模型压缩" : "特效贴图生成";
+  setMode(initialMode);
 })();
