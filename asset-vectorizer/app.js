@@ -67,7 +67,7 @@ const processedCtx = processedCanvas.getContext("2d", { willReadFrequently: true
 const previewCtx = ui.previewCanvas.getContext("2d");
 
 const state = {
-  mode: new URLSearchParams(window.location.search).get("mode") === "vfx" ? "vfx" : "matte",
+  mode: "matte",
   image: null,
   imageName: "",
   imageData: null,
@@ -138,7 +138,7 @@ function updateControlText() {
 }
 
 function setMode(mode, options = {}) {
-  const nextMode = mode === "vfx" ? "vfx" : "matte";
+  const nextMode = "matte";
   state.mode = nextMode;
   const isVfx = nextMode === "vfx";
   for (const button of ui.modeButtons) {

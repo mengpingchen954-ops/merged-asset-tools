@@ -4,9 +4,9 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>图片素材拆解</title>
-    <link rel="stylesheet" href="styles.css?v=vfx-decompose-1" />
+    <link rel="stylesheet" href="styles.css?v=matte-only-1" />
     <script src="./lucide-lite.js" defer></script>
-    <script src="app.js?v=vfx-decompose-1" defer></script>
+    <script src="app.js?v=matte-only-1" defer></script>
   </head>
   <body>
     <div class="app-shell">
@@ -51,15 +51,7 @@
 
       <main class="workspace">
         <aside class="control-panel">
-          <section class="mode-section">
-            <div class="mode-switch" role="tablist" aria-label="拆解模式">
-              <button class="mode-button is-active" type="button" role="tab" aria-selected="true" data-mode="matte">
-                普通抠图
-              </button>
-              <button class="mode-button" type="button" role="tab" aria-selected="false" data-mode="vfx">
-                特效拆解
-              </button>
-            </div>
+          <section class="mode-section single-mode">
             <p id="modeNote" class="mode-note">按连通区域分离图片素材。</p>
           </section>
 

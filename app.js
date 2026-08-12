@@ -21,7 +21,7 @@ const toolDescriptions = {
   "green-screen": "拖入任意纯色背景 MP4、MOV 或 GIF，在浏览器本地抠像并导出透明 PNG 序列 ZIP。",
   model: "缩小 GLB 内嵌贴图并降低 iPhone 解码内存，保持模型结构不变。",
   vfx: "上传特效参考图，生成光条、碎片、爆闪和柔光四类透明 PNG 粒子贴图。",
-  vector: "普通图片可抠图分离；特效参考图可拆成光条、碎片、爆闪和亮点 SVG。",
+  vector: "载入图片后自动抠图分离素材，支持 SVG、PNG 和批量导出。",
 };
 
 function activeToolFromHash() {
