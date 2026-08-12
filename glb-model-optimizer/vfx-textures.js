@@ -16,6 +16,8 @@
     centerMarker: document.querySelector("#vfxCenterMarker"),
     colorInput: document.querySelector("#vfxColorInput"),
     colorValue: document.querySelector("#vfxColorValue"),
+    compositeCanvas: document.querySelector("#compositeCanvas"),
+    compositePreview: document.querySelector("#compositePreview"),
     dropZone: document.querySelector("#vfxDropZone"),
     emptyState: document.querySelector("#vfxEmptyState"),
     errorState: document.querySelector("#vfxErrorState"),
@@ -24,6 +26,9 @@
     reference: document.querySelector("#vfxReference"),
     referenceImage: document.querySelector("#vfxReferenceImage"),
     removeBtn: document.querySelector("#vfxRemoveBtn"),
+    playPreviewBtn: document.querySelector("#playPreviewBtn"),
+    previewStateText: document.querySelector("#previewStateText"),
+    reseedBtn: document.querySelector("#reseedBtn"),
     sizeSelect: document.querySelector("#vfxSizeSelect"),
     softnessInput: document.querySelector("#vfxSoftnessInput"),
     softnessValue: document.querySelector("#vfxSoftnessValue"),
@@ -40,6 +45,8 @@
     objectUrl: "",
     textures: [],
     renderTimer: 0,
+    previewFrame: 0,
+    seedOffset: 0,
   };
 
   document.querySelectorAll(".mode-button").forEach((button) => {
@@ -56,6 +63,11 @@
     if (file) loadReference(file);
   });
   elements.removeBtn.addEventListener("click", resetVfx);
+  elements.playPreviewBtn.addEventListener("click", playCompositePreview);
+  elements.reseedBtn.addEventListener("click", () => {
+    state.seedOffset += 104729;
+    renderTextures();
+  });
   elements.autoColorBtn.addEventListener("click", () => {
     if (!state.analysis) return;
     elements.colorInput.value = state.analysis.colorHex;
@@ -326,7 +338,7 @@
         const canvas = document.createElement("canvas");
         canvas.width = size;
         canvas.height = size;
-        const seed = state.analysis.seed + type.length * 911 + variant * 3571;
+        const seed = state.analysis.seed + state.seedOffset + type.length * 911 + variant * 3571;
         const angle = state.analysis.directions[variant % state.analysis.directions.length] || 0;
         const options = { angle, brightness: brightnessScale, color, seed, size, softness, variant };
         drawTexture(canvas, type, options);
@@ -341,9 +353,12 @@
     state.textures = textures;
     elements.textureGrid.replaceChildren(...textures.map(createTextureCard));
     elements.emptyState.hidden = true;
+    elements.compositePreview.hidden = false;
     elements.textureGrid.hidden = false;
     elements.zipBtn.disabled = false;
     elements.statusText.textContent = `已生成 ${textures.length} 张 ${size} × ${size} 透明 PNG · 参考色 ${elements.colorInput.value.toUpperCase()}`;
+    window.cancelAnimationFrame(state.previewFrame);
+    state.previewFrame = window.requestAnimationFrame(playCompositePreview);
   }
 
   function drawTexture(canvas, type, options) {
@@ -543,6 +558,97 @@
     return { maxAlpha, transparentPixels, visiblePixels };
   }
 
+  function playCompositePreview() {
+    if (!state.textures.length) return;
+    window.cancelAnimationFrame(state.previewFrame);
+    const canvas = elements.compositeCanvas;
+    const context = canvas.getContext("2d");
+    const start = performance.now();
+    const duration = 920;
+    elements.previewStateText.textContent = "播放中";
+
+    const renderFrame = (now) => {
+      const progress = Math.min(1, (now - start) / duration);
+      drawCompositeFrame(context, canvas, progress);
+      if (progress < 1) {
+        state.previewFrame = window.requestAnimationFrame(renderFrame);
+      } else {
+        elements.previewStateText.textContent = "播放完成";
+      }
+    };
+    state.previewFrame = window.requestAnimationFrame(renderFrame);
+  }
+
+  function drawCompositeFrame(context, canvas, progress) {
+    const centerX = canvas.width / 2;
+    const centerY = canvas.height / 2;
+    context.clearRect(0, 0, canvas.width, canvas.height);
+    context.save();
+    context.globalCompositeOperation = "lighter";
+
+    const dot = state.textures.find((texture) => texture.type === "dot");
+    const flash = state.textures.find((texture) => texture.type === "flash");
+    const streaks = state.textures.filter((texture) => texture.type === "streak");
+    const fragments = state.textures.filter((texture) => texture.type === "fragment");
+    const burst = easeOutCubic(Math.min(1, progress / 0.42));
+    const fade = 0.08 + 0.92 * (1 - easeInCubic(Math.max(0, (progress - 0.42) / 0.58)));
+
+    if (dot) drawCompositeSprite(context, dot.canvas, centerX, centerY, 0, 0.45 + burst * 1.2, Math.min(1, fade * 0.86));
+    if (flash) drawCompositeSprite(context, flash.canvas, centerX, centerY, 0, 0.34 + burst * 1.12, Math.min(1, fade * 1.12));
+
+    const directions = state.analysis?.directions || [0, Math.PI / 2, Math.PI, Math.PI * 1.5];
+    for (let index = 0; index < Math.max(6, streaks.length * 3); index += 1) {
+      const texture = streaks[index % streaks.length];
+      const angle = directions[index % directions.length] + index * 0.73;
+      const distance = burst * (18 + (index % 3) * 15);
+      drawCompositeSprite(
+        context,
+        texture.canvas,
+        centerX + Math.cos(angle) * distance,
+        centerY + Math.sin(angle) * distance,
+        angle * 0.22,
+        0.34 + burst * 0.44,
+        fade * (0.55 + (index % 2) * 0.22),
+      );
+    }
+
+    for (let index = 0; index < Math.max(8, fragments.length * 4); index += 1) {
+      const texture = fragments[index % fragments.length];
+      const angle = directions[index % directions.length] + index * 0.61;
+      const distance = burst * (36 + (index % 4) * 22);
+      drawCompositeSprite(
+        context,
+        texture.canvas,
+        centerX + Math.cos(angle) * distance,
+        centerY + Math.sin(angle) * distance,
+        angle + progress * (index % 2 ? 1.8 : -1.5),
+        0.16 + burst * 0.18,
+        fade * 0.82,
+      );
+    }
+    context.restore();
+  }
+
+  function drawCompositeSprite(context, source, x, y, rotation, scale, alpha) {
+    if (!source || alpha <= 0) return;
+    const width = source.width * scale;
+    const height = source.height * scale;
+    context.save();
+    context.translate(x, y);
+    context.rotate(rotation);
+    context.globalAlpha = Math.max(0, Math.min(1, alpha));
+    context.drawImage(source, -width / 2, -height / 2, width, height);
+    context.restore();
+  }
+
+  function easeOutCubic(value) {
+    return 1 - (1 - value) ** 3;
+  }
+
+  function easeInCubic(value) {
+    return value ** 3;
+  }
+
   async function downloadCanvas(texture) {
     const blob = await canvasToBlob(texture.canvas);
     downloadBlob(blob, texture.name);
@@ -557,10 +663,14 @@
         name: texture.name,
         bytes: new Uint8Array(await (await canvasToBlob(texture.canvas)).arrayBuffer()),
       })));
+      files.push({
+        name: "effect-config.json",
+        bytes: new TextEncoder().encode(JSON.stringify(buildEffectConfig(), null, 2)),
+      });
       const zip = makeZip(files);
       const baseName = (state.file?.name || "hit-effect").replace(/\.[^.]+$/, "");
       downloadBlob(zip, `${baseName}-particle-textures.zip`);
-      elements.statusText.textContent = `已打包 ${files.length} 张透明 PNG`;
+      elements.statusText.textContent = `已打包 ${state.textures.length} 张透明 PNG 和参数 JSON`;
     } catch {
       showError("打包失败，请尝试单张下载。");
     } finally {
@@ -572,6 +682,35 @@
     return new Promise((resolve, reject) => {
       canvas.toBlob((blob) => blob ? resolve(blob) : reject(new Error("PNG 生成失败")), "image/png");
     });
+  }
+
+  function buildEffectConfig() {
+    return {
+      version: 1,
+      source: state.file?.name || "effect-reference",
+      analysis: {
+        color: elements.colorInput.value.toUpperCase(),
+        center: state.analysis.center,
+        directionsDegrees: state.analysis.directions.map((angle) => Math.round((angle * 180 / Math.PI) * 10) / 10),
+      },
+      output: {
+        size: Number(elements.sizeSelect.value),
+        variantsPerType: Number(elements.variantSelect.value),
+        brightness: Number(elements.brightnessInput.value) / 100,
+        softness: Number(elements.softnessInput.value) / 100,
+        seedOffset: state.seedOffset,
+      },
+      cocos: {
+        streak: { blend: "ADD", files: textureNames("streak") },
+        fragment: { blend: "NORMAL_OR_ADD", files: textureNames("fragment") },
+        flash: { blend: "ADD", files: textureNames("flash") },
+        dot: { blend: "ADD", files: textureNames("dot") },
+      },
+    };
+  }
+
+  function textureNames(type) {
+    return state.textures.filter((texture) => texture.type === type).map((texture) => texture.name);
   }
 
   function makeZip(files) {
@@ -646,6 +785,8 @@
     state.file = null;
     state.image = null;
     state.textures = [];
+    state.seedOffset = 0;
+    window.cancelAnimationFrame(state.previewFrame);
     elements.fileInput.value = "";
     elements.reference.hidden = true;
     elements.referenceImage.removeAttribute("src");
@@ -653,6 +794,9 @@
     elements.autoColorBtn.disabled = true;
     elements.textureGrid.replaceChildren();
     elements.textureGrid.hidden = true;
+    elements.compositePreview.hidden = true;
+    elements.compositeCanvas.getContext("2d").clearRect(0, 0, elements.compositeCanvas.width, elements.compositeCanvas.height);
+    elements.previewStateText.textContent = "待播放";
     elements.emptyState.hidden = false;
     elements.zipBtn.disabled = true;
     elements.statusText.textContent = "等待上传特效参考图";
