@@ -1,11 +1,14 @@
 const $ = (selector) => document.querySelector(selector);
 
 const ui = {
+  appTitle: $("#appTitle"),
   fileInput: $("#fileInput"),
   sampleBtn: $("#sampleBtn"),
   analyzeBtn: $("#analyzeBtn"),
+  analyzeText: $("#analyzeText"),
   splitBtn: $("#splitBtn"),
   zipBtn: $("#zipBtn"),
+  zipText: $("#zipText"),
   clearBtn: $("#clearBtn"),
   pickBgBtn: $("#pickBgBtn"),
   previewCanvas: $("#previewCanvas"),
@@ -21,6 +24,12 @@ const ui = {
   bgText: $("#bgText"),
   removeEnclosed: $("#removeEnclosed"),
   exportMode: $("#exportMode"),
+  modeButtons: [...document.querySelectorAll(".mode-button")],
+  modeNote: $("#modeNote"),
+  matteOnly: [...document.querySelectorAll(".matte-only")],
+  vfxOnly: [...document.querySelectorAll(".vfx-only")],
+  resultHeading: $("#resultHeading"),
+  emptyText: $("#emptyText"),
   controls: {
     tolerance: $("#tolerance"),
     edgeTrim: $("#edgeTrim"),
@@ -31,6 +40,9 @@ const ui = {
     scale: $("#scale"),
     sharpness: $("#sharpness"),
     feather: $("#feather"),
+    vfxHueRange: $("#vfxHueRange"),
+    vfxBright: $("#vfxBright"),
+    vfxRayCount: $("#vfxRayCount"),
   },
   outputs: {
     tolerance: $("#toleranceOut"),
@@ -42,6 +54,9 @@ const ui = {
     scale: $("#scaleOut"),
     sharpness: $("#sharpnessOut"),
     feather: $("#featherOut"),
+    vfxHueRange: $("#vfxHueRangeOut"),
+    vfxBright: $("#vfxBrightOut"),
+    vfxRayCount: $("#vfxRayCountOut"),
   },
 };
 
@@ -52,6 +67,7 @@ const processedCtx = processedCanvas.getContext("2d", { willReadFrequently: true
 const previewCtx = ui.previewCanvas.getContext("2d");
 
 const state = {
+  mode: new URLSearchParams(window.location.search).get("mode") === "vfx" ? "vfx" : "matte",
   image: null,
   imageName: "",
   imageData: null,
@@ -63,6 +79,7 @@ const state = {
   groups: [],
   selectedId: null,
   pickingBg: false,
+  vfxAnalysis: null,
   draw: {
     x: 0,
     y: 0,
@@ -82,6 +99,9 @@ const state = {
     scale: 2,
     sharpness: 22,
     feather: 0,
+    vfxHueRange: 36,
+    vfxBright: 210,
+    vfxRayCount: 18,
   },
 };
 
@@ -99,6 +119,9 @@ function updateControlText() {
   state.settings.scale = Number(ui.controls.scale.value);
   state.settings.sharpness = Number(ui.controls.sharpness.value);
   state.settings.feather = Number(ui.controls.feather.value);
+  state.settings.vfxHueRange = Number(ui.controls.vfxHueRange.value);
+  state.settings.vfxBright = Number(ui.controls.vfxBright.value);
+  state.settings.vfxRayCount = Number(ui.controls.vfxRayCount.value);
 
   ui.outputs.tolerance.value = state.settings.tolerance;
   ui.outputs.edgeTrim.value = `${state.settings.edgeTrim} px`;
@@ -109,6 +132,42 @@ function updateControlText() {
   ui.outputs.scale.value = `${state.settings.scale}x`;
   ui.outputs.sharpness.value = `${state.settings.sharpness}%`;
   ui.outputs.feather.value = `${state.settings.feather} px`;
+  ui.outputs.vfxHueRange.value = `${state.settings.vfxHueRange}°`;
+  ui.outputs.vfxBright.value = state.settings.vfxBright;
+  ui.outputs.vfxRayCount.value = state.settings.vfxRayCount;
+}
+
+function setMode(mode, options = {}) {
+  const nextMode = mode === "vfx" ? "vfx" : "matte";
+  state.mode = nextMode;
+  const isVfx = nextMode === "vfx";
+  for (const button of ui.modeButtons) {
+    const active = button.dataset.mode === nextMode;
+    button.classList.toggle("is-active", active);
+    button.setAttribute("aria-selected", String(active));
+  }
+  for (const element of ui.matteOnly) element.hidden = isVfx;
+  for (const element of ui.vfxOnly) element.hidden = !isVfx;
+  ui.splitBtn.hidden = isVfx;
+  ui.analyzeText.textContent = isVfx ? "重新拆解" : "重新分离";
+  ui.zipText.textContent = isVfx ? "全部 SVG" : "全部 PNG";
+  ui.resultHeading.textContent = isVfx ? "矢量素材" : "分离结果";
+  ui.emptyText.textContent = isVfx ? "拖入特效参考图" : "载入图片";
+  ui.modeNote.textContent = isVfx
+    ? "分析主色、爆点和放射方向，生成光条、碎片、爆闪、亮点四类纯 SVG。"
+    : "按连通区域分离图片素材。";
+  ui.appTitle.textContent = isVfx ? "特效素材拆解" : "图片素材拆解";
+  state.selectedId = null;
+  state.vfxAnalysis = null;
+  if (state.imageData && options.analyze !== false) {
+    analyzeImage();
+  } else {
+    state.groups = [];
+    ui.assetCount.textContent = "0";
+    ui.zipBtn.disabled = true;
+    renderPreview();
+    renderAssets();
+  }
 }
 
 function updateBgUi() {
@@ -142,8 +201,55 @@ function fileToImage(file, name = file.name) {
   });
 }
 
+function urlToImage(url, name = "reference.png") {
+  return new Promise((resolve, reject) => {
+    const image = new Image();
+    image.onload = () => resolve({ image, name });
+    image.onerror = () => reject(new Error("图片载入失败"));
+    image.src = url;
+  });
+}
+
+function makeVfxSampleUrl() {
+  const centerX = 360;
+  const centerY = 235;
+  const rays = Array.from({ length: 18 }, (_, index) => {
+    const angle = (index / 18) * Math.PI * 2 + (index % 3) * 0.035;
+    const length = 88 + (index % 5) * 16;
+    const x2 = centerX + Math.cos(angle) * length;
+    const y2 = centerY + Math.sin(angle) * length;
+    return `<line x1="${centerX}" y1="${centerY}" x2="${x2.toFixed(1)}" y2="${y2.toFixed(1)}" stroke="${index % 4 === 0 ? "#fff" : "#1dff6a"}" stroke-width="${index % 3 === 0 ? 7 : 4}" stroke-linecap="round"/>`;
+  }).join("");
+  const fragments = [
+    "315,166 328,160 338,171 332,184 316,181",
+    "409,190 420,183 430,194 423,207 411,205",
+    "286,253 299,248 305,262 294,273 282,267",
+    "398,294 411,287 421,301 410,313 396,308",
+    "342,320 353,314 362,326 354,339 340,335",
+  ].map((points) => `<polygon points="${points}" fill="#fff"/>`).join("");
+  const svg = [
+    '<svg xmlns="http://www.w3.org/2000/svg" width="720" height="480" viewBox="0 0 720 480">',
+    '<rect width="720" height="480" fill="#f5bfd0"/>',
+    '<path d="M0 86L520 145V480H0Z" fill="#b9d9e8"/>',
+    '<circle cx="515" cy="250" r="92" fill="#c18492"/>',
+    `<g opacity=".9">${rays}</g>`,
+    fragments,
+    '<circle cx="360" cy="235" r="44" fill="#fff" opacity=".92"/>',
+    '<circle cx="360" cy="235" r="76" fill="none" stroke="#fff" stroke-width="5" opacity=".48"/>',
+    '<circle cx="450" cy="170" r="8" fill="#1dff6a"/>',
+    '<circle cx="252" cy="205" r="6" fill="#1dff6a"/>',
+    '</svg>',
+  ].join("");
+  return `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`;
+}
+
 async function loadSample() {
-  setStatus("载入示例图...");
+  setStatus(state.mode === "vfx" ? "载入特效示例..." : "载入示例图...");
+  if (state.mode === "vfx") {
+    const result = await urlToImage(makeVfxSampleUrl(), "vfx-hit-reference.svg");
+    await useImage(result.image, result.name);
+    return;
+  }
   const response = await fetch("sample.png");
   const blob = await response.blob();
   const file = new File([blob], "sample.png", { type: blob.type || "image/png" });
@@ -559,6 +665,612 @@ function splitSelectedAsset() {
   renderAssets();
 }
 
+function rgbToHsv(r, g, b) {
+  const red = r / 255;
+  const green = g / 255;
+  const blue = b / 255;
+  const max = Math.max(red, green, blue);
+  const min = Math.min(red, green, blue);
+  const delta = max - min;
+  let hue = 0;
+  if (delta > 0) {
+    if (max === red) hue = 60 * (((green - blue) / delta) % 6);
+    else if (max === green) hue = 60 * ((blue - red) / delta + 2);
+    else hue = 60 * ((red - green) / delta + 4);
+  }
+  if (hue < 0) hue += 360;
+  return { h: hue, s: max === 0 ? 0 : delta / max, v: max };
+}
+
+function hueDistance(a, b) {
+  const distance = Math.abs(a - b) % 360;
+  return Math.min(distance, 360 - distance);
+}
+
+function pixelGradient(data, width, height, x, y) {
+  const offset = (y * width + x) * 4;
+  const rightX = Math.min(width - 1, x + 1);
+  const downY = Math.min(height - 1, y + 1);
+  const right = (y * width + rightX) * 4;
+  const down = (downY * width + x) * 4;
+  return Math.max(
+    Math.abs(data[offset] - data[right]),
+    Math.abs(data[offset + 1] - data[right + 1]),
+    Math.abs(data[offset + 2] - data[right + 2]),
+    Math.abs(data[offset] - data[down]),
+    Math.abs(data[offset + 1] - data[down + 1]),
+    Math.abs(data[offset + 2] - data[down + 2]),
+  );
+}
+
+function percentile(values, ratio, fallback = 0) {
+  if (!values.length) return fallback;
+  const sorted = [...values].sort((a, b) => a - b);
+  return sorted[Math.min(sorted.length - 1, Math.max(0, Math.floor((sorted.length - 1) * ratio)))];
+}
+
+function findEffectHue(imageData, bgMask, width, height) {
+  const bins = Array.from({ length: 24 }, () => ({ energy: 0, count: 0, border: 0 }));
+  const data = imageData.data;
+  const stride = Math.max(1, Math.floor(Math.sqrt((width * height) / 260000)));
+  const borderX = width * 0.06;
+  const borderY = height * 0.06;
+
+  for (let y = 0; y < height; y += stride) {
+    for (let x = 0; x < width; x += stride) {
+      const index = y * width + x;
+      const offset = index * 4;
+      if (data[offset + 3] < 20 || bgMask[index]) continue;
+      const hsv = rgbToHsv(data[offset], data[offset + 1], data[offset + 2]);
+      if (hsv.s < 0.28 || hsv.v < 0.28) continue;
+      const gradient = pixelGradient(data, width, height, x, y) / 255;
+      const bin = bins[Math.min(bins.length - 1, Math.floor(hsv.h / 15))];
+      bin.energy += hsv.s * hsv.s * hsv.v * (0.2 + gradient * 1.8);
+      bin.count += 1;
+      if (x < borderX || x > width - borderX || y < borderY || y > height - borderY) {
+        bin.border += 1;
+      }
+    }
+  }
+
+  let bestIndex = 8;
+  let bestScore = -1;
+  bins.forEach((bin, index) => {
+    if (!bin.count) return;
+    const borderRatio = bin.border / bin.count;
+    const score = (bin.energy / Math.pow(bin.count, 0.32)) * (1 - borderRatio * 0.72);
+    if (score > bestScore) {
+      bestScore = score;
+      bestIndex = index;
+    }
+  });
+  return { hue: bestIndex * 15 + 7.5, score: Math.max(0, bestScore) };
+}
+
+function findEffectCenter(points, width, height) {
+  if (!points.length) return { x: width / 2, y: height / 2 };
+  const cellSize = Math.max(4, Math.ceil(Math.max(width, height) / 64));
+  const gridWidth = Math.ceil(width / cellSize);
+  const gridHeight = Math.ceil(height / cellSize);
+  const grid = new Float32Array(gridWidth * gridHeight);
+  for (const point of points) {
+    const gx = Math.min(gridWidth - 1, Math.floor(point.x / cellSize));
+    const gy = Math.min(gridHeight - 1, Math.floor(point.y / cellSize));
+    grid[gy * gridWidth + gx] += point.weight;
+  }
+
+  let bestX = width / 2;
+  let bestY = height / 2;
+  let bestScore = -1;
+  for (let gy = 0; gy < gridHeight; gy += 1) {
+    for (let gx = 0; gx < gridWidth; gx += 1) {
+      let score = 0;
+      for (let dy = -2; dy <= 2; dy += 1) {
+        const ny = gy + dy;
+        if (ny < 0 || ny >= gridHeight) continue;
+        for (let dx = -2; dx <= 2; dx += 1) {
+          const nx = gx + dx;
+          if (nx < 0 || nx >= gridWidth) continue;
+          const distance = Math.hypot(dx, dy);
+          score += grid[ny * gridWidth + nx] / (1 + distance * 0.7);
+        }
+      }
+      if (score > bestScore) {
+        bestScore = score;
+        bestX = Math.min(width - 1, (gx + 0.5) * cellSize);
+        bestY = Math.min(height - 1, (gy + 0.5) * cellSize);
+      }
+    }
+  }
+  return { x: bestX, y: bestY };
+}
+
+function collectVfxColorPoints(imageData, bgMask, width, height, targetHue, hueRange) {
+  const data = imageData.data;
+  const points = [];
+  const stride = Math.max(1, Math.floor(Math.sqrt((width * height) / 320000)));
+  for (let y = 0; y < height; y += stride) {
+    for (let x = 0; x < width; x += stride) {
+      const index = y * width + x;
+      const offset = index * 4;
+      if (data[offset + 3] < 20 || bgMask[index]) continue;
+      const hsv = rgbToHsv(data[offset], data[offset + 1], data[offset + 2]);
+      if (hsv.s < 0.3 || hsv.v < 0.28 || hueDistance(hsv.h, targetHue) > hueRange) continue;
+      const gradient = pixelGradient(data, width, height, x, y) / 255;
+      const weight = hsv.s * (0.55 + hsv.v) * (0.35 + gradient * 1.5);
+      points.push({
+        x,
+        y,
+        r: data[offset],
+        g: data[offset + 1],
+        b: data[offset + 2],
+        weight,
+      });
+    }
+  }
+  return points;
+}
+
+function refineEffectGeometry(points, initialCenter, width, height) {
+  if (!points.length) {
+    return {
+      center: initialCenter,
+      extent: Math.min(width, height) * 0.25,
+    };
+  }
+  let center = initialCenter;
+  let distances = points.map((point) => Math.hypot(point.x - center.x, point.y - center.y));
+  let extent = Math.max(12, percentile(distances, 0.94, Math.min(width, height) * 0.25));
+  let sumX = 0;
+  let sumY = 0;
+  let sumWeight = 0;
+  for (const point of points) {
+    const distance = Math.hypot(point.x - center.x, point.y - center.y);
+    if (distance > extent * 0.42) continue;
+    const weight = point.weight / (1 + distance / Math.max(1, extent * 0.2));
+    sumX += point.x * weight;
+    sumY += point.y * weight;
+    sumWeight += weight;
+  }
+  if (sumWeight > 0) {
+    center = {
+      x: center.x * 0.35 + (sumX / sumWeight) * 0.65,
+      y: center.y * 0.35 + (sumY / sumWeight) * 0.65,
+    };
+  }
+  distances = points.map((point) => Math.hypot(point.x - center.x, point.y - center.y));
+  extent = clamp(
+    percentile(distances, 0.95, extent),
+    Math.min(width, height) * 0.08,
+    Math.hypot(width, height) * 0.48,
+  );
+  return { center, extent };
+}
+
+function averageEffectColor(points) {
+  if (!points.length) return "#24f778";
+  let red = 0;
+  let green = 0;
+  let blue = 0;
+  let weightSum = 0;
+  for (const point of points) {
+    red += point.r * point.weight;
+    green += point.g * point.weight;
+    blue += point.b * point.weight;
+    weightSum += point.weight;
+  }
+  let channels = [red / weightSum, green / weightSum, blue / weightSum];
+  const max = Math.max(...channels);
+  if (max < 210) channels = channels.map((channel) => channel * (210 / Math.max(1, max)));
+  return `#${channels.map((channel) => pad2(clamp(Math.round(channel), 0, 255))).join("")}`;
+}
+
+function analyzeRayDirections(points, center, extent, maxRays) {
+  const binCount = 144;
+  const profile = new Float32Array(binCount);
+  const twoPi = Math.PI * 2;
+  for (const point of points) {
+    const dx = point.x - center.x;
+    const dy = point.y - center.y;
+    const distance = Math.hypot(dx, dy);
+    if (distance < extent * 0.1 || distance > extent * 1.2) continue;
+    const angle = (Math.atan2(dy, dx) + twoPi) % twoPi;
+    const bin = Math.min(binCount - 1, Math.floor((angle / twoPi) * binCount));
+    profile[bin] += point.weight * Math.pow(distance / extent, 1.25);
+  }
+  const smooth = new Float32Array(binCount);
+  for (let index = 0; index < binCount; index += 1) {
+    for (let offset = -2; offset <= 2; offset += 1) {
+      smooth[index] += profile[(index + offset + binCount) % binCount] * (3 - Math.abs(offset));
+    }
+  }
+  const peak = Math.max(...smooth);
+  const candidates = [];
+  for (let index = 0; index < binCount; index += 1) {
+    const value = smooth[index];
+    if (
+      value >= peak * 0.2 &&
+      value >= smooth[(index - 1 + binCount) % binCount] &&
+      value >= smooth[(index + 1) % binCount]
+    ) {
+      candidates.push({ index, value });
+    }
+  }
+  candidates.sort((a, b) => b.value - a.value);
+  const selected = [];
+  const minSpacing = Math.max(3, Math.floor(binCount / (maxRays * 1.35)));
+  for (const candidate of candidates) {
+    const tooClose = selected.some((item) => {
+      const direct = Math.abs(item.index - candidate.index);
+      return Math.min(direct, binCount - direct) < minSpacing;
+    });
+    if (!tooClose) selected.push(candidate);
+    if (selected.length >= maxRays) break;
+  }
+  if (selected.length < 6) {
+    const fallbackCount = Math.min(maxRays, 12);
+    selected.length = 0;
+    for (let index = 0; index < fallbackCount; index += 1) {
+      selected.push({ index: Math.floor((index / fallbackCount) * binCount), value: peak || 1 });
+    }
+  }
+  const directions = selected.map((item) => {
+    const angle = ((item.index + 0.5) / binCount) * twoPi;
+    const nearby = points
+      .map((point) => {
+        const dx = point.x - center.x;
+        const dy = point.y - center.y;
+        const pointAngle = (Math.atan2(dy, dx) + twoPi) % twoPi;
+        const angleDelta = Math.abs(Math.atan2(Math.sin(pointAngle - angle), Math.cos(pointAngle - angle)));
+        return angleDelta < twoPi / binCount * 2.5 ? Math.hypot(dx, dy) : 0;
+      })
+      .filter((value) => value > 0);
+    return {
+      angle,
+      strength: peak > 0 ? item.value / peak : 0.75,
+      length: clamp(percentile(nearby, 0.9, extent * 0.75) / extent, 0.46, 1.08),
+    };
+  });
+  return directions.sort((a, b) => a.angle - b.angle);
+}
+
+function labelBinaryMask(mask, width, height) {
+  const visited = new Uint8Array(mask.length);
+  const queue = new Int32Array(mask.length);
+  const components = [];
+  for (let start = 0; start < mask.length; start += 1) {
+    if (!mask[start] || visited[start]) continue;
+    let head = 0;
+    let tail = 0;
+    let minX = width;
+    let minY = height;
+    let maxX = 0;
+    let maxY = 0;
+    let sumX = 0;
+    let sumY = 0;
+    const points = [];
+    visited[start] = 1;
+    queue[tail++] = start;
+    while (head < tail) {
+      const index = queue[head++];
+      const x = index % width;
+      const y = (index - x) / width;
+      minX = Math.min(minX, x);
+      minY = Math.min(minY, y);
+      maxX = Math.max(maxX, x);
+      maxY = Math.max(maxY, y);
+      sumX += x;
+      sumY += y;
+      if (points.length < 1800) points.push({ x, y });
+      for (let dy = -1; dy <= 1; dy += 1) {
+        const ny = y + dy;
+        if (ny < 0 || ny >= height) continue;
+        for (let dx = -1; dx <= 1; dx += 1) {
+          if (dx === 0 && dy === 0) continue;
+          const nx = x + dx;
+          if (nx < 0 || nx >= width) continue;
+          const next = ny * width + nx;
+          if (!mask[next] || visited[next]) continue;
+          visited[next] = 1;
+          queue[tail++] = next;
+        }
+      }
+    }
+    components.push({
+      area: tail,
+      minX,
+      minY,
+      maxX,
+      maxY,
+      centerX: sumX / tail,
+      centerY: sumY / tail,
+      points,
+    });
+  }
+  return components;
+}
+
+function cross(origin, a, b) {
+  return (a.x - origin.x) * (b.y - origin.y) - (a.y - origin.y) * (b.x - origin.x);
+}
+
+function convexHull(points) {
+  if (points.length <= 3) return points;
+  const unique = [...new Map(points.map((point) => [`${point.x},${point.y}`, point])).values()]
+    .sort((a, b) => (a.x === b.x ? a.y - b.y : a.x - b.x));
+  if (unique.length <= 3) return unique;
+  const lower = [];
+  for (const point of unique) {
+    while (lower.length >= 2 && cross(lower[lower.length - 2], lower[lower.length - 1], point) <= 0) {
+      lower.pop();
+    }
+    lower.push(point);
+  }
+  const upper = [];
+  for (let index = unique.length - 1; index >= 0; index -= 1) {
+    const point = unique[index];
+    while (upper.length >= 2 && cross(upper[upper.length - 2], upper[upper.length - 1], point) <= 0) {
+      upper.pop();
+    }
+    upper.push(point);
+  }
+  lower.pop();
+  upper.pop();
+  return lower.concat(upper);
+}
+
+function normalizeFragmentPoints(component, seed) {
+  let hull = component ? convexHull(component.points) : [];
+  if (hull.length > 10) {
+    const step = hull.length / 9;
+    hull = Array.from({ length: 9 }, (_, index) => hull[Math.floor(index * step)]);
+  }
+  if (hull.length < 5) {
+    const count = 7;
+    hull = Array.from({ length: count }, (_, index) => {
+      const angle = (index / count) * Math.PI * 2 - Math.PI / 2;
+      const wobble = 0.78 + ((Math.sin(seed + index * 2.17) + 1) / 2) * 0.24;
+      return { x: Math.cos(angle) * wobble, y: Math.sin(angle) * wobble };
+    });
+  }
+  const minX = Math.min(...hull.map((point) => point.x));
+  const minY = Math.min(...hull.map((point) => point.y));
+  const maxX = Math.max(...hull.map((point) => point.x));
+  const maxY = Math.max(...hull.map((point) => point.y));
+  const width = Math.max(1, maxX - minX);
+  const height = Math.max(1, maxY - minY);
+  const scale = 88 / Math.max(width, height);
+  const offsetX = 64 - ((minX + maxX) / 2) * scale;
+  const offsetY = 64 - ((minY + maxY) / 2) * scale;
+  return hull.map((point) => ({
+    x: point.x * scale + offsetX,
+    y: point.y * scale + offsetY,
+  }));
+}
+
+function findFragmentShape(imageData, bgMask, width, height, center, extent, brightThreshold) {
+  const data = imageData.data;
+  const mask = new Uint8Array(width * height);
+  for (let y = 0; y < height; y += 1) {
+    for (let x = 0; x < width; x += 1) {
+      const index = y * width + x;
+      const offset = index * 4;
+      if (bgMask[index] || data[offset + 3] < 20) continue;
+      const hsv = rgbToHsv(data[offset], data[offset + 1], data[offset + 2]);
+      const distance = Math.hypot(x - center.x, y - center.y);
+      if (
+        hsv.v * 255 >= brightThreshold &&
+        hsv.s < 0.48 &&
+        distance > extent * 0.12 &&
+        distance < extent * 1.12 &&
+        pixelGradient(data, width, height, x, y) > 8
+      ) {
+        mask[index] = 1;
+      }
+    }
+  }
+  const components = labelBinaryMask(mask, width, height)
+    .map((component) => {
+      const boxWidth = component.maxX - component.minX + 1;
+      const boxHeight = component.maxY - component.minY + 1;
+      const compactness = component.area / (boxWidth * boxHeight);
+      const distance = Math.hypot(component.centerX - center.x, component.centerY - center.y);
+      return { ...component, boxWidth, boxHeight, compactness, distance };
+    })
+    .filter(
+      (component) =>
+        component.area >= 4 &&
+        component.area <= Math.max(80, extent * extent * 0.045) &&
+        component.boxWidth <= extent * 0.34 &&
+        component.boxHeight <= extent * 0.34 &&
+        component.compactness >= 0.14,
+    )
+    .sort((a, b) => {
+      const scoreA = a.area * a.compactness * (1 - Math.min(0.75, Math.abs(a.distance / extent - 0.48)));
+      const scoreB = b.area * b.compactness * (1 - Math.min(0.75, Math.abs(b.distance / extent - 0.48)));
+      return scoreB - scoreA;
+    });
+  return components[0] ?? null;
+}
+
+function makeStreakSvg(color, aspect) {
+  const waist = clamp(6.5 - aspect * 0.12, 3.5, 6.5);
+  return [
+    '<svg xmlns="http://www.w3.org/2000/svg" width="256" height="64" viewBox="0 0 256 64">',
+    '<defs>',
+    `<linearGradient id="streak" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="${color}" stop-opacity="0"/><stop offset=".18" stop-color="${color}" stop-opacity=".35"/><stop offset=".5" stop-color="#fff"/><stop offset=".82" stop-color="${color}" stop-opacity=".35"/><stop offset="1" stop-color="${color}" stop-opacity="0"/></linearGradient>`,
+    '<filter id="soft" x="-10%" y="-80%" width="120%" height="260%"><feGaussianBlur stdDeviation="4"/></filter>',
+    '</defs>',
+    `<path d="M6 32C58 ${32 - waist} 89 ${32 - waist * 0.7} 128 32C167 ${32 + waist * 0.7} 198 ${32 + waist} 250 32C198 ${32 - waist} 167 ${32 - waist * 0.7} 128 32C89 ${32 + waist * 0.7} 58 ${32 + waist} 6 32Z" fill="url(#streak)" opacity=".72" filter="url(#soft)"/>`,
+    `<path d="M10 32C66 ${32 - waist * 0.42} 103 ${32 - waist * 0.2} 128 32C153 ${32 + waist * 0.2} 190 ${32 + waist * 0.42} 246 32C190 ${32 - waist * 0.42} 153 ${32 - waist * 0.2} 128 32C103 ${32 + waist * 0.2} 66 ${32 + waist * 0.42} 10 32Z" fill="url(#streak)"/>`,
+    '<ellipse cx="128" cy="32" rx="28" ry="2.2" fill="#fff" opacity=".9"/>',
+    '</svg>',
+  ].join("");
+}
+
+function makeFragmentSvg(color, points) {
+  const pointText = points.map((point) => `${point.x.toFixed(1)},${point.y.toFixed(1)}`).join(" ");
+  return [
+    '<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 128 128">',
+    '<defs>',
+    `<linearGradient id="fragment" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#fff"/><stop offset=".72" stop-color="#fff"/><stop offset="1" stop-color="${color}" stop-opacity=".58"/></linearGradient>`,
+    '</defs>',
+    `<polygon points="${pointText}" fill="url(#fragment)" stroke="${color}" stroke-opacity=".34" stroke-width="2" stroke-linejoin="round"/>`,
+    '</svg>',
+  ].join("");
+}
+
+function makeFlashSvg(color, directions) {
+  const rays = directions
+    .map((direction, index) => {
+      const inner = 30 + (index % 3) * 3;
+      const length = 68 + direction.length * 48;
+      const x1 = 128 + Math.cos(direction.angle) * inner;
+      const y1 = 128 + Math.sin(direction.angle) * inner;
+      const x2 = 128 + Math.cos(direction.angle) * length;
+      const y2 = 128 + Math.sin(direction.angle) * length;
+      const opacity = 0.34 + direction.strength * 0.54;
+      const strokeWidth = 1 + direction.strength * 1.8;
+      return `<line x1="${x1.toFixed(1)}" y1="${y1.toFixed(1)}" x2="${x2.toFixed(1)}" y2="${y2.toFixed(1)}" stroke="${index % 4 === 0 ? "#fff" : color}" stroke-width="${strokeWidth.toFixed(1)}" opacity="${opacity.toFixed(2)}"/>`;
+    })
+    .join("");
+  return [
+    '<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="0 0 256 256">',
+    '<defs>',
+    `<radialGradient id="flash"><stop offset="0" stop-color="#fff"/><stop offset=".2" stop-color="#fff" stop-opacity=".98"/><stop offset=".52" stop-color="${color}" stop-opacity=".48"/><stop offset="1" stop-color="${color}" stop-opacity="0"/></radialGradient>`,
+    '<filter id="glow" x="-30%" y="-30%" width="160%" height="160%"><feGaussianBlur stdDeviation="5"/></filter>',
+    '</defs>',
+    `<g stroke-linecap="round" filter="url(#glow)" opacity=".5">${rays}</g>`,
+    `<g stroke-linecap="round">${rays}</g>`,
+    '<circle cx="128" cy="128" r="58" fill="url(#flash)" opacity=".72"/>',
+    '<circle cx="128" cy="128" r="21" fill="#fff"/>',
+    '</svg>',
+  ].join("");
+}
+
+function makeDotSvg(color, softness) {
+  const middle = clamp(0.28 + softness * 0.22, 0.32, 0.56).toFixed(2);
+  return [
+    '<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 128 128">',
+    '<defs>',
+    `<radialGradient id="dot"><stop offset="0" stop-color="#fff"/><stop offset="${middle}" stop-color="${color}" stop-opacity=".92"/><stop offset="1" stop-color="${color}" stop-opacity="0"/></radialGradient>`,
+    '</defs>',
+    '<circle cx="64" cy="64" r="58" fill="url(#dot)"/>',
+    '</svg>',
+  ].join("");
+}
+
+function analyzeVfxReference(imageData, bgMask, width, height, settings) {
+  const hueResult = findEffectHue(imageData, bgMask, width, height);
+  let points = collectVfxColorPoints(
+    imageData,
+    bgMask,
+    width,
+    height,
+    hueResult.hue,
+    settings.vfxHueRange,
+  );
+  if (points.length < 12) {
+    points = collectVfxColorPoints(imageData, bgMask, width, height, hueResult.hue, 90);
+  }
+  const initialCenter = findEffectCenter(points, width, height);
+  const geometry = refineEffectGeometry(points, initialCenter, width, height);
+  const directions = analyzeRayDirections(
+    points,
+    geometry.center,
+    geometry.extent,
+    settings.vfxRayCount,
+  );
+  const color = averageEffectColor(points);
+  const fragment = findFragmentShape(
+    imageData,
+    bgMask,
+    width,
+    height,
+    geometry.center,
+    geometry.extent,
+    settings.vfxBright,
+  );
+  const fragmentPoints = normalizeFragmentPoints(fragment, hueResult.hue + points.length * 0.013);
+  const coreSamples = [];
+  const data = imageData.data;
+  const coreLimit = geometry.extent * 0.34;
+  for (let y = Math.max(0, Math.floor(geometry.center.y - coreLimit)); y <= Math.min(height - 1, Math.ceil(geometry.center.y + coreLimit)); y += 1) {
+    for (let x = Math.max(0, Math.floor(geometry.center.x - coreLimit)); x <= Math.min(width - 1, Math.ceil(geometry.center.x + coreLimit)); x += 1) {
+      const distance = Math.hypot(x - geometry.center.x, y - geometry.center.y);
+      if (distance > coreLimit) continue;
+      const offset = (y * width + x) * 4;
+      const hsv = rgbToHsv(data[offset], data[offset + 1], data[offset + 2]);
+      if (data[offset + 3] > 20 && hsv.v * 255 >= settings.vfxBright && hsv.s < 0.52) {
+        coreSamples.push(distance);
+      }
+    }
+  }
+  const coreRadius = clamp(
+    percentile(coreSamples, 0.72, geometry.extent * 0.09),
+    geometry.extent * 0.035,
+    geometry.extent * 0.2,
+  );
+  const aspect = geometry.extent / Math.max(2, coreRadius);
+  const confidence = clamp(
+    0.34 + Math.min(0.34, points.length / 1800) + Math.min(0.26, directions.length / 60),
+    0.34,
+    0.94,
+  );
+  const assets = [
+    {
+      id: 1,
+      kind: "streak",
+      name: "hit-streak",
+      label: "光条",
+      width: 256,
+      height: 64,
+      meta: `主色 ${color} · 细长比 ${aspect.toFixed(1)}`,
+      svg: makeStreakSvg(color, aspect),
+    },
+    {
+      id: 2,
+      kind: "fragment",
+      name: "hit-fragment",
+      label: "碎片",
+      width: 128,
+      height: 128,
+      meta: fragment ? `参考轮廓 · ${fragment.area} px` : "参考颜色 · 自动补形",
+      svg: makeFragmentSvg(color, fragmentPoints),
+    },
+    {
+      id: 3,
+      kind: "flash",
+      name: "hit-flash",
+      label: "爆闪",
+      width: 256,
+      height: 256,
+      meta: `${directions.length} 条放射方向 · 中心 ${Math.round(coreRadius)} px`,
+      svg: makeFlashSvg(color, directions),
+    },
+    {
+      id: 4,
+      kind: "dot",
+      name: "hit-dot",
+      label: "亮点",
+      width: 128,
+      height: 128,
+      meta: `径向柔光 · 置信度 ${Math.round(confidence * 100)}%`,
+      svg: makeDotSvg(color, coreRadius / Math.max(1, geometry.extent)),
+    },
+  ];
+  return {
+    assets,
+    center: geometry.center,
+    extent: geometry.extent,
+    color,
+    directions,
+    confidence,
+    hue: hueResult.hue,
+    pointCount: points.length,
+  };
+}
+
 async function analyzeImage() {
   if (!state.imageData) return;
   updateControlText();
@@ -571,16 +1283,44 @@ async function analyzeImage() {
   const start = performance.now();
   const width = sourceCanvas.width;
   const height = sourceCanvas.height;
+  const matteSettings = state.mode === "vfx"
+    ? { ...state.settings, edgeTrim: 0, innerStroke: 0, removeEnclosed: false }
+    : state.settings;
   const matte = intelligentMatte(
     state.imageData,
     width,
     height,
     state.bgColor,
-    state.settings,
+    matteSettings,
   );
   state.bgMask = matte.bgMask;
   state.processedImageData = matte.imageData;
   processedCtx.putImageData(matte.imageData, 0, 0);
+  if (state.mode === "vfx") {
+    state.labels = null;
+    state.components = [];
+    state.vfxAnalysis = analyzeVfxReference(
+      state.imageData,
+      matte.bgMask,
+      width,
+      height,
+      state.settings,
+    );
+    state.groups = state.vfxAnalysis.assets;
+    state.selectedId = state.groups[0]?.id ?? null;
+    const elapsed = Math.round(performance.now() - start);
+    ui.assetCount.textContent = state.groups.length;
+    ui.processTime.textContent = `${elapsed} ms`;
+    setStatus(
+      `特效拆解完成：主色 ${state.vfxAnalysis.color}，检测到 ${state.vfxAnalysis.directions.length} 条放射方向`,
+    );
+    ui.analyzeBtn.disabled = false;
+    ui.zipBtn.disabled = state.groups.length === 0;
+    renderPreview();
+    renderAssets();
+    return;
+  }
+  state.vfxAnalysis = null;
   const labeled = labelComponents(matte.imageData, state.bgMask, width, height);
   state.labels = labeled.labels;
   state.components = labeled.components;
@@ -604,10 +1344,14 @@ async function analyzeImage() {
 }
 
 function getAssetName(asset) {
+  if (asset?.kind) return asset.name;
   return `asset-${String(asset.id).padStart(2, "0")}`;
 }
 
 function assetDimensions(asset) {
+  if (asset?.kind) {
+    return { x0: 0, y0: 0, width: asset.width, height: asset.height };
+  }
   const pad = state.settings.padding;
   return {
     x0: asset.minX - pad,
@@ -810,6 +1554,7 @@ function escapeXml(value) {
 }
 
 function makeSvgString(asset) {
+  if (asset?.kind) return asset.svg;
   const canvas = makeAssetCanvas(asset);
   const raster = canvas.toDataURL("image/png");
   const path = buildRunPath(asset);
@@ -872,6 +1617,36 @@ function renderPreview() {
 
   if (!state.groups.length) return;
 
+  if (state.mode === "vfx" && state.vfxAnalysis) {
+    const analysis = state.vfxAnalysis;
+    const centerX = x + analysis.center.x * scale;
+    const centerY = y + analysis.center.y * scale;
+    previewCtx.save();
+    previewCtx.strokeStyle = analysis.color;
+    previewCtx.fillStyle = analysis.color;
+    previewCtx.globalAlpha = 0.88;
+    previewCtx.lineWidth = 1.4;
+    const guideRadius = Math.max(10, analysis.extent * scale);
+    previewCtx.beginPath();
+    previewCtx.arc(centerX, centerY, Math.max(7, guideRadius * 0.08), 0, Math.PI * 2);
+    previewCtx.stroke();
+    for (const direction of analysis.directions) {
+      previewCtx.globalAlpha = 0.2 + direction.strength * 0.38;
+      previewCtx.beginPath();
+      previewCtx.moveTo(centerX, centerY);
+      previewCtx.lineTo(
+        centerX + Math.cos(direction.angle) * guideRadius * direction.length,
+        centerY + Math.sin(direction.angle) * guideRadius * direction.length,
+      );
+      previewCtx.stroke();
+    }
+    previewCtx.globalAlpha = 1;
+    previewCtx.fillRect(centerX - 3, centerY - 1, 6, 2);
+    previewCtx.fillRect(centerX - 1, centerY - 3, 2, 6);
+    previewCtx.restore();
+    return;
+  }
+
   previewCtx.save();
   previewCtx.lineWidth = 1.5;
   previewCtx.font = "12px Inter, sans-serif";
@@ -896,7 +1671,51 @@ function renderPreview() {
   previewCtx.restore();
 }
 
+function renderVfxAssets() {
+  ui.assetList.textContent = "";
+  const selected = state.groups.find((asset) => asset.id === state.selectedId);
+  ui.selectedText.textContent = selected ? `已选择 ${selected.label}` : "未选择素材";
+  const fragment = document.createDocumentFragment();
+  for (const asset of state.groups) {
+    const card = document.createElement("article");
+    card.className = `asset-card is-vfx${asset.id === state.selectedId ? " is-selected" : ""}`;
+    card.dataset.assetId = String(asset.id);
+
+    const preview = document.createElement("div");
+    preview.className = "asset-preview";
+    const image = document.createElement("img");
+    image.alt = `${asset.label}矢量素材`;
+    image.src = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(asset.svg)}`;
+    preview.append(image);
+
+    const info = document.createElement("div");
+    info.className = "asset-info";
+    const title = document.createElement("div");
+    title.className = "asset-title";
+    title.innerHTML = `<strong>${asset.label}</strong><span class="asset-kind">${asset.kind.toUpperCase()}</span>`;
+    const meta = document.createElement("div");
+    meta.className = "asset-meta";
+    meta.textContent = `${asset.width}×${asset.height} · ${asset.meta}`;
+    const actions = document.createElement("div");
+    actions.className = "asset-actions";
+    actions.innerHTML = [
+      `<button type="button" class="small-button primary" data-action="svg" data-id="${asset.id}"><i data-lucide="file-code-2"></i><span>SVG</span></button>`,
+      `<button type="button" class="small-button" data-action="png" data-id="${asset.id}"><i data-lucide="file-image"></i><span>PNG</span></button>`,
+    ].join("");
+    info.append(title, meta, actions);
+    card.append(preview, info);
+    fragment.append(card);
+  }
+  ui.assetList.append(fragment);
+  updateSplitButton();
+  window.lucide?.createIcons();
+}
+
 function renderAssets() {
+  if (state.mode === "vfx") {
+    renderVfxAssets();
+    return;
+  }
   ui.assetList.textContent = "";
   ui.selectedText.textContent = state.selectedId
     ? `已选择 ${getAssetName(state.groups.find((asset) => asset.id === state.selectedId))}`
@@ -963,6 +1782,7 @@ function pointToImage(event) {
 }
 
 function pickAssetAt(imageX, imageY) {
+  if (state.mode === "vfx") return;
   const found = [...state.groups]
     .reverse()
     .find(
@@ -1003,9 +1823,37 @@ async function canvasToPngBytes(canvas) {
 }
 
 async function downloadPng(asset) {
+  if (asset?.kind) {
+    const canvas = await vectorSvgToCanvas(asset);
+    const blob = await canvasToPngBlob(canvas);
+    if (blob) downloadBlob(blob, `${getAssetName(asset)}.png`);
+    return;
+  }
   const canvas = makeAssetCanvas(asset);
   const blob = await canvasToPngBlob(canvas);
   if (blob) downloadBlob(blob, `${getAssetName(asset)}.png`);
+}
+
+function vectorSvgToCanvas(asset) {
+  return new Promise((resolve, reject) => {
+    const image = new Image();
+    const url = URL.createObjectURL(new Blob([asset.svg], { type: "image/svg+xml" }));
+    image.onload = () => {
+      const scale = Math.max(1, state.settings.scale);
+      const canvas = document.createElement("canvas");
+      canvas.width = asset.width * scale;
+      canvas.height = asset.height * scale;
+      const context = canvas.getContext("2d");
+      context.drawImage(image, 0, 0, canvas.width, canvas.height);
+      URL.revokeObjectURL(url);
+      resolve(canvas);
+    };
+    image.onerror = () => {
+      URL.revokeObjectURL(url);
+      reject(new Error("SVG 转 PNG 失败"));
+    };
+    image.src = url;
+  });
 }
 
 function getAssetById(id) {
@@ -1124,8 +1972,19 @@ function makeZip(files) {
 async function downloadZip() {
   if (!state.groups.length) return;
   ui.zipBtn.disabled = true;
-  setStatus("正在打包 PNG...");
+  setStatus(state.mode === "vfx" ? "正在打包 SVG..." : "正在打包 PNG...");
   try {
+    if (state.mode === "vfx") {
+      const files = state.groups.map((asset) => ({
+        name: `${getAssetName(asset)}.svg`,
+        content: asset.svg,
+      }));
+      const zip = makeZip(files);
+      const base = state.imageName.replace(/\.[^.]+$/, "") || "effect";
+      downloadBlob(zip, `${base}-vfx-svg.zip`);
+      setStatus(`已打包 ${files.length} 个纯矢量 SVG`);
+      return;
+    }
     const files = await Promise.all(
       state.groups.map(async (asset) => ({
         name: `${getAssetName(asset)}.png`,
@@ -1137,7 +1996,7 @@ async function downloadZip() {
     downloadBlob(zip, `${base}-png-assets.zip`);
     setStatus(`已打包 ${files.length} 个 PNG`);
   } catch {
-    setStatus("PNG 打包失败");
+    setStatus(state.mode === "vfx" ? "SVG 打包失败" : "PNG 打包失败");
   } finally {
     ui.zipBtn.disabled = state.groups.length === 0;
   }
@@ -1169,6 +2028,7 @@ function resetAll() {
   state.components = [];
   state.groups = [];
   state.selectedId = null;
+  state.vfxAnalysis = null;
   ui.assetList.textContent = "";
   ui.imageMeta.textContent = "等待载入图片";
   ui.assetCount.textContent = "0";
@@ -1176,7 +2036,7 @@ function resetAll() {
   updateSplitButton();
   ui.zipBtn.disabled = true;
   ui.selectedText.textContent = "未选择素材";
-  setStatus("准备就绪");
+  setStatus(state.mode === "vfx" ? "等待特效参考图" : "准备就绪");
   renderPreview();
 }
 
@@ -1197,6 +2057,9 @@ function bindEvents() {
   ui.splitBtn.addEventListener("click", splitSelectedAsset);
   ui.zipBtn.addEventListener("click", downloadZip);
   ui.clearBtn.addEventListener("click", resetAll);
+  for (const button of ui.modeButtons) {
+    button.addEventListener("click", () => setMode(button.dataset.mode));
+  }
 
   ui.pickBgBtn.addEventListener("click", () => {
     if (!state.image) return;
@@ -1213,7 +2076,18 @@ function bindEvents() {
   for (const [key, input] of Object.entries(ui.controls)) {
     input.addEventListener("input", () => {
       updateControlText();
-      if (["tolerance", "edgeTrim", "innerStroke", "mergeGap", "minArea"].includes(key)) {
+      if (
+        [
+          "tolerance",
+          "edgeTrim",
+          "innerStroke",
+          "mergeGap",
+          "minArea",
+          "vfxHueRange",
+          "vfxBright",
+          "vfxRayCount",
+        ].includes(key)
+      ) {
         scheduleAnalyze();
       } else {
         scheduleRenderAssets();
@@ -1281,8 +2155,15 @@ function bindEvents() {
     await useImage(result.image, result.name);
   });
 
-  const resizeObserver = new ResizeObserver(() => renderPreview());
-  resizeObserver.observe(ui.dropZone);
+  if (ui.dropZone && typeof ResizeObserver !== "undefined") {
+    const resizeObserver = new ResizeObserver(() => renderPreview());
+    resizeObserver.observe(ui.dropZone);
+  }
+
+  window.addEventListener("message", (event) => {
+    if (event.origin !== window.location.origin) return;
+    if (event.data?.type === "set-mode") setMode(event.data.mode);
+  });
 }
 
 updateControlText();
@@ -1291,15 +2172,26 @@ bindEvents();
 window.lucide?.createIcons();
 window.AssetVectorizer = {
   stats: () => ({
+    mode: state.mode,
     count: state.groups.length,
     imageName: state.imageName,
     selectedId: state.selectedId,
     parts: state.groups.map((asset) => asset.partCount),
+    kinds: state.groups.map((asset) => asset.kind).filter(Boolean),
+    color: state.vfxAnalysis?.color ?? null,
+    rayCount: state.vfxAnalysis?.directions.length ?? 0,
   }),
   splitSelected: splitSelectedAsset,
+  setMode,
+  loadUrl: async (url, name = "reference.png") => {
+    const result = await urlToImage(url, name);
+    await useImage(result.image, result.name);
+    return window.AssetVectorizer.stats();
+  },
   makeSvg: (id) => {
     const asset = getAssetById(Number(id));
     return asset ? makeSvgString(asset) : "";
   },
 };
+setMode(state.mode, { analyze: false });
 resetAll();

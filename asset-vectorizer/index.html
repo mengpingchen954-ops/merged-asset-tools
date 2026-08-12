@@ -3,10 +3,10 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>一键抠图</title>
-    <link rel="stylesheet" href="styles.css" />
+    <title>图片素材拆解</title>
+    <link rel="stylesheet" href="styles.css?v=vfx-decompose-1" />
     <script src="./lucide-lite.js" defer></script>
-    <script src="app.js" defer></script>
+    <script src="app.js?v=vfx-decompose-1" defer></script>
   </head>
   <body>
     <div class="app-shell">
@@ -14,7 +14,7 @@
         <div class="brand">
           <span class="brand-mark"></span>
           <div>
-            <h1>一键抠图</h1>
+            <h1 id="appTitle">图片素材拆解</h1>
             <p id="imageMeta">等待载入图片</p>
           </div>
         </div>
@@ -30,7 +30,7 @@
           </button>
           <button id="analyzeBtn" type="button" class="primary-button">
             <i data-lucide="scan-line"></i>
-            <span>重新分离</span>
+            <span id="analyzeText">重新分离</span>
           </button>
           <button
             id="splitBtn"
@@ -44,13 +44,25 @@
           </button>
           <button id="zipBtn" type="button" class="dark-button" disabled>
             <i data-lucide="download"></i>
-            <span>全部 PNG</span>
+            <span id="zipText">全部 PNG</span>
           </button>
         </div>
       </header>
 
       <main class="workspace">
         <aside class="control-panel">
+          <section class="mode-section">
+            <div class="mode-switch" role="tablist" aria-label="拆解模式">
+              <button class="mode-button is-active" type="button" role="tab" aria-selected="true" data-mode="matte">
+                普通抠图
+              </button>
+              <button class="mode-button" type="button" role="tab" aria-selected="false" data-mode="vfx">
+                特效拆解
+              </button>
+            </div>
+            <p id="modeNote" class="mode-note">按连通区域分离图片素材。</p>
+          </section>
+
           <section>
             <div class="section-head">
               <div class="section-title">
@@ -70,36 +82,53 @@
               <output id="toleranceOut">32</output>
               <input id="tolerance" type="range" min="4" max="90" value="32" />
             </label>
-            <label class="range-row">
+            <label class="range-row matte-only">
               <span>边缘清理</span>
               <output id="edgeTrimOut">1 px</output>
               <input id="edgeTrim" type="range" min="0" max="4" value="1" />
             </label>
-            <label class="range-row">
+            <label class="range-row matte-only">
               <span>边缘压色</span>
               <output id="innerStrokeOut">40%</output>
               <input id="innerStroke" type="range" min="0" max="100" step="5" value="40" />
             </label>
-            <label class="check-row">
+            <label class="check-row matte-only">
               <span>
                 <strong>清理封闭背景</strong>
                 <small>移除轮廓内部残留的背景色</small>
               </span>
               <input id="removeEnclosed" type="checkbox" checked />
             </label>
-            <label class="range-row">
+            <label class="range-row matte-only">
               <span>合并间距</span>
               <output id="mergeGapOut">8 px</output>
               <input id="mergeGap" type="range" min="0" max="36" value="8" />
             </label>
-            <label class="range-row">
+            <label class="range-row matte-only">
               <span>最小面积</span>
               <output id="minAreaOut">120</output>
               <input id="minArea" type="range" min="12" max="2000" step="4" value="120" />
             </label>
+            <div class="vfx-only" hidden>
+              <label class="range-row">
+                <span>特效颜色范围</span>
+                <output id="vfxHueRangeOut">36°</output>
+                <input id="vfxHueRange" type="range" min="12" max="80" value="36" />
+              </label>
+              <label class="range-row">
+                <span>白色亮部阈值</span>
+                <output id="vfxBrightOut">210</output>
+                <input id="vfxBright" type="range" min="140" max="250" value="210" />
+              </label>
+              <label class="range-row">
+                <span>放射线数量上限</span>
+                <output id="vfxRayCountOut">18</output>
+                <input id="vfxRayCount" type="range" min="8" max="28" value="18" />
+              </label>
+            </div>
           </section>
 
-          <section>
+          <section class="matte-only">
             <div class="section-head">
               <h2>清晰度</h2>
             </div>
@@ -129,7 +158,7 @@
             <div class="section-head">
               <h2>导出</h2>
             </div>
-            <label class="select-row">
+            <label class="select-row matte-only">
               <span>SVG 模式</span>
               <select id="exportMode">
                 <option value="color">保留颜色</option>
@@ -154,7 +183,7 @@
             <canvas id="previewCanvas"></canvas>
             <div id="emptyState" class="empty-state">
               <i data-lucide="image"></i>
-              <span>载入图片</span>
+              <span id="emptyText">载入图片</span>
             </div>
           </div>
           <div class="statusbar">
@@ -165,7 +194,7 @@
 
         <aside class="asset-panel">
           <div class="asset-head">
-            <h2>分离结果</h2>
+            <h2 id="resultHeading">分离结果</h2>
             <button id="clearBtn" type="button" class="icon-button" title="清空" aria-label="清空">
               <i data-lucide="trash-2"></i>
             </button>

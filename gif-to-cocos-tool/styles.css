@@ -253,6 +253,19 @@ svg {
   color: #075985;
 }
 
+.vfx-vector-action {
+  width: 100%;
+  color: #ffffff;
+  border-color: var(--accent);
+  background: var(--accent);
+}
+
+.vfx-vector-action:hover {
+  color: #ffffff;
+  border-color: var(--accent-strong);
+  background: var(--accent-strong);
+}
+
 .png-folder-action input {
   position: absolute;
   width: 1px;

@@ -3,12 +3,18 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>GLB 模型压缩</title>
+    <title>模型 / 特效贴图</title>
     <link rel="icon" href="data:," />
-    <link rel="stylesheet" href="./styles.css?v=1" />
+    <link rel="stylesheet" href="./styles.css?v=vfx-textures-1" />
   </head>
   <body>
     <main class="app-shell">
+      <div class="mode-switch" role="tablist" aria-label="工具模式">
+        <button class="mode-button" type="button" role="tab" aria-selected="false" data-mode="model">GLB 压缩</button>
+        <button class="mode-button is-active" type="button" role="tab" aria-selected="true" data-mode="vfx">特效贴图</button>
+      </div>
+
+      <div id="modelMode" class="mode-panel" data-mode-panel="model" hidden>
       <header class="toolbar">
         <div class="brand">
           <div class="brand-mark" aria-hidden="true">
@@ -130,7 +136,119 @@
           </div>
         </section>
       </section>
+      </div>
+
+      <div id="vfxMode" class="mode-panel is-active" data-mode-panel="vfx">
+        <header class="toolbar vfx-toolbar">
+          <div class="brand">
+            <div class="brand-mark vfx-mark" aria-hidden="true">
+              <svg viewBox="0 0 24 24">
+                <path d="m12 2-1.2 6.8L6 4l3.1 6.1L2 12l7.1 1.9L6 20l4.8-4.8L12 22l1.2-6.8L18 20l-3.1-6.1L22 12l-7.1-1.9L18 4l-4.8 4.8z" />
+              </svg>
+            </div>
+            <div>
+              <h1>特效贴图生成</h1>
+              <p>参考命中特效原图，生成可直接用于粒子系统的透明 PNG。</p>
+            </div>
+          </div>
+          <button id="vfxZipBtn" class="primary-action" type="button" disabled>
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M12 3v12m0 0 4.5-4.5M12 15l-4.5-4.5M5 20h14" />
+            </svg>
+            下载全部 ZIP
+          </button>
+        </header>
+
+        <section class="vfx-workspace">
+          <aside class="panel vfx-controls">
+            <label id="vfxDropZone" class="drop-zone vfx-drop-zone" for="vfxFileInput">
+              <input id="vfxFileInput" type="file" accept="image/png,image/jpeg,image/webp,.png,.jpg,.jpeg,.webp" />
+              <span class="drop-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24">
+                  <path d="M4 5h16v14H4zM7 15l3-3 2 2 2.5-3 2.5 4" />
+                  <path d="M12 9V3m-3 3 3-3 3 3" />
+                </svg>
+              </span>
+              <strong>拖入特效参考图</strong>
+              <span>支持 PNG、JPG、WebP，图片仅在本地分析</span>
+            </label>
+
+            <div id="vfxReference" class="reference-card" hidden>
+              <div class="reference-preview checkerboard">
+                <img id="vfxReferenceImage" alt="已上传的特效参考图" />
+                <span id="vfxCenterMarker" class="center-marker" aria-hidden="true"></span>
+              </div>
+              <div class="reference-copy">
+                <strong id="vfxFileName"></strong>
+                <span id="vfxAnalysisText"></span>
+              </div>
+              <button id="vfxRemoveBtn" class="icon-action" type="button" title="移除参考图" aria-label="移除参考图">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 5l14 14M19 5 5 19" /></svg>
+              </button>
+            </div>
+
+            <div class="settings vfx-settings">
+              <label>
+                <span>输出尺寸</span>
+                <select id="vfxSizeSelect">
+                  <option value="128">128 px</option>
+                  <option value="256" selected>256 px（推荐）</option>
+                  <option value="512">512 px</option>
+                </select>
+              </label>
+              <label>
+                <span>每类变体</span>
+                <select id="vfxVariantSelect">
+                  <option value="1">1 个（共 4 张）</option>
+                  <option value="2" selected>2 个（共 8 张）</option>
+                  <option value="3">3 个（共 12 张）</option>
+                </select>
+              </label>
+              <label>
+                <span>贴图颜色 <output id="vfxColorValue">#ffffff</output></span>
+                <span class="color-control">
+                  <input id="vfxColorInput" type="color" value="#ffffff" aria-label="贴图颜色" />
+                  <button id="vfxAutoColorBtn" class="small-action" type="button" disabled>使用参考色</button>
+                </span>
+              </label>
+              <label>
+                <span>亮度 <output id="vfxBrightnessValue">115%</output></span>
+                <input id="vfxBrightnessInput" type="range" min="60" max="180" step="5" value="115" />
+              </label>
+              <label>
+                <span>边缘柔化 <output id="vfxSoftnessValue">45%</output></span>
+                <input id="vfxSoftnessInput" type="range" min="0" max="100" step="5" value="45" />
+              </label>
+            </div>
+
+            <div class="hint-box vfx-hint">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3 5 6v5c0 4.4 2.8 8.2 7 9.8 4.2-1.6 7-5.4 7-9.8V6z" /><path d="M9 12l2 2 4-4" /></svg>
+              <p>生成的贴图带透明通道。导入 Cocos 后建议使用 ADD 加法混合；碎片也可使用普通透明混合。</p>
+            </div>
+          </aside>
+
+          <section class="panel texture-results" aria-live="polite">
+            <div class="texture-head">
+              <div>
+                <h2>透明贴图</h2>
+                <p id="vfxStatusText">等待上传特效参考图</p>
+              </div>
+              <div class="texture-legend" aria-label="生成类型">
+                <span>光条</span><span>碎片</span><span>爆闪</span><span>柔光</span>
+              </div>
+            </div>
+            <div id="vfxEmptyState" class="empty-state vfx-empty-state">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m12 2-1.2 6.8L6 4l3.1 6.1L2 12l7.1 1.9L6 20l4.8-4.8L12 22l1.2-6.8L18 20l-3.1-6.1L22 12l-7.1-1.9L18 4l-4.8 4.8z" /></svg>
+              <strong>上传一张特效原图开始生成</strong>
+              <span>工具会分析主色、发光中心和放射方向，再生成四类粒子素材。</span>
+            </div>
+            <div id="vfxErrorState" class="message error-message" role="alert" hidden></div>
+            <div id="textureGrid" class="texture-grid" hidden></div>
+          </section>
+        </section>
+      </div>
     </main>
     <script src="./app.js?v=1"></script>
+    <script src="./vfx-textures.js?v=1"></script>
   </body>
 </html>

@@ -20,6 +20,10 @@
   box-sizing: border-box;
 }
 
+[hidden] {
+  display: none !important;
+}
+
 html,
 body {
   height: 100%;
@@ -265,6 +269,49 @@ h1 {
 
 .control-panel section:last-child {
   border-bottom: 0;
+}
+
+.control-panel .mode-section {
+  padding-bottom: 12px;
+}
+
+.mode-switch {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  padding: 3px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface-2);
+}
+
+.mode-button {
+  min-height: 34px;
+  padding: 0 10px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--muted);
+  box-shadow: none;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.mode-button:hover:not(:disabled) {
+  transform: none;
+  color: var(--accent-strong);
+}
+
+.mode-button.is-active {
+  color: #ffffff;
+  background: var(--accent);
+  box-shadow: 0 4px 12px rgba(40, 169, 244, 0.2);
+}
+
+.mode-note {
+  margin-top: 9px;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.45;
 }
 
 .section-head,
@@ -546,6 +593,38 @@ h2 {
   border-color: var(--accent);
   background: #f4fbff;
   box-shadow: 0 0 0 2px rgba(40, 169, 244, 0.15);
+}
+
+.asset-card.is-vfx .asset-preview {
+  background:
+    linear-gradient(45deg, #384555 25%, transparent 25%),
+    linear-gradient(-45deg, #384555 25%, transparent 25%),
+    linear-gradient(45deg, transparent 75%, #384555 75%),
+    linear-gradient(-45deg, transparent 75%, #384555 75%);
+  background-color: #2f3947;
+  background-position:
+    0 0,
+    0 7px,
+    7px -7px,
+    -7px 0;
+  background-size: 14px 14px;
+}
+
+.asset-card.is-vfx .asset-preview img {
+  max-width: 96%;
+  max-height: 96%;
+}
+
+.asset-kind {
+  display: inline-flex;
+  align-items: center;
+  min-height: 20px;
+  padding: 0 7px;
+  border-radius: 999px;
+  color: #075985;
+  background: var(--accent-soft);
+  font-size: 10px;
+  font-weight: 800;
 }
 
 .asset-preview {

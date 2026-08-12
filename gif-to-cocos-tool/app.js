@@ -5,6 +5,7 @@ const elements = {
   dropZone: $("#dropZone"),
   gifInput: $("#gifInput"),
   pngFolderInput: $("#pngFolderInput"),
+  vfxVectorBtn: $("#vfxVectorBtn"),
   fileName: $("#fileName"),
   folderInput: $("#folderInput"),
   clipInput: $("#clipInput"),
@@ -2247,6 +2248,13 @@ function bindEvents() {
   elements.convertBtn.addEventListener("click", convertCurrentFile);
   elements.downloadBtn.addEventListener("click", downloadZip);
   elements.downloadSequenceBtn.addEventListener("click", downloadSequenceZip);
+  elements.vfxVectorBtn.addEventListener("click", () => {
+    if (window.parent !== window) {
+      window.parent.postMessage({ type: "open-tool", tool: "vector", mode: "vfx" }, window.location.origin);
+      return;
+    }
+    window.location.href = "../asset-vectorizer/index.html?mode=vfx";
+  });
 
   elements.frameRange.addEventListener("input", () => {
     state.selectedFrame = Number(elements.frameRange.value);

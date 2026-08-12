@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>序列帧压缩</title>
     <link rel="icon" href="data:," />
-    <link rel="stylesheet" href="./styles.css" />
+    <link rel="stylesheet" href="./styles.css?v=vfx-entry-1" />
   </head>
   <body>
     <main class="app-shell">
@@ -62,6 +62,15 @@
             </svg>
             <span>选择 PNG 序列文件夹</span>
           </label>
+
+          <button id="vfxVectorBtn" class="png-folder-action vfx-vector-action" type="button">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M12 3v18M3 12h18" />
+              <path d="m5.6 5.6 12.8 12.8M18.4 5.6 5.6 18.4" />
+              <circle cx="12" cy="12" r="3" />
+            </svg>
+            <span>特效原图拆解为 SVG</span>
+          </button>
 
           <div class="settings-grid">
             <label>
@@ -222,6 +231,6 @@
 
     <script src="./vendor/pako_deflate.min.js"></script>
     <script src="./vendor/UPNG.js"></script>
-    <script src="./app.js"></script>
+    <script src="./app.js?v=vfx-entry-1"></script>
   </body>
 </html>
