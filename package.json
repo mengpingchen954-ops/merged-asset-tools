@@ -1,0 +1,20 @@
+{
+  "name": "merged-asset-tools",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "npm run build:model",
+    "build:model": "node scripts/build-model-compressor.mjs",
+    "serve": "node server.mjs"
+  },
+  "dependencies": {
+    "@gltf-transform/core": "4.4.2",
+    "@gltf-transform/extensions": "4.4.2",
+    "@gltf-transform/functions": "4.4.2",
+    "draco3dgltf": "1.5.7",
+    "meshoptimizer": "1.2.0"
+  },
+  "devDependencies": {
+    "esbuild": "0.25.8"
+  }
+}

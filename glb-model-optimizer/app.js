@@ -28,6 +28,9 @@
     emptyState: document.querySelector("#emptyState"),
     errorState: document.querySelector("#errorState"),
     fileInput: document.querySelector("#fileInput"),
+    geometryCount: document.querySelector("#geometryCount"),
+    geometryMethodHint: document.querySelector("#geometryMethodHint"),
+    geometryMethodSelect: document.querySelector("#geometryMethodSelect"),
     maxSizeSelect: document.querySelector("#maxSizeSelect"),
     memoryAfter: document.querySelector("#memoryAfter"),
     memoryBefore: document.querySelector("#memoryBefore"),
@@ -64,6 +67,11 @@
     invalidateOutput();
   });
   elements.maxSizeSelect.addEventListener("change", invalidateOutput);
+  elements.geometryMethodSelect.addEventListener("change", () => {
+    updateGeometryMethodHint();
+    invalidateOutput();
+    setControlsDisabled(false);
+  });
   elements.optimizeBtn.addEventListener("click", optimizeModel);
   elements.clearBtn.addEventListener("click", resetAll);
   elements.downloadBtn.addEventListener("click", downloadOutput);
@@ -100,23 +108,25 @@
       const parsed = parseGlb(await file.arrayBuffer());
       validateDocument(parsed);
       const analysis = analyzeImages(parsed);
+      const geometry = analyzeGeometry(parsed.json);
       state.inputFile = file;
       state.parsed = parsed;
       state.analysis = analysis;
       elements.beforeSize.textContent = formatBytes(file.size);
       elements.textureCount.textContent = String(parsed.json.textures?.length || parsed.json.images?.length || 0);
+      elements.geometryCount.textContent = `${formatInteger(geometry.vertices)} 顶点`;
       elements.dropZone.querySelector("strong").textContent = file.name;
-      elements.dropZone.querySelector("span:last-child").textContent = `${analysis.candidates.length} 张可处理贴图 · ${formatBytes(file.size)}`;
+      elements.dropZone.querySelector("span:last-child").textContent = `${formatInteger(geometry.vertices)} 顶点 · ${analysis.candidates.length} 张可处理贴图 · ${formatBytes(file.size)}`;
       elements.emptyState.hidden = false;
       elements.emptyState.querySelector("strong").textContent = "模型已就绪";
-      elements.emptyState.querySelector("span").textContent = `选择贴图尺寸后开始压缩，模型结构将保持不变。`;
-      if (!analysis.candidates.length) {
-        throw new Error("该 GLB 没有可处理的内嵌 PNG、JPEG 或 WebP 贴图。");
-      }
+      elements.emptyState.querySelector("span").textContent = "选择网格压缩方式和贴图尺寸后开始处理。";
       if (analysis.unsupported.length) {
         showWarning(`${analysis.unsupported.length} 张非 PNG/JPEG/WebP 贴图将原样保留。`);
       }
-      setProgress(0, `已读取 ${analysis.candidates.length} 张内嵌贴图`, false);
+      const readyText = analysis.candidates.length
+        ? `已读取 ${formatInteger(geometry.vertices)} 个顶点、${analysis.candidates.length} 张内嵌贴图`
+        : `已读取 ${formatInteger(geometry.vertices)} 个顶点；没有贴图，仍可压缩网格`;
+      setProgress(0, readyText, false);
     } catch (error) {
       state.inputFile = null;
       state.parsed = null;
@@ -138,6 +148,7 @@
 
     const maxSize = Number(elements.maxSizeSelect.value);
     const quality = Number(elements.qualityInput.value) / 100;
+    const geometryMethod = elements.geometryMethodSelect.value;
     const json = JSON.parse(JSON.stringify(state.parsed.json));
     const candidates = state.analysis.candidates;
     const replacements = [];
@@ -150,7 +161,7 @@
       for (let index = 0; index < candidates.length; index += 1) {
         const candidate = candidates[index];
         setProgress(
-          4 + (index / candidates.length) * 86,
+          4 + (index / Math.max(1, candidates.length)) * 68,
           `正在处理贴图 ${index + 1} / ${candidates.length}`,
         );
 
@@ -175,21 +186,33 @@
         if ((index + 1) % 4 === 0) await yieldToBrowser();
       }
 
-      setProgress(91, "正在重建 GLB 数据…");
+      setProgress(74, "正在重建贴图数据…");
       applyDataUriReplacements(json, replacements);
       const binaryReplacements = replacements.filter((item) => item.source === "bufferView");
       const binary = rebuildBinary(state.parsed, json, binaryReplacements);
-      const outputBytes = buildGlb(state.parsed, json, binary);
+      let outputBytes = buildGlb(state.parsed, json, binary);
+
+      if (geometryMethod !== "none") {
+        if (!window.GeometryCompressor?.compress) throw new Error("网格压缩模块加载失败，请刷新页面后重试。");
+        setProgress(82, `正在执行 ${geometryMethodLabel(geometryMethod)} 网格压缩…`);
+        outputBytes = await window.GeometryCompressor.compress(outputBytes, geometryMethod);
+      } else if (!candidates.length) {
+        throw new Error("该 GLB 没有可压缩贴图；请选择 Meshopt 或 Draco 压缩网格。");
+      }
 
       setProgress(96, "正在校验模型结构…");
       const verified = parseGlb(outputBytes.buffer);
       validateDocument(verified);
       const beforeCounts = structureCounts(state.parsed.json);
       const afterCounts = structureCounts(verified.json);
-      verifyStructure(beforeCounts, afterCounts);
+      verifyStructure(beforeCounts, afterCounts, geometryMethod);
+      verifyCompressionExtension(verified.json, geometryMethod);
 
       const baseName = state.inputFile.name.replace(/\.glb$/i, "");
-      const outputName = `${baseName}.max${maxSize}.glb`;
+      const suffix = [geometryMethod !== "none" ? geometryMethod : null, candidates.length ? `max${maxSize}` : null]
+        .filter(Boolean)
+        .join(".");
+      const outputName = `${baseName}.${suffix || "optimized"}.glb`;
       const blob = new Blob([outputBytes], { type: "model/gltf-binary" });
       state.output = { blob, name: outputName };
       renderResult({
@@ -198,12 +221,16 @@
         decodedAfter,
         decodedBefore,
         maxSize,
+        geometryMethod,
         outputName,
         outputSize: blob.size,
         resized,
         skipped,
       });
-      setProgress(100, `压缩完成，${resized} 张贴图已缩小`);
+      const resultParts = [];
+      if (geometryMethod !== "none") resultParts.push(`${geometryMethodLabel(geometryMethod)} 网格压缩完成`);
+      if (resized) resultParts.push(`${resized} 张贴图已缩小`);
+      setProgress(100, resultParts.join("，") || "模型处理完成");
     } catch (error) {
       state.output = null;
       showError(errorMessage(error));
@@ -325,6 +352,19 @@
       }
     });
     return { candidates: [...groups.values()], unsupported };
+  }
+
+  function analyzeGeometry(json) {
+    let vertices = 0;
+    let primitives = 0;
+    for (const mesh of json.meshes || []) {
+      for (const primitive of mesh.primitives || []) {
+        primitives += 1;
+        const positionIndex = primitive.attributes?.POSITION;
+        if (Number.isInteger(positionIndex)) vertices += json.accessors?.[positionIndex]?.count || 0;
+      }
+    }
+    return { vertices, primitives };
   }
 
   function readCandidateBytes(parsed, candidate) {
@@ -479,9 +519,19 @@
     return Object.fromEntries(STRUCTURE_KEYS.map((key) => [key, Array.isArray(json[key]) ? json[key].length : 0]));
   }
 
-  function verifyStructure(before, after) {
-    const changed = STRUCTURE_KEYS.filter((key) => before[key] !== after[key]);
+  function verifyStructure(before, after, geometryMethod) {
+    const stableKeys = geometryMethod === "none"
+      ? STRUCTURE_KEYS
+      : STRUCTURE_KEYS.filter((key) => !["accessors", "bufferViews"].includes(key));
+    const changed = stableKeys.filter((key) => before[key] !== after[key]);
     if (changed.length) throw new Error(`结构校验失败：${changed.map((key) => STRUCTURE_LABELS[key]).join("、")}数量发生变化。`);
+  }
+
+  function verifyCompressionExtension(json, geometryMethod) {
+    if (geometryMethod === "none") return;
+    const expected = geometryMethod === "meshopt" ? "EXT_meshopt_compression" : "KHR_draco_mesh_compression";
+    const extensions = new Set([...(json.extensionsUsed || []), ...(json.extensionsRequired || [])]);
+    if (!extensions.has(expected)) throw new Error(`网格压缩校验失败：输出文件缺少 ${expected} 扩展。`);
   }
 
   function renderResult(result) {
@@ -492,7 +542,10 @@
     elements.outputName.textContent = result.outputName;
     const saved = Math.max(0, state.inputFile.size - result.outputSize);
     const percent = state.inputFile.size ? Math.round((saved / state.inputFile.size) * 100) : 0;
-    elements.outputMeta.textContent = `${formatBytes(result.outputSize)} · 文件减少 ${percent}% · 贴图最长边 ${result.maxSize}px`;
+    const meta = [formatBytes(result.outputSize), `文件减少 ${percent}%`];
+    if (result.geometryMethod !== "none") meta.push(geometryMethodLabel(result.geometryMethod));
+    if (state.analysis.candidates.length) meta.push(`贴图最长边 ${result.maxSize}px`);
+    elements.outputMeta.textContent = meta.join(" · ");
     elements.structureGrid.replaceChildren(...STRUCTURE_KEYS.map((key) => {
       const item = document.createElement("div");
       item.className = "structure-item";
@@ -503,7 +556,7 @@
       item.append(label, value);
       return item;
     }));
-    elements.structureBadge.textContent = "数量与顺序保持不变";
+    elements.structureBadge.textContent = result.geometryMethod === "none" ? "数量与顺序保持不变" : "模型结构与压缩扩展有效";
     elements.structureBadge.classList.add("is-valid");
     elements.emptyState.hidden = true;
     elements.resultState.hidden = false;
@@ -584,6 +637,20 @@
     setProgress(0, "设置已更改，请重新开始压缩", false);
   }
 
+  function updateGeometryMethodHint() {
+    const method = elements.geometryMethodSelect.value;
+    const hints = {
+      meshopt: "输出使用 EXT_meshopt_compression。Cocos Creator 需先在项目设置的引擎模块中启用 meshopt。",
+      draco: "输出使用 KHR_draco_mesh_compression，体积可能更小；仅在确认项目带 Draco 解码器时使用。",
+      none: "不处理网格，只缩小内嵌 PNG、JPEG 或 WebP 贴图。",
+    };
+    elements.geometryMethodHint.textContent = hints[method];
+  }
+
+  function geometryMethodLabel(method) {
+    return method === "meshopt" ? "Meshopt" : method === "draco" ? "Draco" : "未压缩网格";
+  }
+
   function resetAll() {
     if (state.processing) return;
     state.inputFile = null;
@@ -591,9 +658,10 @@
     state.analysis = null;
     elements.fileInput.value = "";
     elements.beforeSize.textContent = "0 B";
+    elements.geometryCount.textContent = "0";
     elements.textureCount.textContent = "0";
     elements.dropZone.querySelector("strong").textContent = "拖入 GLB 模型";
-    elements.dropZone.querySelector("span:last-child").textContent = "仅支持内嵌 PNG、JPEG、WebP 贴图";
+    elements.dropZone.querySelector("span:last-child").textContent = "支持无贴图 GLB，文件仅在本地处理";
     elements.emptyState.querySelector("strong").textContent = "先选择需要优化的 GLB 模型";
     elements.emptyState.querySelector("span").textContent = "输出文件可重新导入 Cocos，再构建 HTML。";
     resetMessages();
@@ -635,8 +703,10 @@
   function setControlsDisabled(disabled) {
     elements.fileInput.disabled = disabled;
     elements.maxSizeSelect.disabled = disabled;
+    elements.geometryMethodSelect.disabled = disabled;
     elements.qualityInput.disabled = disabled;
-    elements.optimizeBtn.disabled = disabled || !state.inputFile || !state.analysis?.candidates.length;
+    const hasWork = elements.geometryMethodSelect.value !== "none" || Boolean(state.analysis?.candidates.length);
+    elements.optimizeBtn.disabled = disabled || !state.inputFile || !hasWork;
     elements.clearBtn.disabled = disabled || !state.inputFile;
     if (disabled) elements.downloadBtn.disabled = true;
     else elements.downloadBtn.disabled = !state.output;
@@ -663,6 +733,10 @@
     return `${mib >= 100 ? mib.toFixed(0) : mib.toFixed(1)} MiB`;
   }
 
+  function formatInteger(value) {
+    return new Intl.NumberFormat("zh-CN").format(Number(value) || 0);
+  }
+
   function errorMessage(error) {
     return error instanceof Error ? error.message : "处理模型时发生未知错误。";
   }
@@ -670,4 +744,6 @@
   function yieldToBrowser() {
     return new Promise((resolve) => setTimeout(resolve, 0));
   }
+
+  updateGeometryMethodHint();
 })();

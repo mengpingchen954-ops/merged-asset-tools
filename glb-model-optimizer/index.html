@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>模型 / 特效贴图</title>
+    <title>GLB 模型压缩 / 特效贴图</title>
     <link rel="icon" href="data:," />
     <link rel="stylesheet" href="./styles.css?v=split-vfx-entry-1" />
   </head>
@@ -25,7 +25,7 @@
           </div>
           <div>
             <h1>GLB 模型压缩</h1>
-            <p>缩小模型内嵌贴图，降低 iPhone 解码内存。</p>
+            <p>压缩网格与内嵌贴图，减少模型下载体积和 iPhone 解码内存。</p>
           </div>
         </div>
         <button id="downloadBtn" class="primary-action" type="button" disabled>
@@ -47,10 +47,19 @@
               </svg>
             </span>
             <strong>拖入 GLB 模型</strong>
-            <span>仅支持内嵌 PNG、JPEG、WebP 贴图</span>
+            <span>支持无贴图 GLB，文件仅在本地处理</span>
           </label>
 
           <div class="settings">
+            <label>
+              <span>网格压缩</span>
+              <select id="geometryMethodSelect">
+                <option value="meshopt" selected>Meshopt（推荐 Cocos / Web）</option>
+                <option value="draco">Draco（需确认引擎解码支持）</option>
+                <option value="none">关闭（仅压缩贴图）</option>
+              </select>
+              <small id="geometryMethodHint" class="setting-hint">输出使用 EXT_meshopt_compression。Cocos Creator 需先在项目设置的引擎模块中启用 meshopt。</small>
+            </label>
             <label>
               <span>贴图最长边</span>
               <select id="maxSizeSelect">
@@ -71,7 +80,7 @@
               <path d="M12 3 5 6v5c0 4.4 2.8 8.2 7 9.8 4.2-1.6 7-5.4 7-9.8V6z" />
               <path d="M9 12l2 2 4-4" />
             </svg>
-            <p>文件只在当前浏览器处理，不会上传。工具只调整贴图，不删除网格、材质或节点。</p>
+            <p>文件只在当前浏览器处理，不会上传。网格压缩保留模型外观、节点、材质、蒙皮和动画。</p>
           </div>
 
           <button id="optimizeBtn" class="secondary-action" type="button" disabled>
@@ -88,6 +97,7 @@
           <div class="summary">
             <div><span>原始 GLB</span><strong id="beforeSize">0 B</strong></div>
             <div class="saved"><span>优化后</span><strong id="afterSize">-</strong></div>
+            <div><span>网格数据</span><strong id="geometryCount">0</strong></div>
             <div><span>内嵌贴图</span><strong id="textureCount">0</strong></div>
             <div><span>已缩小 / 跳过</span><strong id="resizeCount">0 / 0</strong></div>
             <div><span>原贴图内存</span><strong id="memoryBefore">-</strong></div>
@@ -270,7 +280,10 @@
         </section>
       </div>
     </main>
-    <script src="./app.js?v=1"></script>
+    <script src="./vendor/draco_decoder.js?v=1.5.7"></script>
+    <script src="./vendor/draco_encoder.js?v=1.5.7"></script>
+    <script src="./vendor/geometry-compressor.js?v=mesh-compression-1"></script>
+    <script src="./app.js?v=mesh-compression-1"></script>
     <script src="./vfx-textures.js?v=split-vfx-entry-1"></script>
   </body>
 </html>
