@@ -192,12 +192,10 @@
       const binary = rebuildBinary(state.parsed, json, binaryReplacements);
       let outputBytes = buildGlb(state.parsed, json, binary);
 
-      if (geometryMethod !== "none") {
+      if (isGeometryCompressionMethod(geometryMethod)) {
         if (!window.GeometryCompressor?.compress) throw new Error("网格压缩模块加载失败，请刷新页面后重试。");
         setProgress(82, `正在执行 ${geometryMethodLabel(geometryMethod)} 网格压缩…`);
         outputBytes = await window.GeometryCompressor.compress(outputBytes, geometryMethod);
-      } else if (!candidates.length) {
-        throw new Error("该 GLB 没有可压缩贴图；请选择 Meshopt 或 Draco 压缩网格。");
       }
 
       setProgress(96, "正在校验模型结构…");
@@ -209,7 +207,7 @@
       verifyCompressionExtension(verified.json, geometryMethod);
 
       const baseName = state.inputFile.name.replace(/\.glb$/i, "");
-      const suffix = [geometryMethod !== "none" ? geometryMethod : null, candidates.length ? `max${maxSize}` : null]
+      const suffix = [isGeometryCompressionMethod(geometryMethod) ? geometryMethod : null, candidates.length ? `max${maxSize}` : null]
         .filter(Boolean)
         .join(".");
       const outputName = `${baseName}.${suffix || "optimized"}.glb`;
@@ -228,7 +226,8 @@
         skipped,
       });
       const resultParts = [];
-      if (geometryMethod !== "none") resultParts.push(`${geometryMethodLabel(geometryMethod)} 网格压缩完成`);
+      if (isGeometryCompressionMethod(geometryMethod)) resultParts.push(`${geometryMethodLabel(geometryMethod)} 网格压缩完成`);
+      else if (geometryMethod === "cocos") resultParts.push("Cocos 兼容标准 GLB 已完成");
       if (resized) resultParts.push(`${resized} 张贴图已缩小`);
       setProgress(100, resultParts.join("，") || "模型处理完成");
     } catch (error) {
@@ -520,7 +519,7 @@
   }
 
   function verifyStructure(before, after, geometryMethod) {
-    const stableKeys = geometryMethod === "none"
+    const stableKeys = !isGeometryCompressionMethod(geometryMethod)
       ? STRUCTURE_KEYS
       : STRUCTURE_KEYS.filter((key) => !["accessors", "bufferViews"].includes(key));
     const changed = stableKeys.filter((key) => before[key] !== after[key]);
@@ -528,7 +527,15 @@
   }
 
   function verifyCompressionExtension(json, geometryMethod) {
-    if (geometryMethod === "none") return;
+    if (!isGeometryCompressionMethod(geometryMethod)) {
+      const extensions = new Set([...(json.extensionsUsed || []), ...(json.extensionsRequired || [])]);
+      const incompatible = ["EXT_meshopt_compression", "KHR_draco_mesh_compression", "KHR_mesh_quantization"]
+        .filter((extension) => extensions.has(extension));
+      if (incompatible.length) {
+        throw new Error(`Cocos 兼容检查失败：标准 GLB 不应包含 ${incompatible.join("、")}。`);
+      }
+      return;
+    }
     const expected = geometryMethod === "meshopt" ? "EXT_meshopt_compression" : "KHR_draco_mesh_compression";
     const extensions = new Set([...(json.extensionsUsed || []), ...(json.extensionsRequired || [])]);
     if (!extensions.has(expected)) throw new Error(`网格压缩校验失败：输出文件缺少 ${expected} 扩展。`);
@@ -543,7 +550,7 @@
     const saved = Math.max(0, state.inputFile.size - result.outputSize);
     const percent = state.inputFile.size ? Math.round((saved / state.inputFile.size) * 100) : 0;
     const meta = [formatBytes(result.outputSize), `文件减少 ${percent}%`];
-    if (result.geometryMethod !== "none") meta.push(geometryMethodLabel(result.geometryMethod));
+    meta.push(geometryMethodLabel(result.geometryMethod));
     if (state.analysis.candidates.length) meta.push(`贴图最长边 ${result.maxSize}px`);
     elements.outputMeta.textContent = meta.join(" · ");
     elements.structureGrid.replaceChildren(...STRUCTURE_KEYS.map((key) => {
@@ -556,7 +563,11 @@
       item.append(label, value);
       return item;
     }));
-    elements.structureBadge.textContent = result.geometryMethod === "none" ? "数量与顺序保持不变" : "模型结构与压缩扩展有效";
+    elements.structureBadge.textContent = result.geometryMethod === "cocos"
+      ? "Cocos 兼容标准 GLB"
+      : !isGeometryCompressionMethod(result.geometryMethod)
+        ? "数量与顺序保持不变"
+        : "模型结构与压缩扩展有效";
     elements.structureBadge.classList.add("is-valid");
     elements.emptyState.hidden = true;
     elements.resultState.hidden = false;
@@ -640,15 +651,20 @@
   function updateGeometryMethodHint() {
     const method = elements.geometryMethodSelect.value;
     const hints = {
-      meshopt: "输出使用 EXT_meshopt_compression。Cocos Creator 需先在项目设置的引擎模块中启用 meshopt。",
-      draco: "输出使用 KHR_draco_mesh_compression，体积可能更小；仅在确认项目带 Draco 解码器时使用。",
+      cocos: "输出为合法标准 GLB，可直接导入 Cocos Creator；网格不写入压缩扩展。",
+      meshopt: "输出使用 EXT_meshopt_compression，仅适用于支持该扩展的运行时；导入 Cocos 编辑器会失败。",
+      draco: "输出使用 KHR_draco_mesh_compression，仅适用于支持该扩展的运行时；导入 Cocos 编辑器会失败。",
       none: "不处理网格，只缩小内嵌 PNG、JPEG 或 WebP 贴图。",
     };
     elements.geometryMethodHint.textContent = hints[method];
   }
 
   function geometryMethodLabel(method) {
-    return method === "meshopt" ? "Meshopt" : method === "draco" ? "Draco" : "未压缩网格";
+    return method === "cocos" ? "Cocos 兼容" : method === "meshopt" ? "Meshopt" : method === "draco" ? "Draco" : "未压缩网格";
+  }
+
+  function isGeometryCompressionMethod(method) {
+    return method === "meshopt" || method === "draco";
   }
 
   function resetAll() {
@@ -705,7 +721,7 @@
     elements.maxSizeSelect.disabled = disabled;
     elements.geometryMethodSelect.disabled = disabled;
     elements.qualityInput.disabled = disabled;
-    const hasWork = elements.geometryMethodSelect.value !== "none" || Boolean(state.analysis?.candidates.length);
+    const hasWork = Boolean(state.inputFile) && (elements.geometryMethodSelect.value !== "none" || Boolean(state.analysis?.candidates.length));
     elements.optimizeBtn.disabled = disabled || !state.inputFile || !hasWork;
     elements.clearBtn.disabled = disabled || !state.inputFile;
     if (disabled) elements.downloadBtn.disabled = true;

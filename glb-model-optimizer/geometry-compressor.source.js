@@ -1,6 +1,6 @@
 import { WebIO } from "@gltf-transform/core";
-import { ALL_EXTENSIONS } from "@gltf-transform/extensions";
-import { draco, meshopt } from "@gltf-transform/functions";
+import { ALL_EXTENSIONS, EXTMeshoptCompression } from "@gltf-transform/extensions";
+import { draco, reorder } from "@gltf-transform/functions";
 import { MeshoptDecoder, MeshoptEncoder } from "meshoptimizer";
 
 const io = new WebIO().registerExtensions(ALL_EXTENSIONS);
@@ -36,7 +36,12 @@ export async function compress(input, method) {
   await prepareDependencies();
   const document = await io.readBinary(input instanceof Uint8Array ? input : new Uint8Array(input));
   if (method === "meshopt") {
-    await document.transform(meshopt({ encoder: MeshoptEncoder, level: "medium" }));
+    // Keep float accessors for Cocos/Web runtimes that support Meshopt but not KHR_mesh_quantization.
+    await document.transform(reorder({ encoder: MeshoptEncoder, target: "size" }));
+    document
+      .createExtension(EXTMeshoptCompression)
+      .setRequired(true)
+      .setEncoderOptions({ method: EXTMeshoptCompression.EncoderMethod.QUANTIZE });
   } else {
     await document.transform(draco({ method: "edgebreaker" }));
   }

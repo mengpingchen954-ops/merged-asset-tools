@@ -19,7 +19,7 @@ const toolDescriptions = {
   cocos: "拖入 Cocos 单文件 HTML，压缩内嵌图片与 MP3 并导出 5MB 提交包。",
   gif: "本地处理 GIF、MP4 和 PNG 序列，导出 PNG 序列帧或 Cocos 资源。",
   "green-screen": "拖入任意纯色背景 MP4、MOV 或 GIF，在浏览器本地抠像并导出透明 PNG 序列 ZIP。",
-  model: "使用 Meshopt 或 Draco 压缩 GLB 网格，同时缩小内嵌贴图并降低 iPhone 解码内存。",
+  model: "默认输出可直接导入 Cocos Creator 的标准 GLB；也可为支持扩展的运行时生成 Meshopt 或 Draco 文件。",
   vfx: "上传特效参考图，生成光条、碎片、爆闪和柔光四类透明 PNG 粒子贴图。",
   vector: "载入图片后自动抠图分离素材，支持 SVG、PNG 和批量导出。",
 };

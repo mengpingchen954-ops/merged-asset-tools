@@ -54,11 +54,12 @@
             <label>
               <span>网格压缩</span>
               <select id="geometryMethodSelect">
-                <option value="meshopt" selected>Meshopt（推荐 Cocos / Web）</option>
-                <option value="draco">Draco（需确认引擎解码支持）</option>
+                <option value="cocos" selected>Cocos 兼容（标准 GLB）</option>
+                <option value="meshopt">Meshopt（仅支持扩展的运行时）</option>
+                <option value="draco">Draco（仅支持扩展的运行时）</option>
                 <option value="none">关闭（仅压缩贴图）</option>
               </select>
-              <small id="geometryMethodHint" class="setting-hint">输出使用 EXT_meshopt_compression。Cocos Creator 需先在项目设置的引擎模块中启用 meshopt。</small>
+              <small id="geometryMethodHint" class="setting-hint">输出为标准 GLB，可直接导入 Cocos Creator；仅缩小内嵌贴图，不写入压缩扩展。</small>
             </label>
             <label>
               <span>贴图最长边</span>
@@ -282,8 +283,8 @@
     </main>
     <script src="./vendor/draco_decoder.js?v=1.5.7"></script>
     <script src="./vendor/draco_encoder.js?v=1.5.7"></script>
-    <script src="./vendor/geometry-compressor.js?v=mesh-compression-1"></script>
-    <script src="./app.js?v=mesh-compression-1"></script>
+    <script src="./vendor/geometry-compressor.js?v=mesh-compression-2"></script>
+    <script src="./app.js?v=mesh-compression-2"></script>
     <script src="./vfx-textures.js?v=split-vfx-entry-1"></script>
   </body>
 </html>
