@@ -25,7 +25,7 @@
           </div>
           <div>
             <h1>GLB 模型压缩</h1>
-            <p>压缩网格与内嵌贴图，减少模型下载体积和 iPhone 解码内存。</p>
+          <p>压缩网格与内嵌贴图；Cocos 标准模式通过减面降低运行时内存，Meshopt / Draco 主要减少文件体积。</p>
           </div>
         </div>
         <button id="downloadBtn" class="primary-action" type="button" disabled>
@@ -55,7 +55,7 @@
               <span>网格压缩</span>
               <select id="geometryMethodSelect">
                 <option value="cocos" selected>Cocos 兼容（标准 GLB）</option>
-                <option value="meshopt">Meshopt（仅支持扩展的运行时）</option>
+                <option value="meshopt">Meshopt（Cocos 3.8.3，需启用模块）</option>
                 <option value="draco">Draco（仅支持扩展的运行时）</option>
                 <option value="none">关闭（仅压缩贴图）</option>
               </select>
@@ -65,10 +65,12 @@
               <span>网格减面</span>
               <select id="geometryReductionSelect">
                 <option value="1">保守（仅无损去重）</option>
-                <option value="0.8" selected>平衡（保留约 80% 几何）</option>
-                <option value="0.6">强力（保留约 60% 几何）</option>
+                <option value="0.8">质量优先（保留约 80% 几何）</option>
+                <option value="0.6">平衡（保留约 60% 几何）</option>
+                <option value="0.4" selected>内存优先（保留约 40% 几何）</option>
+                <option value="0.25">极限（保留约 25% 几何）</option>
               </select>
-              <small id="geometryReductionHint" class="setting-hint">只对 Cocos 标准 GLB 生效；减面会降低网格内存，可能改变细小几何。</small>
+              <small id="geometryReductionHint" class="setting-hint">只对 Cocos 标准 GLB 生效；内存优先档会明显降低顶点和索引内存，细小几何可能改变。</small>
             </label>
             <label>
               <span>贴图最长边</span>
@@ -108,8 +110,8 @@
             <div><span>原始 GLB</span><strong id="beforeSize">0 B</strong></div>
             <div class="saved"><span>优化后</span><strong id="afterSize">-</strong></div>
             <div><span>网格数据</span><strong id="geometryCount">0</strong></div>
-            <div><span>原始网格内存</span><strong id="geometryMemoryBefore">-</strong></div>
-            <div class="saved"><span>新网格内存</span><strong id="geometryMemoryAfter">-</strong></div>
+            <div><span>原始解码网格内存</span><strong id="geometryMemoryBefore">-</strong></div>
+            <div class="saved"><span>新解码网格内存</span><strong id="geometryMemoryAfter">-</strong></div>
             <div><span>内嵌贴图</span><strong id="textureCount">0</strong></div>
             <div><span>已缩小 / 跳过</span><strong id="resizeCount">0 / 0</strong></div>
             <div><span>原贴图内存</span><strong id="memoryBefore">-</strong></div>
@@ -294,8 +296,8 @@
     </main>
     <script src="./vendor/draco_decoder.js?v=1.5.7"></script>
     <script src="./vendor/draco_encoder.js?v=1.5.7"></script>
-    <script src="./vendor/geometry-compressor.js?v=mesh-compression-3"></script>
-    <script src="./app.js?v=mesh-compression-3"></script>
+    <script src="./vendor/geometry-compressor.js?v=mesh-compression-5"></script>
+    <script src="./app.js?v=mesh-compression-5"></script>
     <script src="./vfx-textures.js?v=split-vfx-entry-1"></script>
   </body>
 </html>

@@ -383,24 +383,30 @@
   function analyzeGeometry(json) {
     let vertices = 0;
     let primitives = 0;
-    const referencedBufferViews = new Set();
+    const referencedAccessors = new Set();
     for (const mesh of json.meshes || []) {
       for (const primitive of mesh.primitives || []) {
         primitives += 1;
         const positionIndex = primitive.attributes?.POSITION;
         if (Number.isInteger(positionIndex)) vertices += json.accessors?.[positionIndex]?.count || 0;
         for (const accessorIndex of Object.values(primitive.attributes || {})) {
-          const accessor = json.accessors?.[accessorIndex];
-          if (Number.isInteger(accessor?.bufferView)) referencedBufferViews.add(accessor.bufferView);
+          if (Number.isInteger(accessorIndex)) referencedAccessors.add(accessorIndex);
         }
-        const indexAccessor = json.accessors?.[primitive.indices];
-        if (Number.isInteger(indexAccessor?.bufferView)) referencedBufferViews.add(indexAccessor.bufferView);
+        if (Number.isInteger(primitive.indices)) referencedAccessors.add(primitive.indices);
       }
     }
-    const memoryBytes = [...referencedBufferViews].reduce(
-      (total, index) => total + (json.bufferViews?.[index]?.byteLength || 0),
-      0,
-    );
+    // Estimate the decoded vertex/index buffers rather than compressed bufferView bytes.
+    // Meshopt and Draco reduce download size, but Cocos expands them before uploading.
+    const componentBytes = { 5120: 1, 5121: 1, 5122: 2, 5123: 2, 5124: 4, 5125: 4, 5126: 4 };
+    const elementComponents = { SCALAR: 1, VEC2: 2, VEC3: 3, VEC4: 4, MAT2: 4, MAT3: 9, MAT4: 16 };
+    const memoryBytes = [...referencedAccessors].reduce((total, index) => {
+      const accessor = json.accessors?.[index];
+      if (!accessor) return total;
+      const elementBytes = (componentBytes[accessor.componentType] || 0) * (elementComponents[accessor.type] || 0);
+      const bufferView = json.bufferViews?.[accessor.bufferView];
+      const stride = Math.max(elementBytes, bufferView?.byteStride || elementBytes);
+      return total + stride * (accessor.count || 0);
+    }, 0);
     return { memoryBytes, primitives, vertices };
   }
 
@@ -695,8 +701,8 @@
     const method = elements.geometryMethodSelect.value;
     const hints = {
       cocos: "输出为合法标准 GLB，可直接导入 Cocos Creator；会执行网格去重和减面，不写入压缩扩展。",
-      meshopt: "输出使用 EXT_meshopt_compression，仅适用于支持该扩展的运行时；导入 Cocos 编辑器会失败。",
-      draco: "输出使用 KHR_draco_mesh_compression，仅适用于支持该扩展的运行时；导入 Cocos 编辑器会失败。",
+      meshopt: "输出使用 EXT_meshopt_compression；Cocos Creator 3.8.3 项目需启用 meshopt。它主要减少文件体积，运行时仍会解码网格；要降内存请选 Cocos 兼容并减面。",
+      draco: "输出使用 KHR_draco_mesh_compression，需运行时提供 Draco 解码器。它主要减少文件体积，运行时仍会解码网格；不适合作为 Cocos 编辑器导入格式。",
       none: "不处理网格，只缩小内嵌 PNG、JPEG 或 WebP 贴图。",
     };
     elements.geometryMethodHint.textContent = hints[method];
@@ -710,7 +716,7 @@
       ? ratio >= 0.999
         ? "只做无损去重和索引整理，不主动删除三角形。"
         : `只对 Cocos 标准 GLB 生效；目标保留约 ${Math.round(ratio * 100)}% 几何，可明显降低网格内存。`
-      : "仅 Cocos 标准 GLB 使用；Meshopt / Draco 模式由运行时扩展负责压缩。";
+      : "仅 Cocos 标准 GLB 使用；Meshopt / Draco 主要减少文件体积，Cocos 解码后的运行时内存不会按压缩包同比下降。";
   }
 
   function geometryMethodLabel(method) {

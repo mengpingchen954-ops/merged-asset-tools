@@ -1,6 +1,6 @@
 import { PropertyType, WebIO } from "@gltf-transform/core";
-import { ALL_EXTENSIONS, EXTMeshoptCompression } from "@gltf-transform/extensions";
-import { dedup, draco, reorder, simplify, weld } from "@gltf-transform/functions";
+import { ALL_EXTENSIONS } from "@gltf-transform/extensions";
+import { dedup, draco, meshopt, reorder, simplify, weld } from "@gltf-transform/functions";
 import { MeshoptDecoder, MeshoptEncoder, MeshoptSimplifier } from "meshoptimizer";
 
 const io = new WebIO().registerExtensions(ALL_EXTENSIONS);
@@ -37,7 +37,9 @@ export async function compress(input, method, options = {}) {
   await prepareDependencies();
   const document = await io.readBinary(input instanceof Uint8Array ? input : new Uint8Array(input));
   if (method === "cocos") {
-    const ratio = Math.max(0.5, Math.min(1, Number(options.ratio) || 0.8));
+    // Keep this path extension-free so Cocos can import it, while allowing a
+    // genuinely smaller runtime vertex buffer than file-size-only compression.
+    const ratio = Math.max(0.25, Math.min(1, Number(options.ratio) || 0.4));
     await document.transform(weld());
     if (ratio < 0.999) {
       await document.transform(simplify({
@@ -51,12 +53,9 @@ export async function compress(input, method, options = {}) {
       dedup({ propertyTypes: [PropertyType.ACCESSOR] }),
     );
   } else if (method === "meshopt") {
-    // Keep float accessors for Cocos/Web runtimes that support Meshopt but not KHR_mesh_quantization.
-    await document.transform(reorder({ encoder: MeshoptEncoder, target: "size" }));
-    document
-      .createExtension(EXTMeshoptCompression)
-      .setRequired(true)
-      .setEncoderOptions({ method: EXTMeshoptCompression.EncoderMethod.QUANTIZE });
+    // Encode the buffer data, not only the extension declaration. Cocos 3.8.3
+    // can load this output when the project's meshopt module is enabled.
+    await document.transform(meshopt({ encoder: MeshoptEncoder, level: "medium" }));
   } else {
     await document.transform(draco({ method: "edgebreaker" }));
   }
