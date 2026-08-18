@@ -5,8 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>素材工具台</title>
     <link rel="icon" href="data:," />
-    <link rel="stylesheet" href="./styles.css" />
-    <script src="./app.js?v=asset-extractor-1" defer></script>
+    <link rel="stylesheet" href="./styles.css?v=tool-order-1" />
+    <script src="./app.js?v=tool-order-1" defer></script>
   </head>
   <body>
     <div class="merged-shell">
@@ -23,6 +23,27 @@
             <h1>素材工具台</h1>
             <p id="toolStatus">一键抠图</p>
           </div>
+        </div>
+
+        <div class="tool-order-bar">
+          <span class="tool-order-hint">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <circle cx="8" cy="6" r="1" />
+              <circle cx="16" cy="6" r="1" />
+              <circle cx="8" cy="12" r="1" />
+              <circle cx="16" cy="12" r="1" />
+              <circle cx="8" cy="18" r="1" />
+              <circle cx="16" cy="18" r="1" />
+            </svg>
+            <span>拖动排序</span>
+          </span>
+          <button id="resetToolOrder" type="button" title="恢复默认排序" disabled>
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M4 7h11a5 5 0 0 1 0 10H9" />
+              <path d="m8 3-4 4 4 4" />
+            </svg>
+            <span>恢复默认</span>
+          </button>
         </div>
 
         <nav class="tool-tabs" aria-label="工具切换">
@@ -116,6 +137,8 @@
             </span>
           </button>
         </nav>
+
+        <p id="toolOrderStatus" class="sr-only" aria-live="polite"></p>
 
         <div class="sidebar-actions">
           <button id="reloadTool" class="utility-action" type="button" title="刷新当前工具" aria-label="刷新当前工具">

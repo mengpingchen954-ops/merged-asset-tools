@@ -40,6 +40,18 @@ button {
   font: inherit;
 }
 
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
 svg {
   width: 20px;
   height: 20px;
@@ -63,8 +75,8 @@ svg {
   min-width: 0;
   min-height: 0;
   display: grid;
-  grid-template-rows: auto 1fr auto;
-  gap: 18px;
+  grid-template-rows: auto auto 1fr auto;
+  gap: 12px;
   padding: 16px;
   border: 1px solid var(--line);
   border-radius: 8px;
@@ -122,6 +134,65 @@ h1 {
   line-height: 1.35;
 }
 
+.tool-order-bar,
+.tool-order-hint,
+#resetToolOrder {
+  display: flex;
+  align-items: center;
+}
+
+.tool-order-bar {
+  min-width: 0;
+  justify-content: space-between;
+  gap: 8px;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.tool-order-hint {
+  gap: 5px;
+  white-space: nowrap;
+}
+
+.tool-order-hint svg,
+#resetToolOrder svg {
+  width: 16px;
+  height: 16px;
+}
+
+.tool-order-hint circle,
+.tool-order-handle circle {
+  fill: currentColor;
+  stroke: none;
+}
+
+#resetToolOrder {
+  min-width: 0;
+  gap: 4px;
+  padding: 3px 5px;
+  border: 0;
+  border-radius: 5px;
+  background: transparent;
+  color: #0879b9;
+  cursor: pointer;
+  font-size: 12px;
+}
+
+#resetToolOrder:hover:not(:disabled) {
+  background: var(--blue-soft);
+}
+
+#resetToolOrder:focus-visible,
+.tool-order-handle:focus-visible {
+  outline: 2px solid var(--blue-strong);
+  outline-offset: 2px;
+}
+
+#resetToolOrder:disabled {
+  opacity: 0.42;
+  cursor: default;
+}
+
 .tool-tabs {
   min-width: 0;
   min-height: 0;
@@ -131,6 +202,17 @@ h1 {
   overflow-y: auto;
   scrollbar-width: thin;
   scrollbar-color: #b9dff5 transparent;
+}
+
+.tool-item {
+  position: relative;
+  flex: 0 0 auto;
+  border-radius: 8px;
+  transition: opacity 120ms ease;
+}
+
+.tool-item.is-dragging {
+  opacity: 0.55;
 }
 
 .tool-tabs::-webkit-scrollbar {
@@ -150,7 +232,7 @@ h1 {
   min-height: 74px;
   justify-content: flex-start;
   gap: 12px;
-  padding: 12px;
+  padding: 12px 48px 12px 12px;
   border: 1px solid var(--line);
   border-radius: 8px;
   background: var(--surface-2);
@@ -163,6 +245,47 @@ h1 {
     color 160ms ease,
     box-shadow 160ms ease,
     transform 160ms ease;
+}
+
+.tool-order-handle {
+  position: absolute;
+  top: 50%;
+  right: 9px;
+  width: 30px;
+  height: 38px;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  border: 0;
+  border-radius: 7px;
+  background: transparent;
+  color: #83a3b7;
+  cursor: grab;
+  touch-action: none;
+  transform: translateY(-50%);
+}
+
+.tool-order-handle:hover {
+  background: rgba(7, 136, 216, 0.08);
+  color: var(--blue-strong);
+}
+
+.tool-order-handle:active {
+  cursor: grabbing;
+}
+
+.tool-order-handle svg {
+  width: 17px;
+  height: 22px;
+}
+
+.tool-tab.is-active + .tool-order-handle {
+  color: rgba(255, 255, 255, 0.8);
+}
+
+.tool-tab.is-active + .tool-order-handle:hover {
+  background: rgba(255, 255, 255, 0.16);
+  color: #ffffff;
 }
 
 .tool-tab:hover,
@@ -362,7 +485,7 @@ h1 {
 
   .tool-sidebar {
     padding: 10px;
-    gap: 12px;
+    gap: 10px;
   }
 
   .brand {
@@ -372,19 +495,45 @@ h1 {
 
   .brand div:last-child,
   .tab-copy,
-  .utility-action span {
+  .utility-action span,
+  .tool-order-bar span span,
+  #resetToolOrder span {
     display: none;
+  }
+
+  .tool-order-bar {
+    justify-content: center;
+    gap: 4px;
+  }
+
+  .tool-order-hint,
+  #resetToolOrder {
+    width: 24px;
+    height: 24px;
+    justify-content: center;
+    padding: 0;
   }
 
   .tool-tab {
     min-height: 56px;
-    justify-content: center;
-    padding: 8px;
+    justify-content: flex-start;
+    padding: 6px 24px 6px 4px;
   }
 
   .tab-icon {
-    width: 36px;
-    height: 36px;
+    width: 30px;
+    height: 30px;
+  }
+
+  .tool-order-handle {
+    right: 2px;
+    width: 20px;
+    height: 34px;
+  }
+
+  .tool-order-handle svg {
+    width: 13px;
+    height: 20px;
   }
 
   .sidebar-actions {
