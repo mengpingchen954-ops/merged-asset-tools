@@ -10,6 +10,7 @@ const toolLabels = {
   cocos: "Cocos HTML 压缩",
   gif: "序列帧压缩",
   "green-screen": "绿幕视频转序列帧",
+  extractor: "构建包素材提取",
   model: "FBX / GLB 模型压缩",
   vfx: "特效贴图生成",
   vector: "一键抠图",
@@ -19,6 +20,7 @@ const toolDescriptions = {
   cocos: "拖入 Cocos 单文件 HTML，压缩内嵌图片与 MP3 并导出 5MB 提交包。",
   gif: "本地处理 GIF、MP4 和 PNG 序列，导出 PNG 序列帧或 Cocos 资源。",
   "green-screen": "拖入任意纯色背景 MP4、MOV 或 GIF，在浏览器本地抠像并导出透明 PNG 序列 ZIP。",
+  extractor: "导入单文件 HTML，一键提取并打包下载 UI 图片、图标、音效与音乐，同时保留玩法拆解能力。",
   model: "本地导入 FBX 或 GLB，默认输出可直接导入 Cocos Creator 3.8.3 的标准 GLB，并通过减面降低模型内存。",
   vfx: "上传特效参考图，生成光条、碎片、爆闪和柔光四类透明 PNG 粒子贴图。",
   vector: "载入图片后自动抠图分离素材，支持 SVG、PNG 和批量导出。",
@@ -37,7 +39,11 @@ function setActiveTool(tool) {
   }
 
   for (const frame of frames) {
-    frame.classList.toggle("is-active", frame.dataset.tool === tool);
+    const isActive = frame.dataset.tool === tool;
+    frame.classList.toggle("is-active", isActive);
+    if (isActive && !frame.getAttribute("src")) {
+      frame.setAttribute("src", frame.dataset.src);
+    }
   }
 
   statusText.textContent = toolLabels[tool];
@@ -59,13 +65,15 @@ tabs.forEach((tab) => {
 
 reloadButton.addEventListener("click", () => {
   const frame = getActiveFrame();
-  if (frame?.contentWindow) frame.contentWindow.location.reload();
+  if (!frame) return;
+  if (!frame.getAttribute("src")) frame.setAttribute("src", frame.dataset.src);
+  else if (frame.contentWindow) frame.contentWindow.location.reload();
 });
 
 openButton.addEventListener("click", () => {
   const frame = getActiveFrame();
   if (!frame) return;
-  window.open(frame.getAttribute("src"), "_blank", "noopener");
+  window.open(frame.getAttribute("src") || frame.dataset.src, "_blank", "noopener");
 });
 
 window.addEventListener("hashchange", () => setActiveTool(activeToolFromHash()));

@@ -1,0 +1,264 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>构建包素材提取｜素材工具台</title>
+  <style>
+    :root{--ink:#17212b;--muted:#6b7882;--line:#dce5e7;--paper:#f4f7f6;--panel:#fff;--teal:#079e9a;--teal2:#ddf4f1;--orange:#e88943;--orange2:#fff0e4;--blue:#3973d0;--blue2:#e7eefc;--shadow:0 16px 38px rgba(23,33,43,.07)}
+    *{box-sizing:border-box}body{margin:0;background:var(--paper);color:var(--ink);font:14px/1.55 ui-sans-serif,-apple-system,BlinkMacSystemFont,"Segoe UI","Microsoft YaHei",sans-serif}button,textarea,input{font:inherit}button{cursor:pointer}.app{min-height:100vh;display:grid;grid-template-columns:238px minmax(0,1fr)}
+    aside{padding:22px 16px;border-right:1px solid var(--line);background:#fbfcfb;display:flex;flex-direction:column;gap:20px}.brand{display:flex;align-items:center;gap:11px;padding:0 7px}.brandmark{width:36px;height:36px;border-radius:9px;display:grid;place-items:center;background:var(--ink);color:#fff;font-weight:800}.brand strong,.brand small{display:block}.brand small{font-size:11px;color:var(--muted)}.side-title{padding:0 8px;color:var(--muted);font-size:10px;letter-spacing:.12em;text-transform:uppercase}.steps{display:grid;gap:7px}.step{display:flex;gap:9px;padding:10px;border:1px solid transparent;border-radius:9px;color:var(--muted)}.step:first-child{border-color:#bce3df;background:var(--teal2);color:var(--ink)}.num{flex:0 0 24px;height:24px;display:grid;place-items:center;border:1px solid var(--line);border-radius:7px;background:#fff;font-size:10px;font-weight:800}.step b,.step span{display:block}.step b{font-size:12px}.step span{font-size:10px}.privacy{margin-top:auto;padding:16px 8px 0;border-top:1px solid var(--line);font-size:11px;color:var(--muted)}
+    main{min-width:0;padding:26px clamp(16px,3vw,44px) 48px}.top{display:flex;justify-content:space-between;gap:18px;align-items:flex-start;margin-bottom:20px}h1,h2,h3,p{margin:0}h1{font-size:clamp(25px,3vw,36px);line-height:1.16;letter-spacing:-.03em}.sub{max-width:760px;margin-top:8px;color:var(--muted)}.eyebrow{font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}.actions{display:flex;gap:8px;flex-wrap:wrap}.btn{min-height:38px;padding:0 13px;border:1px solid var(--line);border-radius:8px;background:#fff;color:var(--ink);font-weight:750}.btn:hover{border-color:#9fb5b9}.btn.primary{background:var(--ink);border-color:var(--ink);color:#fff}.btn:disabled{opacity:.42;cursor:not-allowed}
+    .drop{display:flex;align-items:center;justify-content:space-between;gap:18px;padding:24px;border:1px dashed #9bbdbf;border-radius:12px;background:#f0faf9;transition:.2s}.drop.drag{background:var(--teal2);border-color:var(--teal)}.dropcopy{display:flex;align-items:center;gap:14px}.dropicon{width:44px;height:44px;border-radius:11px;background:var(--teal);color:#fff;display:grid;place-items:center;font-size:20px;font-weight:800}.drop strong,.drop span{display:block}.drop span{font-size:12px;color:var(--muted)}#file{display:none}
+    .empty{min-height:410px;display:grid;place-items:center;text-align:center;color:var(--muted)}.emptymark{width:58px;height:58px;margin:0 auto 12px;display:grid;place-items:center;border:1px solid var(--line);border-radius:16px;background:#fff;color:var(--teal);font-size:23px}.empty strong{display:block;color:var(--ink);font-size:16px}.hidden{display:none!important}
+    .summary{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:10px;margin:20px 0}.metric{min-width:0;padding:13px;border:1px solid var(--line);border-radius:10px;background:#fff}.metric label,.metric small{display:block;color:var(--muted);font-size:10px}.metric b{display:flex;align-items:center;min-height:43px;margin:3px 0;font-size:16px;line-height:1.18;overflow-wrap:anywhere}
+    .tabs{display:flex;gap:4px;border-bottom:1px solid var(--line);margin-bottom:17px}.tab{padding:9px 12px;border:0;border-bottom:2px solid transparent;background:none;color:var(--muted);font-weight:750}.tab.active{border-color:var(--teal);color:var(--ink)}.grid{display:grid;grid-template-columns:minmax(0,1.25fr) minmax(290px,.75fr);gap:15px}.panel{min-width:0;padding:19px;border:1px solid var(--line);border-radius:11px;background:#fff;box-shadow:var(--shadow)}.panel+.panel{margin-top:15px}.panelhead{display:flex;justify-content:space-between;gap:10px;align-items:center;margin-bottom:14px}.panel h2{font-size:17px;letter-spacing:-.01em}.panel h3{font-size:12px;margin:18px 0 6px}.status{font-size:11px;color:var(--muted)}
+    .callout{padding:12px 13px;border-left:3px solid var(--teal);border-radius:0 8px 8px 0;background:#f1fbfa}.callout.blue{border-color:var(--blue);background:var(--blue2)}.callout.orange{border-color:var(--orange);background:var(--orange2)}.tags{display:flex;flex-wrap:wrap;gap:6px}.tag{padding:4px 9px;border:1px solid var(--line);border-radius:999px;background:#fafcfc;color:#3a4a54;font-size:11px}.tag.accent{border-color:#9ddad4;background:var(--teal2);color:#087b78}.signals{display:grid;gap:8px}.signal{display:grid;grid-template-columns:125px 1fr;gap:8px;padding-bottom:8px;border-bottom:1px solid #edf1f2}.signal:last-child{border-bottom:0}.signal b,.signal span{font-size:11px}.signal span{color:var(--muted)}dl{display:grid;grid-template-columns:105px 1fr;gap:7px 10px;margin:0;font-size:11px}dt{color:var(--muted)}dd{margin:0;word-break:break-word}.stack{display:grid;gap:9px}
+    textarea{width:100%;min-height:120px;padding:10px;border:1px solid var(--line);border-radius:8px;resize:vertical;color:var(--ink)}.brief{white-space:pre-wrap;padding:13px;border:1px solid #dceae6;border-radius:8px;background:#f7faf9;font-size:12px}.evidence{display:grid;gap:9px}details{border:1px solid var(--line);border-radius:8px;background:#fff}summary{padding:11px 13px;cursor:pointer;font-weight:750}.detail{padding:11px 13px;border-top:1px solid var(--line)}pre{max-height:270px;overflow:auto;margin:0;padding:10px;border-radius:7px;background:#f5f8f7;white-space:pre-wrap;word-break:break-word;font:10px/1.5 ui-monospace,SFMono-Regular,Consolas,monospace;color:#384852}
+    .resources{display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:9px}.resource{margin:0;overflow:hidden;border:1px solid var(--line);border-radius:8px;background:#fafcfc}.resource img{display:block;width:100%;height:92px;object-fit:contain;background:#edf2f2}.resource figcaption{padding:7px 7px 3px;font-size:10px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.asset-actions{display:flex;gap:5px;padding:5px 7px 8px}.asset-btn{min-height:26px;padding:0 7px;border:1px solid var(--line);border-radius:6px;background:#fff;color:var(--ink);font-size:10px;font-weight:750}.asset-btn:hover{border-color:var(--teal);color:var(--teal)}.audio-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(245px,1fr));gap:9px}.audio-card{min-width:0;padding:11px;border:1px solid var(--line);border-radius:8px;background:#fafcfc}.audio-card strong{display:block;font-size:11px}.audio-card audio{display:block;width:100%;height:32px;margin:8px 0}.audio-card .asset-actions{padding:0}.preview{width:100%;height:570px;border:1px solid var(--line);border-radius:8px;background:#111820}
+    .entity-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:10px}.entity-card,.scene-card{min-width:0;padding:13px;border:1px solid var(--line);border-radius:9px;background:#fafcfc}.entity-card h3,.scene-card h3{margin:0 0 5px;font-size:13px}.entity-card p,.scene-card p{font-size:11px;color:var(--muted)}.entity-meta{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-top:10px;font-size:10px;color:var(--muted)}.confidence-chip{padding:3px 7px;border:1px solid #b7dcd7;border-radius:999px;background:var(--teal2);color:#087b78;font-size:10px;font-weight:750}.confidence-chip.low{border-color:#f0d0b5;background:var(--orange2);color:#9b5a24}.scene-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:10px}.scene-card{display:grid;grid-template-columns:64px minmax(0,1fr);gap:11px;align-items:center}.scene-icon{width:64px;height:64px;display:grid;place-items:center;border-radius:8px;background:var(--blue2);color:var(--blue);font-size:22px;font-weight:800}.scene-card p{margin:0}.frame-strip{display:grid;grid-template-columns:repeat(auto-fill,minmax(76px,1fr));gap:7px;margin-top:11px}.frame-chip{overflow:hidden;border:1px solid var(--line);border-radius:7px;background:#fff}.frame-chip img{display:block;width:100%;height:62px;object-fit:contain;background:#edf2f2}.frame-chip span{display:block;padding:4px 5px;font-size:9px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.analysis-note{margin-top:12px;padding:10px 11px;border-left:3px solid var(--blue);border-radius:0 8px 8px 0;background:var(--blue2);font-size:11px;color:#355d9b}
+    @media(max-width:1000px){.app{grid-template-columns:1fr}aside{border-right:0;border-bottom:1px solid var(--line);padding:14px}.steps{grid-template-columns:repeat(4,1fr)}.privacy{display:none}.summary{grid-template-columns:repeat(3,1fr)}}@media(max-width:720px){main{padding:20px 13px 36px}.top,.drop{display:block}.actions{margin-top:14px}.drop .btn{margin-top:14px}.steps{grid-template-columns:repeat(2,1fr)}.summary{grid-template-columns:repeat(2,1fr)}.grid{grid-template-columns:1fr}.signal{grid-template-columns:1fr;gap:2px}.tabs{overflow:auto}.scene-card{grid-template-columns:52px minmax(0,1fr)}.scene-icon{width:52px;height:52px}.entity-grid{grid-template-columns:1fr}.frame-strip{grid-template-columns:repeat(4,minmax(0,1fr))}}
++    /* Integrated asset-download workspace */
+    :root{--paper:#eef8ff;--panel:#fff;--line:#cfe5f4;--ink:#102436;--muted:#637789;--blue:#28a9f4;--blue-strong:#0788d8;--blue2:#dff4ff;--teal:#0f9f8f;--teal2:#e7f8f5;--shadow:0 10px 24px rgba(19,97,147,.08)}
+    body{background:var(--paper);font-family:Inter,"Microsoft YaHei","PingFang SC",system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
+    button:focus-visible,textarea:focus-visible,input:focus-visible{outline:3px solid rgba(56,189,248,.28);outline-offset:2px}
+    .app-shell{min-height:100vh}.topbar{position:sticky;top:0;z-index:20;min-height:72px;display:flex;align-items:center;justify-content:space-between;gap:18px;padding:14px 20px;border-bottom:1px solid var(--line);background:rgba(255,255,255,.95);backdrop-filter:blur(14px)}
+    .brand{padding:0}.brandmark{width:40px;height:40px;display:grid;place-items:center;flex:0 0 auto;border-radius:8px;background:var(--blue);box-shadow:0 8px 18px rgba(40,169,244,.22)}
+    .brandmark svg,.button-icon,.dropicon svg,.feature-icon svg,.emptymark svg{width:21px;height:21px;fill:none;stroke:currentColor;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round}
+    .brand strong{font-size:16px;line-height:1.25}.brand small{margin-top:2px;font-size:12px}.top-actions,.actions{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+    .workspace{width:min(1440px,100%);margin:0 auto;padding:18px}.intro-panel{padding:clamp(22px,4vw,42px);border:1px solid var(--line);border-radius:10px;background:#fff;box-shadow:var(--shadow)}
+    .intro-row{display:grid;grid-template-columns:minmax(0,1.15fr) minmax(360px,.85fr);gap:clamp(22px,4vw,52px);align-items:center}.intro-copy h1{max-width:760px;font-size:clamp(28px,4vw,44px);line-height:1.08;letter-spacing:-.035em}.intro-copy p{max-width:760px;margin-top:13px;color:var(--muted);font-size:15px}
+    .download-features{display:grid;gap:10px}.feature-row{display:grid;grid-template-columns:42px minmax(0,1fr) auto;align-items:center;gap:12px;min-height:68px;padding:12px 14px;border:1px solid var(--line);border-radius:8px;background:#f5fbff}
+    .feature-icon{width:42px;height:42px;display:grid;place-items:center;border-radius:8px;color:#087c72;background:var(--teal2)}.feature-row strong,.feature-row small{display:block}.feature-row strong{font-size:14px}.feature-row small{margin-top:2px;color:var(--muted);font-size:12px}.feature-format{color:#087c72;font-size:12px;font-weight:750}
+    .drop{margin-top:28px;padding:20px;border-color:#84c9dc;border-radius:10px;background:#f0fbff}.drop.drag{border-color:var(--blue);background:var(--blue2);box-shadow:0 0 0 3px rgba(40,169,244,.12)}.dropicon{width:46px;height:46px;display:grid;place-items:center;flex:0 0 auto;border-radius:8px;background:var(--blue)}.drop span{margin-top:3px}
+    .btn,.asset-btn{min-height:38px;display:inline-flex;align-items:center;justify-content:center;gap:8px;padding:0 13px;border:1px solid var(--line);border-radius:8px;background:#fff;color:var(--ink);font-size:13px;font-weight:720;white-space:nowrap;transition:transform .16s ease,background-color .16s ease,border-color .16s ease,color .16s ease}
+    .btn:hover:not(:disabled),.asset-btn:hover:not(:disabled){transform:translateY(-1px);border-color:#a9d7f2}.btn.primary{border-color:var(--blue);background:var(--blue);color:#fff;box-shadow:0 8px 18px rgba(40,169,244,.2)}.btn.primary:hover:not(:disabled){border-color:var(--blue-strong);background:var(--blue-strong)}
+    .btn.download{border-color:var(--teal);background:var(--teal);color:#fff;box-shadow:0 8px 18px rgba(15,159,143,.18)}.btn.download:hover:not(:disabled){border-color:#087c72;background:#087c72}.btn:disabled,.asset-btn:disabled{cursor:not-allowed;opacity:.46}
+    .empty{min-height:260px;padding:36px 18px}.emptymark{width:58px;height:58px;border-radius:10px;color:var(--blue)}.empty p{margin-top:5px}
+    .summary{gap:10px;margin:18px 0 12px}.metric{padding:14px;border-radius:8px;box-shadow:var(--shadow)}.metric.is-download{border-color:#a7ded7;background:var(--teal2)}.metric label,.metric small{font-size:11px}.metric b{min-height:36px;font-size:20px}.metric.is-download b{color:#087c72}
+    .download-hub{display:flex;align-items:center;justify-content:space-between;gap:20px;margin:12px 0 16px;padding:18px;border:1px solid #a7ded7;border-radius:10px;background:var(--teal2)}.download-hub h2{font-size:18px}.download-hub p{margin-top:4px;color:#3f716b;font-size:12px}.download-hub .actions{justify-content:flex-end}.bundle-status{min-width:100%;color:#3f716b;font-size:12px;text-align:right}
+    .tabs{margin-bottom:14px;overflow-x:auto;scrollbar-width:thin}.tab{min-height:42px;padding:0 13px;white-space:nowrap}.tab.active{border-color:var(--blue)}
+    .panel{padding:18px;border-radius:8px}.panel+.panel{margin-top:14px}.section-label{color:var(--muted);font-size:11px}.resource{border-radius:8px;background:#f5fbff}.resources{grid-template-columns:repeat(auto-fill,minmax(152px,1fr));gap:10px}.resource img{height:118px;background:linear-gradient(45deg,#eaf7ff 25%,transparent 25%),linear-gradient(-45deg,#eaf7ff 25%,transparent 25%),linear-gradient(45deg,transparent 75%,#eaf7ff 75%),linear-gradient(-45deg,transparent 75%,#eaf7ff 75%);background-color:#fff;background-position:0 0,0 7px,7px -7px,-7px 0;background-size:14px 14px}
+    .resource figcaption{padding:9px 9px 3px;white-space:normal}.resource figcaption strong,.resource figcaption span{display:block}.resource figcaption strong{overflow:hidden;color:var(--ink);font-size:12px;text-overflow:ellipsis;white-space:nowrap}.resource figcaption span{margin-top:2px;color:var(--muted);font-size:10px}.asset-actions{padding:7px 9px 10px}.asset-btn{min-height:30px;padding:0 9px;font-size:11px}.audio-grid{grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:10px}.audio-card{padding:13px;border-radius:8px;background:#f5fbff}.audio-card strong{font-size:12px}.audio-card small{display:block;margin-top:2px;color:var(--muted)}.audio-card audio{height:34px;margin:10px 0}
+    @media(max-width:1100px){.intro-row{grid-template-columns:1fr}.download-hub{align-items:flex-start;flex-direction:column}.download-hub .actions{justify-content:flex-start}.bundle-status{text-align:left}}
+    @media(max-width:760px){.topbar{align-items:flex-start;flex-direction:column}.top-actions{width:100%}.top-actions .btn{flex:1 1 140px}.workspace{padding:10px}.intro-panel{padding:20px 15px}.feature-row{grid-template-columns:42px minmax(0,1fr)}.feature-format{display:none}.drop{align-items:stretch;display:flex;flex-direction:column}.drop .btn{width:100%;margin-top:0}.download-hub .actions,.download-hub .btn{width:100%}.panelhead{align-items:flex-start;flex-direction:column}}
+  </style>
+</head>
+<body>
+<div class="app-shell">
+  <header class="topbar">
+    <div class="brand">
+      <div class="brandmark" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 5h16v14H4z"/><path d="m8 13 3 3 5-6 4 5"/><path d="M12 21v-5"/><path d="m9.5 18.5 2.5 2.5 2.5-2.5"/></svg></div>
+      <div><strong>构建包素材提取</strong><small>UI 图片与音频下载</small></div>
+    </div>
+    <div class="top-actions">
+      <button class="btn" id="previewBtn" disabled>运行预览</button>
+      <button class="btn" id="exportBtn" disabled>导出分析</button>
+      <button class="btn download" id="downloadBundleBtn" disabled><svg class="button-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12"/><path d="m7 10 5 5 5-5"/><path d="M5 20h14"/></svg>下载全部素材</button>
+    </div>
+  </header>
+
+  <main class="workspace">
+    <section class="intro-panel">
+      <div class="intro-row">
+        <div class="intro-copy">
+          <h1>从游戏构建包里，直接拿到 UI 与音频</h1>
+          <p>拖入 Cocos 或 playable 单文件 HTML，本地提取内嵌图片、图标、音效与音乐。可单独预览下载，也可按 UI 图片和音频分类打包为 ZIP。</p>
+        </div>
+        <div class="download-features" aria-label="可下载素材类型">
+          <div class="feature-row"><span class="feature-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="8.5" cy="9" r="1.5"/><path d="m5 17 4-4 3 3 3-4 4 5"/></svg></span><span><strong>UI 图片与图标</strong><small>逐张预览，统一转换为透明 PNG</small></span><span class="feature-format">PNG / ZIP</span></div>
+          <div class="feature-row"><span class="feature-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M9 18V5l10-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="16" cy="16" r="3"/></svg></span><span><strong>音效与音乐</strong><small>在线试听，保留 MP3、WAV、OGG 等原格式</small></span><span class="feature-format">AUDIO / ZIP</span></div>
+          <div class="feature-row"><span class="feature-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 7h16v13H4z"/><path d="M8 7V4h8v3"/><path d="M12 10v6"/><path d="m9 13 3 3 3-3"/></svg></span><span><strong>全部素材一键打包</strong><small>图片、音频与分析报告分目录整理</small></span><span class="feature-format">ALL ASSETS</span></div>
+        </div>
+      </div>
+      <section class="drop" id="dropzone">
+        <div class="dropcopy"><div class="dropicon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 16V4"/><path d="m7 9 5-5 5 5"/><path d="M5 20h14"/></svg></div><div><strong>拖入 Cocos / Playable HTML 构建包</strong><span>文件只在当前浏览器中处理，不会上传；建议单文件 50 MB 以内。</span></div></div>
+        <div><input id="file" type="file" accept=".html,.htm,text/html"><button class="btn primary" id="chooseBtn">选择 HTML 并提取</button></div>
+      </section>
+    </section>
+
+    <section class="empty" id="empty"><div><div class="emptymark" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 7h16v13H4z"/><path d="M8 7V4h8v3"/><path d="M12 10v6"/><path d="m9 13 3 3 3-3"/></svg></div><strong>等待一个构建包</strong><p>导入后会优先打开素材下载中心，并展示可下载的 UI 图片与音频。</p></div></section>
+
+    <section class="hidden" id="results">
+      <div class="summary" id="summary"></div>
+      <section class="download-hub">
+        <div><h2>素材下载中心</h2><p>自动按 ui-images / audio 文件夹整理；全部素材包会附带一份分析报告。</p></div>
+        <div class="actions">
+          <button class="btn" id="downloadAllPng" disabled>下载 UI 图片 ZIP</button>
+          <button class="btn" id="downloadAllAudio" disabled>下载音频 ZIP</button>
+          <button class="btn download" id="downloadAllAssets" disabled><svg class="button-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12"/><path d="m7 10 5 5 5-5"/><path d="M5 20h14"/></svg>下载全部素材 ZIP</button>
+          <div class="bundle-status" id="bundleStatus">已就绪</div>
+        </div>
+      </section>
+
+      <nav class="tabs" aria-label="分析结果"><button class="tab active" data-tab="resources">素材下载</button><button class="tab" data-tab="insight">创意拆解</button><button class="tab" data-tab="entities">场景 / 角色 / 动作</button><button class="tab" data-tab="evidence">证据与代码</button><button class="tab" data-tab="preview">运行预览</button></nav>
+
+      <section id="tab-resources" class="tabview">
+        <article class="panel"><div class="panelhead"><div><div class="section-label">UI / IMAGE ASSETS</div><h2>UI 图片与图标</h2></div><span class="status" id="resourceStatus"></span></div><div class="resources" id="resources"></div></article>
+        <article class="panel"><div class="panelhead"><div><div class="section-label">AUDIO ASSETS</div><h2>音效与音乐</h2></div><span class="status" id="audioStatus"></span></div><div class="audio-grid" id="audioGrid"></div></article>
+      </section>
+
+      <section id="tab-insight" class="tabview hidden">
+        <div class="grid">
+          <div>
+            <article class="panel">
+              <div class="panelhead"><div><div class="section-label">CREATIVE BRIEF</div><h2 id="gameTitle">创意拆解</h2></div><span class="status" id="confidence"></span></div>
+              <div class="callout" id="oneLine"></div>
+              <h3>游戏类型与交互</h3><div class="tags" id="typeTags"></div><div class="signals" id="signals"></div>
+              <h3>核心循环</h3><div class="callout blue" id="coreLoop"></div>
+              <h3>玩家目标与反馈</h3><div class="callout orange" id="feedback"></div>
+            </article>
+            <article class="panel"><div class="panelhead"><div><div class="section-label">TRANSFER</div><h2>迁移到我的游戏</h2></div></div><p class="status" style="margin-bottom:9px">描述你的游戏，生成一份“保留机制、替换表达”的策划草案。</p><textarea id="ownGame" placeholder="例如：竖屏国风塔防，面向轻度玩家，核心是快速布阵……"></textarea><div class="actions" style="margin-top:9px"><button class="btn primary" id="briefBtn">生成借鉴草案</button></div><div class="brief hidden" id="brief" style="margin-top:12px"></div></article>
+          </div>
+          <div>
+            <article class="panel"><div class="panelhead"><div><div class="section-label">SIGNALS</div><h2>可验证信号</h2></div></div><dl id="metadata"></dl></article>
+            <article class="panel"><div class="panelhead"><div><div class="section-label">PALETTE & MOOD</div><h2>视觉线索</h2></div></div><div class="callout" id="visual"></div><div class="tags" id="colors" style="margin-top:11px"></div></article>
+            <article class="panel"><div class="panelhead"><div><div class="section-label">REFERENCE</div><h2>值得借鉴什么</h2></div></div><div class="stack" id="recommendations"></div></article>
+          </div>
+        </div>
+      </section>
+
+      <section id="tab-entities" class="tabview hidden"><article class="panel"><div class="panelhead"><div><div class="section-label">SCENE CANDIDATES</div><h2>场景候选</h2></div><span class="status" id="sceneStatus"></span></div><div class="scene-grid" id="sceneGrid"></div><div class="analysis-note">场景判断来自背景、地图、关卡和层级命名等静态证据；如果构建包把资源全部压缩成无名贴图，需要结合运行预览或原工程复核。</div></article><article class="panel"><div class="panelhead"><div><div class="section-label">CHARACTER & ACTION CANDIDATES</div><h2>角色、人物与动作</h2></div><div class="actions"><button class="asset-btn" id="downloadActionFrames" disabled>下载动作候选帧 PNG</button><span class="status" id="entityStatus"></span><span class="status" id="actionStatus"></span></div></div><div class="entity-grid" id="entityGrid"></div><div class="analysis-note">动作卡片展示代码和资源命名命中的候选状态，不等于完整动画语义。可识别到的图片会作为动作帧候选预览。</div></article></section>
+      <section id="tab-evidence" class="tabview hidden"><article class="panel"><div class="panelhead"><div><div class="section-label">EVIDENCE LEDGER</div><h2>证据账本</h2></div><span class="status">关键词用于定位，不等于完整语义。</span></div><div class="evidence" id="evidence"></div></article></section>
+      <section id="tab-preview" class="tabview hidden"><article class="panel"><div class="panelhead"><div><div class="section-label">SANDBOX</div><h2>构建包预览</h2></div><span class="status">仅在此处运行，使用隔离 iframe。</span></div><div class="callout orange" style="margin-bottom:12px">部分 playable 依赖广告宿主 SDK 或同源权限，在隔离预览中可能黑屏；静态素材提取不受影响。</div><iframe id="frame" class="preview" sandbox="allow-scripts"></iframe></article></section>
+    </section>
+  </main>
+</div>
+<script>
+const state={file:null,text:'',analysis:null,url:''};
+const $=s=>document.querySelector(s),uniq=a=>[...new Set(a.filter(Boolean))];
+const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const size=n=>n<1024?`${n} B`:n<1048576?`${(n/1024).toFixed(1)} KB`:`${(n/1048576).toFixed(2)} MB`;
+const matches=(s,re,limit=100)=>{const out=[];let m,r=new RegExp(re.source,re.flags.includes('g')?re.flags:re.flags+'g');while((m=r.exec(s))&&out.length<limit)out.push(m);return out};
+const count=(s,re)=>matches(s,re,10000).length;
+function assets(text,kind){const re=kind==='image'?/data:(image\/[\w.+-]+);base64,([A-Za-z0-9+/=]+)/gi:/data:(audio\/[\w.+-]+);base64,([A-Za-z0-9+/=]+)/gi;return matches(text,re,500).map((m,i)=>({mime:m[1],data:`data:${m[1]};base64,${m[2]}`,bytes:Math.floor(m[2].length*.75),index:i+1,hint:nearbyAssetHint(text,m.index,kind)}))}
+const groups={
+  '交互':[['点击/触摸',/click|tap|touch|pointerdown|pointerup|mousedown|mouseup/i],['拖拽/滑动',/drag|swipe|pointermove|mousemove/i],['键盘输入',/keydown|keyup|keyboard/i],['瞄准/方向',/aim|angle|rotate|target|arrow|bow|射击|弓/i]],
+  '循环':[['计分',/score|points|combo|得分|积分/i],['倒计时',/countdown|timer|timeleft|seconds|倒计时/i],['关卡/回合',/level|stage|round|wave|关卡|回合|波次/i],['胜负/重开',/gameover|game_over|win|lose|fail|restart|retry|胜利|失败|重开/i]],
+  '系统':[['碰撞/物理',/collision|collider|rigidbody|physics|velocity|gravity|碰撞|物理/i],['生命/血量',/health|lives|\bhp\b|生命|血量/i],['收集/奖励',/collect|reward|coin|gem|pickup|收集|奖励|金币/i],['Playable SDK',/playable|vsdk|rewarded|interstitial|广告/i]]
+};
+function engineOf(t){if(/cocos|cc\.director|cc\.game|cocoscreator/i.test(t))return'Cocos Creator';if(/playable\.js|vsdk|playable/i.test(t))return'Playable HTML / Webpack';if(/three\.js|threejs|webglrenderer|fbxloader|skinnedmesh/i.test(t))return'Three.js';if(/phaser/i.test(t))return'Phaser';if(/pixi/i.test(t))return'PixiJS';return'HTML5 Canvas / Web'}
+const sceneRules=[['背景/场景',/\b(?:background|backdrop|scene|environment|skybox)\b|背景|场景|环境/i,'可能是场景背景、前景或环境层'],['地图/关卡',/\b(?:tilemap|map|stage|level|platform|ground|floor|wall)\b|地图|关卡|平台|地面|墙体/i,'可能是地图块、关卡结构或碰撞环境']];
+const entityRules=[['玩家/主角',/\b(?:player|hero|avatar|character|main[_-]?role)\b|主角|玩家|人物|角色/i,'检测到玩家或主角命名线索'],['敌人/目标',/\b(?:enemy|monster|boss|foe|target|opponent)\b|敌人|怪物|首领|目标/i,'检测到敌人、目标或对手命名线索'],['NPC/道具',/\b(?:npc|item|prop|coin|gem|pickup|weapon)\b|道具|金币|宝石|武器/i,'检测到 NPC、道具或可收集物命名线索']];
+const actionRules=[['移动/跑动',/\b(?:move|walk|run|dash|slide|velocity)\b|移动|行走|跑动|冲刺|滑动/i,'可能存在移动、跑动或位移状态'],['攻击/射击',/\b(?:attack|shoot|fire|slash|strike|projectile|bullet)\b|攻击|射击|挥砍|投射物|子弹/i,'可能存在攻击、射击或投射物动作'],['跳跃/腾空',/\b(?:jump|bounce|doublejump|leap|fall)\b|跳跃|弹跳|腾空|下落/i,'可能存在跳跃、腾空或下落状态'],['受击/死亡',/\b(?:hurt|hit|damage|dead|death|die)\b|受击|命中|伤害|死亡/i,'可能存在受击、死亡或失败反馈'],['胜利/重开',/\b(?:win|success|lose|fail|gameover|restart|retry)\b|胜利|成功|失败|重开|再来一次/i,'可能存在胜利、失败和重试状态']];
+function nearbyAssetHint(text,index,kind){const context=text.slice(Math.max(0,index-260),index);const rules=kind==='image'?[['场景/背景',/\b(?:background|backdrop|scene|environment|sky)\b|背景|场景|环境/i],['角色/人物',/\b(?:player|hero|avatar|character|enemy|monster|boss|npc)\b|主角|玩家|角色|人物|敌人|怪物/i],['动作/特效',/\b(?:anim|frame|run|walk|attack|jump|hurt|fx|effect|animation)\b|动作|动画|特效/i],['UI/图标',/\b(?:button|btn|icon|panel|score|label|ui)\b|按钮|图标|面板|分数|界面/i]]:[['背景音乐/环境',/\b(?:bgm|music|ambient|background)\b|背景音乐|环境音/i],['动作反馈',/\b(?:click|tap|hit|shoot|win|lose|button)\b|点击|命中|射击|胜利|失败|按钮/i]];return rules.find(x=>x[1].test(context))?.[0]|| (kind==='image'?'未命名图片':'未命名音频')}
+function ruleCandidates(text,rules){return rules.map(([label,re,description])=>{const hits=matches(text,re,3);if(!hits.length)return null;return{label,score:count(text,re),confidence:hits.length>1?'高':'中',description,evidence:hits.map(m=>text.slice(Math.max(0,m.index-55),Math.min(text.length,m.index+String(m[0]).length+85)).replace(/\s+/g,' '))}}).filter(Boolean).sort((a,b)=>b.score-a.score)}
+function analyze(text,file){
+  let doc,title=file.name.replace(/\.html?$/i,'');try{doc=new DOMParser().parseFromString(text,'text/html');title=doc.title||title}catch{}
+  const images=assets(text,'image'),audio=assets(text,'audio'),signals=[],evidence=[];
+  const codeText=text.replace(/data:(?:image|audio)\/[\w.+-]+;base64,[A-Za-z0-9+/=]+/gi,' [embedded-asset] ');
+  const sceneCandidates=ruleCandidates(codeText,sceneRules),entityCandidates=ruleCandidates(codeText,entityRules),actionCandidates=ruleCandidates(codeText,actionRules);
+  const animationHits=matches(codeText,/AnimationClip|animation|spriteFrame|keyframes|tween|帧动画|动画|精灵帧/gi,8);
+  const actionAssets=images.filter(x=>/动作|动画|特效|未命名图片/.test(x.hint)).slice(0,8);
+  if(!sceneCandidates.length&&images.length)sceneCandidates.push({label:'场景/背景候选',score:images.length,confidence:'低',description:'未发现命名线索，暂以图片资源作为待复核候选',evidence:['内嵌图片未关联到明确场景名称。']});
+  if(!entityCandidates.length&&images.length)entityCandidates.push({label:'角色/人物候选',score:images.length,confidence:'低',description:'未发现角色命名线索，暂以图片资源作为待复核候选',evidence:['内嵌图片未关联到明确角色名称。']});
+  if(!actionCandidates.length&&animationHits.length)actionCandidates.push({label:'动画状态',score:animationHits.length,confidence:'中',description:'检测到动画、精灵帧或补间相关实现',evidence:animationHits.slice(0,3).map(m=>m[0])});
+  Object.entries(groups).forEach(([group,tests])=>tests.forEach(([label,re])=>{const n=count(text,re);if(n){signals.push({group,label,n});const samples=matches(text,re,3).map(m=>text.slice(Math.max(0,m.index-70),Math.min(text.length,m.index+String(m[0]).length+110)).replace(/\s+/g,' '));evidence.push({group,label,n,samples})}}));
+  const copyHints=uniq([
+    ...matches(text,/['"`]([A-Z][A-Z0-9 !?&'\-]{5,48})['"`]/g,80).map(m=>m[1].trim()),
+    ...matches(text,/['"`]([\u4e00-\u9fff][\u4e00-\u9fff，。！？、\s]{2,30})['"`]/g,80).map(m=>m[1].trim())
+  ]).filter(x=>x.includes(' ')||/[\u4e00-\u9fff]/.test(x)).slice(0,16);
+  if(copyHints.length)evidence.unshift({group:'文案',label:'界面/引导文案',n:copyHints.length,samples:copyHints});
+  const colorList=uniq(matches(text,/#[0-9a-f]{3,8}\b/gi,100).map(m=>m[0].toUpperCase())).slice(0,18);
+  const types=[['弓箭/瞄准',/archery|arrow|bow|target|aim|射箭|弓箭|瞄准/i,6],['点击/反应',/tap|click|touch|reaction|点击|反应/i,3],['跑酷/躲避',/runner|obstacle|dodge|跑酷|躲避|障碍/i,4],['合成/收集',/merge|collect|coin|gem|合成|收集|金币/i,3],['射击/弹道',/shoot|bullet|projectile|射击|子弹|弹道/i,4],['益智/规则',/puzzle|match|grid|logic|益智|消除|棋盘/i,3],['塔防/防守',/tower|defense|wave|turret|塔防|防守|炮塔/i,4],['生存/战斗',/survival|enemy|attack|damage|生存|敌人|攻击|伤害/i,3],['经营/模拟',/shop|customer|money|upgrade|经营|顾客|商店|升级/i,3],['竞速/驾驶',/race|car|vehicle|speed|竞速|赛车|车辆/i,4]].map(([label,re,w])=>({label,score:count(text,re)*w})).filter(x=>x.score).sort((a,b)=>b.score-a.score);
+  if(/VoodooArcheryClashGame/i.test(text)&&!types.some(x=>x.label==='弓箭/瞄准'))types.unshift({label:'弓箭/瞄准',score:20});
+  const core=types[0]?.label==='弓箭/瞄准'?'观察目标 → 调整方向/力度 → 释放投射物 → 命中或失败反馈 → 得分/重试':signals.some(x=>x.label==='倒计时')?'理解规则 → 限时操作 → 即时反馈 → 结算 → 重试':'进入主玩法 → 执行核心动作 → 获得反馈 → 达成目标或失败 → 结算';
+  const dark=colorList.filter(c=>{let h=c.slice(1),x=h.length===3?h.split('').map(v=>v+v).join(''):h.slice(0,6);return parseInt(x.slice(0,2),16)*.299+parseInt(x.slice(2,4),16)*.587+parseInt(x.slice(4,6),16)*.114<95}).length;
+  const art=/three\.js|threejs|webglrenderer|fbxloader|skinnedmesh/i.test(text)?'包体含 3D/WebGL 线索，可能使用轻量 3D 场景与模型表现。':dark>Math.max(2,colorList.length*.35)?'代码颜色偏深色与高对比，可能强调聚光、危险或强反馈。':'颜色和内嵌资源显示为轻量 playable 包体；具体角色、构图和材质应结合运行预览复核。';
+  const engine=engineOf(text),confidence=signals.length+images.length+audio.length>18?'证据较充分':'需要预览复核';
+  const tags=uniq([engine,types[0]?.label,signals.some(x=>x.label==='计分')&&'计分反馈',signals.some(x=>x.label==='倒计时')&&'短局倒计时',signals.some(x=>x.label==='瞄准/方向')&&'方向/瞄准',/pixi/i.test(text)&&'含 PixiJS 依赖',/playable|vsdk/i.test(text)&&'Playable 形态']);
+  const external=matches(text,/(?:src|href)=['"]([^'"]+)['"]/gi,50).map(m=>m[1]).filter(x=>!x.startsWith('data:')).slice(0,10);
+  return{title,engine,images,audio,signals,evidence,copyHints,colors:colorList,types,core,art,confidence,tags,external,chars:text.length,scripts:count(text,/<script\b/gi),styles:count(text,/<style\b/gi),sceneCandidates,entityCandidates,actionCandidates,animationHits,actionAssets};
+}
+function candidateCard(c,icon){return`<article class="entity-card"><h3>${esc(icon)} ${esc(c.label)}</h3><p>${esc(c.description)}</p><div class="entity-meta"><span>命中 ${c.score} 次</span><span class="confidence-chip ${c.confidence==='低'?'low':''}">${esc(c.confidence)}置信度</span></div><details style="margin-top:10px"><summary>查看证据</summary><div class="detail"><pre>${esc(c.evidence.join('\n\n'))}</pre></div></details></article>`}
+function renderEntityAnalysis(a){
+  const scenes=a.sceneCandidates.length?a.sceneCandidates:[{label:'未识别场景',score:0,confidence:'低',description:'没有足够静态命名证据，请打开运行预览。',evidence:['未发现 background、scene、map 等线索。']}];
+  const entities=a.entityCandidates.length?a.entityCandidates:[];
+  const actions=a.actionCandidates.length?a.actionCandidates:[{label:'未识别动作',score:0,confidence:'低',description:'没有足够的动作或动画命名证据，请打开运行预览。',evidence:['未发现 move、attack、jump、animation 等线索。']}];
+  $('#sceneStatus').textContent=`${scenes.length} 个候选`;
+  $('#sceneGrid').innerHTML=scenes.map(c=>`<article class="scene-card"><div class="scene-icon">▧</div><div><h3>${esc(c.label)}</h3><p>${esc(c.description)}</p><div class="entity-meta"><span>命中 ${c.score} 次</span><span class="confidence-chip ${c.confidence==='低'?'low':''}">${esc(c.confidence)}</span></div></div></article>`).join('');
+  $('#entityStatus').textContent=`${entities.length} 类角色 · ${actions.length} 类动作`;
+  const frameStrip=a.actionAssets.length?`<div class="frame-strip">${a.actionAssets.map((x,i)=>`<div class="frame-chip"><img loading="lazy" src="${x.data}" alt="动作候选帧 ${i+1}"><span>${esc(x.hint)} · ${i+1}</span></div>`).join('')}</div>`:'<p class="status" style="margin-top:11px">暂未找到可作为动作帧预览的图片资源。</p>';
+  $('#entityGrid').innerHTML=entities.map(c=>candidateCard(c,'◎')).concat(actions.map((c,index)=>`<article class="entity-card"><h3>✦ ${esc(c.label)}</h3><p>${esc(c.description)}</p><div class="entity-meta"><span>命中 ${c.score} 次</span><span class="confidence-chip ${c.confidence==='低'?'low':''}">${esc(c.confidence)}置信度</span></div><details style="margin-top:10px"><summary>查看动作证据</summary><div class="detail"><pre>${esc(c.evidence.join('\n\n'))}</pre></div></details>${index===0?frameStrip:''}</article>`)).join('')||'<span class="status">未发现明确的角色命名，请运行预览或提供原始工程。</span>';
+}
+function render(a){
+  $('#empty').classList.add('hidden');$('#results').classList.remove('hidden');
+  const metrics=[['UI / 图片',a.images.length,'可转 PNG',true],['音频',a.audio.length,'保留原格式',true],['可下载素材',a.images.length+a.audio.length,'支持 ZIP 打包',true],['构建包',size(state.file.size),'文件体积'],['引擎',a.engine,'运行形态']];
+  $('#summary').innerHTML=metrics.map(x=>`<div class="metric ${x[3]?'is-download':''}"><label>${esc(x[0])}</label><b>${esc(x[1])}</b><small>${esc(x[2])}</small></div>`).join('');
+  $('#gameTitle').textContent=a.title;$('#confidence').textContent=a.confidence;
+  $('#oneLine').textContent=`${a.engine} 构建包呈现出 ${a.types[0]?.label||'轻量小游戏'} 的创意骨架，核心循环是：${a.core}。`;
+  $('#typeTags').innerHTML=a.tags.map((x,i)=>`<span class="tag ${i===0?'accent':''}">${esc(x)}</span>`).join('');
+  $('#signals').innerHTML=(a.signals.length?a.signals:[{group:'提示',label:'未发现强信号',n:0}]).map(s=>`<div class="signal"><b>${esc(s.group)} · ${esc(s.label)}</b><span>${s.n?`代码/文本命中 ${s.n} 次`:'建议运行预览或提供原始工程'}</span></div>`).join('');
+  $('#coreLoop').textContent=a.core;
+  $('#feedback').textContent=`可确认的反馈线索：${a.signals.filter(s=>['计分','倒计时','胜负/重开','碰撞/物理','Playable SDK'].includes(s.label)).map(s=>s.label).join('、')||'静态代码未能确认，建议运行预览'}。`;
+  $('#metadata').innerHTML=[['文件',state.file.name],['字符数',a.chars.toLocaleString()],['脚本块',a.scripts],['样式块',a.styles],['界面文案',a.copyHints.length?a.copyHints.slice(0,4).join(' / '):'未提取'],['外部引用',a.external.length?a.external.join('、'):'无 / 资源可能全部内嵌']].map(x=>`<dt>${esc(x[0])}</dt><dd>${esc(x[1])}</dd>`).join('');
+  $('#visual').textContent=`${a.art} 当前结论仅基于静态颜色、资源数量与代码命名，不把推断冒充事实。`;
+  $('#colors').innerHTML=a.colors.length?a.colors.slice(0,12).map(c=>`<span class="tag" style="border-left:18px solid ${esc(c)}">${esc(c)}</span>`).join(''):'<span class="status">未提取到十六进制颜色</span>';
+  const rec=[['保留核心动作',`先保留“${a.types[0]?.label||'单一核心动作'}”作为 3 秒内可理解的动作。`],['复制反馈节奏','借鉴命中、失败、分数和重试的节奏；不要复制角色、资源与文案。'],['先验证短局','先做 20-60 秒一局，观察玩家多久理解目标，再扩展内容。'],['写成制作规格','把交互和循环信号转成状态机、输入表、反馈表和失败条件。']];
+  $('#recommendations').innerHTML=rec.map(x=>`<div class="callout"><b>${esc(x[0])}</b><div style="margin-top:3px">${esc(x[1])}</div></div>`).join('');
+  $('#evidence').innerHTML=(a.evidence.length?a.evidence:[{group:'提示',label:'未命中可解释关键词',n:0,samples:['逻辑可能已被深度压缩或封装。']}]).map(e=>`<details><summary>${esc(e.group)} / ${esc(e.label)} <span class="status">${e.n?`· ${e.n} 次`:''}</span></summary><div class="detail"><pre>${esc(e.samples.join('\n\n'))}</pre></div></details>`).join('');
+  $('#resourceStatus').textContent=a.images.length?`展示 ${Math.min(60,a.images.length)} / ${a.images.length} 张；ZIP 包含全部图片`:'没有发现内嵌图片';
+  $('#resources').innerHTML=a.images.length?a.images.slice(0,60).map((x,i)=>`<figure class="resource"><img loading="lazy" src="${x.data}" alt="${esc(x.hint)} ${x.index}"><figcaption><strong>${esc(x.hint)} ${String(i+1).padStart(2,'0')}</strong><span>${esc(x.mime)} · ${size(x.bytes)}</span></figcaption><div class="asset-actions"><button class="asset-btn" data-asset-kind="image" data-asset-index="${i}">下载 PNG</button></div></figure>`).join(''):'<span class="status">没有发现可直接预览的 base64 图片。</span>';
+  $('#audioStatus').textContent=a.audio.length?`${a.audio.length} 个音频可试听、单独下载或打包`:'没有发现内嵌音频';
+  $('#audioGrid').innerHTML=a.audio.length?a.audio.map((x,i)=>`<div class="audio-card"><strong>${esc(x.hint)} ${String(i+1).padStart(2,'0')}</strong><small>${esc(audioExtension(x.mime).toUpperCase())} · ${size(x.bytes)}</small><audio controls preload="metadata" src="${x.data}"></audio><div class="asset-actions"><button class="asset-btn" data-asset-kind="audio" data-asset-index="${i}">下载音频</button></div></div>`).join(''):'<span class="status">没有发现可试听的内嵌音频。</span>';
+  renderEntityAnalysis(a);
+  $('#downloadActionFrames').disabled=!a.actionAssets.length;$('#actionStatus').textContent=a.actionAssets.length?`候选帧 ${a.actionAssets.length} 张`:'无候选帧';
+  $('#downloadAllPng').disabled=!a.images.length;$('#downloadAllAudio').disabled=!a.audio.length;
+  $('#downloadAllAssets').disabled=!(a.images.length+a.audio.length);$('#downloadBundleBtn').disabled=!(a.images.length+a.audio.length);
+  $('#bundleStatus').textContent=`已提取 ${a.images.length} 张 UI / 图片与 ${a.audio.length} 个音频，可立即下载`;
+  $('#previewBtn').disabled=false;$('#exportBtn').disabled=false;
+  selectTab('resources');
+}
+function makeBrief(){const a=state.analysis,own=$('#ownGame').value.trim()||'我的游戏';const out=`# ${own} · 创意借鉴草案\n\n## 参考机制\n- 类型线索：${a.types[0]?.label||'轻量小游戏'}\n- 核心循环：${a.core}\n- 证据置信度：${a.confidence}\n\n## 保留与替换\n- 保留：短局、单一核心动作、即时反馈、结果后重试。\n- 替换：角色、场景、文案、视觉材质、目标和关卡节奏必须服务于“${own}”。\n\n## 首版玩法\n1. 3 秒内展示目标与可操作对象。\n2. 20-60 秒完成一局，至少有一次清晰的成功或失败反馈。\n3. 结算页给出分数、原因和再次尝试入口。\n\n## Cocos 落地清单\n- 状态：入口 / 玩法中 / 成功 / 失败 / 重开\n- 输入：从点击、触摸、拖拽中选择最短链路\n- 反馈：动画、音效、分数、镜头或震动\n- 验证：微信/抖音构建、包体、首屏加载和核心流程\n\n## 边界\n只借鉴机制、节奏和信息层级，不复制参考包的美术资产、代码或文案。`;$('#brief').textContent=out;$('#brief').classList.remove('hidden')}
+function audioExtension(mime){const map={'audio/mpeg':'mp3','audio/mp3':'mp3','audio/ogg':'ogg','audio/wav':'wav','audio/x-wav':'wav','audio/wave':'wav','audio/mp4':'m4a','audio/aac':'aac','audio/webm':'webm','audio/flac':'flac'};return map[mime.toLowerCase()]||'audio'}
+function saveBlob(blob,name){const url=URL.createObjectURL(blob),link=document.createElement('a');link.href=url;link.download=name;document.body.appendChild(link);link.click();link.remove();setTimeout(()=>URL.revokeObjectURL(url),2000)}
+function saveDataUrl(data,name){const link=document.createElement('a');link.href=data;link.download=name;document.body.appendChild(link);link.click();link.remove()}
+const pad=n=>String(n+1).padStart(3,'0');
+const baseName=()=>state.file?.name.replace(/\.[^.]+$/,'')||'game-assets';
+const safeHint=value=>String(value||'asset').replace(/[\\/:*?"<>|]/g,'-');
+function dataUrlBlob(data){const [header,payload]=data.split(',');const mime=header.match(/^data:([^;]+)/)?.[1]||'application/octet-stream';const bytes=Uint8Array.from(atob(payload),c=>c.charCodeAt(0));return new Blob([bytes],{type:mime})}
+function imageBlobAsPng(asset){return new Promise(resolve=>{const img=new Image();img.onload=()=>{try{const canvas=document.createElement('canvas');canvas.width=img.naturalWidth||img.width;canvas.height=img.naturalHeight||img.height;canvas.getContext('2d').drawImage(img,0,0);canvas.toBlob(blob=>resolve(blob||dataUrlBlob(asset.data)),'image/png')}catch{resolve(dataUrlBlob(asset.data))}};img.onerror=()=>resolve(dataUrlBlob(asset.data));img.src=asset.data})}
+async function imageAsPng(asset,index){saveBlob(await imageBlobAsPng(asset),`ui-${pad(index)}-${safeHint(asset.hint)}.png`)}
+function downloadAudio(asset,index){saveDataUrl(asset.data,`audio-${pad(index)}-${safeHint(asset.hint)}.${audioExtension(asset.mime)}`)}
+function reportData(){const a=state.analysis;return{generatedAt:new Date().toISOString(),file:{name:state.file.name,size:state.file.size},downloads:{images:a.images.length,audio:a.audio.length},analysis:{engine:a.engine,typeSignals:a.types,coreLoop:a.core,visualInference:a.art,tags:a.tags,confidence:a.confidence,signals:a.signals,uiCopy:a.copyHints,sceneCandidates:a.sceneCandidates,entityCandidates:a.entityCandidates,actionCandidates:a.actionCandidates,animationSignals:a.animationHits.map(m=>m[0]),metadata:{characters:a.chars,scripts:a.scripts,styles:a.styles,images:a.images.length,audio:a.audio.length,external:a.external}},transferBrief:$('#brief').textContent||null}}
+const zipEncoder=new TextEncoder();
+const crcTable=(()=>{const table=new Uint32Array(256);for(let n=0;n<256;n++){let c=n;for(let k=0;k<8;k++)c=(c&1)?0xedb88320^(c>>>1):c>>>1;table[n]=c>>>0}return table})();
+const set16=(view,offset,value)=>view.setUint16(offset,value,true),set32=(view,offset,value)=>view.setUint32(offset,value>>>0,true);
+function crc32(bytes){let crc=0xffffffff;for(const byte of bytes)crc=crcTable[(crc^byte)&0xff]^(crc>>>8);return(crc^0xffffffff)>>>0}
+function zipDate(){const now=new Date(),year=Math.max(1980,now.getFullYear());return{time:(now.getHours()<<11)|(now.getMinutes()<<5)|(now.getSeconds()>>1),date:((year-1980)<<9)|((now.getMonth()+1)<<5)|now.getDate()}}
+async function zipBytes(value){if(value instanceof Blob)return new Uint8Array(await value.arrayBuffer());if(value instanceof Uint8Array)return value;if(value instanceof ArrayBuffer)return new Uint8Array(value);return zipEncoder.encode(String(value))}
+class LocalZip{
+  constructor(root='',entries=[]){this.root=root;this.entries=entries}
+  folder(name){return new LocalZip(`${this.root}${String(name).replace(/\/$/,'')}/`,this.entries)}
+  file(name,data){this.entries.push({name:`${this.root}${name}`,data});return this}
+  async generateAsync(options,progress){
+    const localParts=[],centralParts=[],records=[];let localOffset=0;
+    for(let i=0;i<this.entries.length;i++){
+      const entry=this.entries[i],name=zipEncoder.encode(entry.name),data=await zipBytes(entry.data),crc=crc32(data),stamp=zipDate();
+      const local=new Uint8Array(30),lv=new DataView(local.buffer);set32(lv,0,0x04034b50);set16(lv,4,20);set16(lv,6,0x0800);set16(lv,8,0);set16(lv,10,stamp.time);set16(lv,12,stamp.date);set32(lv,14,crc);set32(lv,18,data.length);set32(lv,22,data.length);set16(lv,26,name.length);set16(lv,28,0);
+      localParts.push(local,name,data);records.push({name,data,crc,stamp,offset:localOffset});localOffset+=local.length+name.length+data.length;progress?.({percent:(i+1)/Math.max(1,this.entries.length)*70});
+    }
+    let centralSize=0;
+    for(const record of records){const central=new Uint8Array(46),cv=new DataView(central.buffer);set32(cv,0,0x02014b50);set16(cv,4,20);set16(cv,6,20);set16(cv,8,0x0800);set16(cv,10,0);set16(cv,12,record.stamp.time);set16(cv,14,record.stamp.date);set32(cv,16,record.crc);set32(cv,20,record.data.length);set32(cv,24,record.data.length);set16(cv,28,record.name.length);set16(cv,30,0);set16(cv,32,0);set16(cv,34,0);set16(cv,36,0);set32(cv,38,0);set32(cv,42,record.offset);centralParts.push(central,record.name);centralSize+=central.length+record.name.length}
+    const end=new Uint8Array(22),ev=new DataView(end.buffer);set32(ev,0,0x06054b50);set16(ev,4,0);set16(ev,6,0);set16(ev,8,records.length);set16(ev,10,records.length);set32(ev,12,centralSize);set32(ev,16,localOffset);set16(ev,20,0);progress?.({percent:100});return new Blob([...localParts,...centralParts,end],{type:'application/zip'})
+  }
+}
+function makeZip(){return new LocalZip()}
+async function addImagesToZip(zip,images,folderName,statusId){const folder=zip.folder(folderName);for(let i=0;i<images.length;i++){if(statusId)$(statusId).textContent=`正在整理图片 ${i+1} / ${images.length}…`;folder.file(`ui-${pad(i)}-${safeHint(images[i].hint)}.png`,await imageBlobAsPng(images[i]))}}
+function addAudioToZip(zip,audio,folderName){const folder=zip.folder(folderName);audio.forEach((asset,i)=>folder.file(`audio-${pad(i)}-${safeHint(asset.hint)}.${audioExtension(asset.mime)}`,dataUrlBlob(asset.data)))}
+async function finishZip(zip,name,status){status.textContent='正在生成 ZIP…';const blob=await zip.generateAsync({type:'blob'},meta=>{status.textContent=`正在生成 ZIP · ${Math.round(meta.percent)}%`});saveBlob(blob,name);status.textContent=`已下载 ${name}`}
+async function withDownloadTask(task){const buttons=[$('#downloadAllPng'),$('#downloadAllAudio'),$('#downloadAllAssets'),$('#downloadBundleBtn')];buttons.forEach(x=>x.disabled=true);try{await task()}catch(error){$('#bundleStatus').textContent=error.message||'打包失败，请重试'}finally{const a=state.analysis;$('#downloadAllPng').disabled=!a?.images.length;$('#downloadAllAudio').disabled=!a?.audio.length;$('#downloadAllAssets').disabled=!(a?.images.length+a?.audio.length);$('#downloadBundleBtn').disabled=!(a?.images.length+a?.audio.length)}}
+function downloadAllImages(){const a=state.analysis;if(!a?.images.length)return;return withDownloadTask(async()=>{const zip=makeZip();await addImagesToZip(zip,a.images,'ui-images','#bundleStatus');await finishZip(zip,`${baseName()}-UI图片.zip`,$('#bundleStatus'))})}
+function downloadAllAudio(){const a=state.analysis;if(!a?.audio.length)return;return withDownloadTask(async()=>{const zip=makeZip();$('#bundleStatus').textContent=`正在整理 ${a.audio.length} 个音频…`;addAudioToZip(zip,a.audio,'audio');await finishZip(zip,`${baseName()}-音频.zip`,$('#bundleStatus'))})}
+function downloadAllAssets(){const a=state.analysis;if(!a||!(a.images.length+a.audio.length))return;return withDownloadTask(async()=>{const zip=makeZip();if(a.images.length)await addImagesToZip(zip,a.images,'ui-images','#bundleStatus');if(a.audio.length){$('#bundleStatus').textContent=`正在整理 ${a.audio.length} 个音频…`;addAudioToZip(zip,a.audio,'audio')}zip.file('素材分析报告.json',JSON.stringify(reportData(),null,2));await finishZip(zip,`${baseName()}-全部素材.zip`,$('#bundleStatus'))})}
+function downloadActionFrames(){const a=state.analysis;if(!a?.actionAssets.length)return;return withDownloadTask(async()=>{const zip=makeZip();await addImagesToZip(zip,a.actionAssets,'action-frames','#bundleStatus');await finishZip(zip,`${baseName()}-动作候选帧.zip`,$('#bundleStatus'));$('#actionStatus').textContent=`已打包 ${a.actionAssets.length} 张候选帧`})}
+function exportReport(){saveBlob(new Blob([JSON.stringify(reportData(),null,2)],{type:'application/json'}),`${baseName()}-素材分析.json`)}
+function load(file){if(!file||!/.html?$/i.test(file.name))return;const button=$('#chooseBtn');button.disabled=true;button.textContent='正在提取素材…';const reader=new FileReader();reader.onload=()=>{try{state.file=file;state.text=reader.result;state.analysis=analyze(state.text,file);render(state.analysis)}finally{button.disabled=false;button.textContent='选择 HTML 并提取'}};reader.onerror=()=>{button.disabled=false;button.textContent='选择 HTML 并提取';alert('文件读取失败，请重新选择。')};reader.readAsText(file)}
+$('#chooseBtn').onclick=()=>$('#file').click();$('#file').onchange=e=>load(e.target.files[0]);
+const dz=$('#dropzone');['dragenter','dragover'].forEach(n=>dz.addEventListener(n,e=>{e.preventDefault();dz.classList.add('drag')}));['dragleave','drop'].forEach(n=>dz.addEventListener(n,e=>{e.preventDefault();dz.classList.remove('drag')}));dz.addEventListener('drop',e=>load(e.dataTransfer.files[0]));
+function selectTab(name){const btn=document.querySelector(`[data-tab="${name}"]`);if(!btn)return;document.querySelectorAll('.tab').forEach(x=>x.classList.toggle('active',x===btn));document.querySelectorAll('.tabview').forEach(x=>x.classList.toggle('hidden',x.id!==`tab-${name}`))}
+$('#briefBtn').onclick=makeBrief;$('#exportBtn').onclick=exportReport;$('#downloadAllPng').onclick=downloadAllImages;$('#downloadAllAudio').onclick=downloadAllAudio;$('#downloadAllAssets').onclick=downloadAllAssets;$('#downloadBundleBtn').onclick=downloadAllAssets;$('#downloadActionFrames').onclick=downloadActionFrames;$('#resources').addEventListener('click',e=>{const btn=e.target.closest('[data-asset-kind="image"]');if(btn&&state.analysis)imageAsPng(state.analysis.images[Number(btn.dataset.assetIndex)],Number(btn.dataset.assetIndex))});$('#audioGrid').addEventListener('click',e=>{const btn=e.target.closest('[data-asset-kind="audio"]');if(btn&&state.analysis)downloadAudio(state.analysis.audio[Number(btn.dataset.assetIndex)],Number(btn.dataset.assetIndex))});$('#previewBtn').onclick=()=>{if(state.url)URL.revokeObjectURL(state.url);state.url=URL.createObjectURL(new Blob([state.text],{type:'text/html'}));$('#frame').src=state.url;selectTab('preview')};
+document.querySelectorAll('.tab').forEach(btn=>btn.onclick=()=>selectTab(btn.dataset.tab));
+</script>
+</body>
+</html>

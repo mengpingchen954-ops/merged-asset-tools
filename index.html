@@ -6,7 +6,7 @@
     <title>素材工具台</title>
     <link rel="icon" href="data:," />
     <link rel="stylesheet" href="./styles.css" />
-    <script src="./app.js?v=split-vfx-entry-3" defer></script>
+    <script src="./app.js?v=asset-extractor-1" defer></script>
   </head>
   <body>
     <div class="merged-shell">
@@ -37,6 +37,21 @@
             <span class="tab-copy">
               <span class="tab-title">一键抠图</span>
               <span class="tab-subtitle">抠图 / 分离 / 导出</span>
+            </span>
+          </button>
+          <button class="tool-tab" type="button" data-tool="extractor">
+            <span class="tab-icon extractor-tab-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24">
+                <path d="M4 5h16v14H4z" />
+                <path d="m8 13 3 3 5-6 4 5" />
+                <path d="M8 9h.01" />
+                <path d="M12 21v-5" />
+                <path d="m9.5 18.5 2.5 2.5 2.5-2.5" />
+              </svg>
+            </span>
+            <span class="tab-copy">
+              <span class="tab-title">构建包素材提取</span>
+              <span class="tab-subtitle">UI 图片 / 音频 / 批量下载</span>
             </span>
           </button>
           <button class="tool-tab" type="button" data-tool="green-screen">
@@ -141,37 +156,43 @@
             class="tool-frame is-active"
             data-tool="vector"
             title="一键抠图"
-            src="./asset-vectorizer/index.html?v=matte-only-1"
+            data-src="./asset-vectorizer/index.html?v=matte-only-1"
+          ></iframe>
+          <iframe
+            class="tool-frame"
+            data-tool="extractor"
+            title="构建包素材提取"
+            data-src="./game-insight-parser/index.html?v=asset-download-1"
           ></iframe>
           <iframe
             class="tool-frame"
             data-tool="green-screen"
             title="绿幕视频转序列帧"
-            src="./green-screen-to-frames/index.html?v=gif-input-1"
+            data-src="./green-screen-to-frames/index.html?v=gif-input-1"
           ></iframe>
           <iframe
             class="tool-frame"
             data-tool="gif"
             title="序列帧压缩"
-            src="./gif-to-cocos-tool/index.html?v=vfx-entry-1"
+            data-src="./gif-to-cocos-tool/index.html?v=vfx-entry-1"
           ></iframe>
           <iframe
             class="tool-frame"
             data-tool="cocos"
             title="Cocos HTML 压缩"
-            src="./cocos-html-compressor/index.html?v=mp3-wasm-2"
+            data-src="./cocos-html-compressor/index.html?v=mp3-wasm-2"
           ></iframe>
           <iframe
             class="tool-frame"
             data-tool="model"
             title="FBX / GLB 模型压缩"
-            src="./glb-model-optimizer/index.html?mode=model&v=fbx-cocos383-1"
+            data-src="./glb-model-optimizer/index.html?mode=model&v=fbx-cocos383-1"
           ></iframe>
           <iframe
             class="tool-frame"
             data-tool="vfx"
             title="特效贴图生成"
-            src="./glb-model-optimizer/index.html?mode=vfx&v=vfx-textures-3"
+            data-src="./glb-model-optimizer/index.html?mode=vfx&v=vfx-textures-3"
           ></iframe>
         </section>
       </main>
