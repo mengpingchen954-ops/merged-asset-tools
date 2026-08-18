@@ -22,6 +22,7 @@
   const elements = {
     afterSize: document.querySelector("#afterSize"),
     beforeSize: document.querySelector("#beforeSize"),
+    beforeSizeLabel: document.querySelector("#beforeSizeLabel"),
     clearBtn: document.querySelector("#clearBtn"),
     downloadBtn: document.querySelector("#downloadBtn"),
     dropZone: document.querySelector("#dropZone"),
@@ -56,6 +57,8 @@
 
   const state = {
     inputFile: null,
+    sourceKind: null,
+    conversion: null,
     parsed: null,
     analysis: null,
     output: null,
@@ -106,47 +109,65 @@
   async function loadFile(file) {
     resetMessages();
     resetResult();
-    if (!/\.glb$/i.test(file.name)) {
-      showError("请选择 .glb 格式的模型文件。");
+    const sourceKind = /\.fbx$/i.test(file.name) ? "fbx" : /\.glb$/i.test(file.name) ? "glb" : null;
+    if (!sourceKind) {
+      showError("请选择 .fbx 或 .glb 格式的模型文件。");
       return;
     }
 
     setControlsDisabled(true);
-    setProgress(2, "正在读取 GLB…");
+    setProgress(2, sourceKind === "fbx" ? "正在解析并转换 FBX…" : "正在读取 GLB…");
     try {
-      const parsed = parseGlb(await file.arrayBuffer());
+      const sourceBuffer = await file.arrayBuffer();
+      let modelBytes = new Uint8Array(sourceBuffer);
+      let conversion = null;
+      if (sourceKind === "fbx") {
+        if (!window.FbxConverter?.convert) throw new Error("FBX 转换模块加载失败，请刷新页面后重试。");
+        conversion = await window.FbxConverter.convert(sourceBuffer);
+        modelBytes = conversion.bytes;
+        setProgress(22, "FBX 已转换，正在检查 Cocos 标准 GLB…");
+      }
+      const parsed = parseGlb(modelBytes);
       validateDocument(parsed);
       const analysis = analyzeImages(parsed);
       const geometry = analyzeGeometry(parsed.json);
       state.inputFile = file;
+      state.sourceKind = sourceKind;
+      state.conversion = conversion;
       state.parsed = parsed;
       state.analysis = analysis;
+      elements.beforeSizeLabel.textContent = sourceKind === "fbx" ? "原始 FBX" : "原始 GLB";
       elements.beforeSize.textContent = formatBytes(file.size);
       elements.textureCount.textContent = String(parsed.json.textures?.length || parsed.json.images?.length || 0);
       elements.geometryCount.textContent = `${formatInteger(geometry.vertices)} 顶点`;
       elements.geometryMemoryBefore.textContent = formatMemory(geometry.memoryBytes);
       elements.geometryMemoryAfter.textContent = "-";
       elements.dropZone.querySelector("strong").textContent = file.name;
-      elements.dropZone.querySelector("span:last-child").textContent = `${formatInteger(geometry.vertices)} 顶点 · ${analysis.candidates.length} 张可处理贴图 · ${formatBytes(file.size)}`;
+      const sourceSummary = sourceKind === "fbx" && conversion
+        ? `${formatConversionStats(conversion.stats)} · 已转换 ${formatBytes(modelBytes.byteLength)}`
+        : `${formatInteger(geometry.vertices)} 顶点 · ${analysis.candidates.length} 张可处理贴图`;
+      elements.dropZone.querySelector("span:last-child").textContent = `${sourceSummary} · 原文件 ${formatBytes(file.size)}`;
       elements.emptyState.hidden = false;
-      elements.emptyState.querySelector("strong").textContent = "模型已就绪";
+      elements.emptyState.querySelector("strong").textContent = sourceKind === "fbx" ? "FBX 已转换，模型已就绪" : "模型已就绪";
       elements.emptyState.querySelector("span").textContent = "选择网格减面和贴图尺寸后开始处理。";
-      if (analysis.unsupported.length) {
-        showWarning(`${analysis.unsupported.length} 张非 PNG/JPEG/WebP 贴图将原样保留。`);
-      }
+      const warnings = [...(conversion?.warnings || [])];
+      if (analysis.unsupported.length) warnings.push(`${analysis.unsupported.length} 张非 PNG/JPEG/WebP 贴图将原样保留。`);
+      if (warnings.length) showWarning(warnings.join(" "));
       const readyText = analysis.candidates.length
-        ? `已读取 ${formatInteger(geometry.vertices)} 个顶点、${analysis.candidates.length} 张内嵌贴图`
-        : `已读取 ${formatInteger(geometry.vertices)} 个顶点；没有贴图，仍可压缩网格`;
+        ? `${sourceKind === "fbx" ? "FBX 已转换；" : ""}已读取 ${formatInteger(geometry.vertices)} 个顶点、${analysis.candidates.length} 张内嵌贴图`
+        : `${sourceKind === "fbx" ? "FBX 已转换；" : ""}已读取 ${formatInteger(geometry.vertices)} 个顶点；没有贴图，仍可压缩网格`;
       setProgress(0, readyText, false);
     } catch (error) {
       state.inputFile = null;
+      state.sourceKind = null;
+      state.conversion = null;
       state.parsed = null;
       state.analysis = null;
       elements.beforeSize.textContent = "0 B";
       elements.geometryMemoryBefore.textContent = "-";
       elements.geometryMemoryAfter.textContent = "-";
       showError(errorMessage(error));
-      setProgress(0, "无法读取 GLB", false);
+      setProgress(0, sourceKind === "fbx" ? "无法读取或转换 FBX" : "无法读取 GLB", false);
     } finally {
       setControlsDisabled(false);
     }
@@ -164,6 +185,9 @@
     const geometryMethod = elements.geometryMethodSelect.value;
     const geometryReduction = Number(elements.geometryReductionSelect.value);
     const json = JSON.parse(JSON.stringify(state.parsed.json));
+    const sourceGeometry = analyzeGeometry(json);
+    const hasGeometry = sourceGeometry.vertices > 0;
+    const appliedGeometryMethod = geometryMethod === "cocos" || hasGeometry ? geometryMethod : "none";
     const candidates = state.analysis.candidates;
     const replacements = [];
     let resized = 0;
@@ -206,13 +230,13 @@
       const binary = rebuildBinary(state.parsed, json, binaryReplacements);
       let outputBytes = buildGlb(state.parsed, json, binary);
 
-      if (isGeometryCompressionMethod(geometryMethod)) {
+      if (isGeometryCompressionMethod(geometryMethod) && hasGeometry) {
         if (!window.GeometryCompressor?.compress) throw new Error("网格压缩模块加载失败，请刷新页面后重试。");
         setProgress(82, `正在执行 ${geometryMethodLabel(geometryMethod)} 网格压缩…`);
         outputBytes = await window.GeometryCompressor.compress(outputBytes, geometryMethod);
       } else if (geometryMethod === "cocos") {
         if (!window.GeometryCompressor?.compress) throw new Error("网格优化模块加载失败，请刷新页面后重试。");
-        setProgress(82, "正在执行 Cocos 兼容网格优化…");
+        setProgress(82, hasGeometry ? "正在执行 Cocos 兼容网格优化…" : "正在优化骨骼与动画数据…");
         outputBytes = await window.GeometryCompressor.compress(outputBytes, geometryMethod, { ratio: geometryReduction });
       }
 
@@ -223,13 +247,14 @@
       const afterCounts = structureCounts(verified.json);
       const geometryBefore = analyzeGeometry(state.parsed.json);
       const geometryAfter = analyzeGeometry(verified.json);
-      verifyStructure(beforeCounts, afterCounts, geometryMethod);
-      verifyCompressionExtension(verified.json, geometryMethod);
+      verifyStructure(beforeCounts, afterCounts, appliedGeometryMethod);
+      verifyCompressionExtension(verified.json, appliedGeometryMethod);
 
-      const baseName = state.inputFile.name.replace(/\.glb$/i, "");
+      const baseName = state.inputFile.name.replace(/\.(?:glb|fbx)$/i, "");
       const suffix = [
-        isGeometryCompressionMethod(geometryMethod) ? geometryMethod : null,
-        geometryMethod === "cocos" && geometryReduction < 0.999 ? `mesh${Math.round(geometryReduction * 100)}` : null,
+        state.sourceKind === "fbx" && geometryMethod === "cocos" ? "cocos383" : null,
+        isGeometryCompressionMethod(geometryMethod) && hasGeometry ? geometryMethod : null,
+        geometryMethod === "cocos" && hasGeometry && geometryReduction < 0.999 ? `mesh${Math.round(geometryReduction * 100)}` : null,
         candidates.length ? `max${maxSize}` : null,
       ]
         .filter(Boolean)
@@ -253,8 +278,10 @@
         skipped,
       });
       const resultParts = [];
-      if (isGeometryCompressionMethod(geometryMethod)) resultParts.push(`${geometryMethodLabel(geometryMethod)} 网格压缩完成`);
-      else if (geometryMethod === "cocos") resultParts.push(`Cocos 兼容标准 GLB 已完成，几何保留约 ${Math.round(geometryReduction * 100)}%`);
+      if (state.sourceKind === "fbx") resultParts.push("FBX 已转换为标准 GLB");
+      if (!hasGeometry) resultParts.push("原文件无网格，骨骼与动画已保留");
+      else if (isGeometryCompressionMethod(geometryMethod)) resultParts.push(`${geometryMethodLabel(geometryMethod)} 网格压缩完成`);
+      else if (geometryMethod === "cocos") resultParts.push(`Cocos 3.8.3 标准 GLB 已完成，几何保留约 ${Math.round(geometryReduction * 100)}%`);
       if (resized) resultParts.push(`${resized} 张贴图已缩小`);
       setProgress(100, resultParts.join("，") || "模型处理完成");
     } catch (error) {
@@ -595,11 +622,13 @@
     elements.memoryBefore.textContent = formatMemory(result.decodedBefore);
     elements.memoryAfter.textContent = formatMemory(result.decodedAfter);
     elements.outputName.textContent = result.outputName;
-    const saved = Math.max(0, state.inputFile.size - result.outputSize);
-    const percent = state.inputFile.size ? Math.round((saved / state.inputFile.size) * 100) : 0;
-    const meta = [formatBytes(result.outputSize), `文件减少 ${percent}%`];
-    meta.push(geometryMethodLabel(result.geometryMethod));
-    if (result.geometryMethod === "cocos") meta.push(`几何保留约 ${Math.round(result.geometryReduction * 100)}%`);
+    const delta = state.inputFile.size - result.outputSize;
+    const percent = state.inputFile.size ? Math.round((Math.abs(delta) / state.inputFile.size) * 100) : 0;
+    const sizeChange = delta >= 0 ? `较原文件减少 ${percent}%` : `转换后增加 ${percent}%`;
+    const meta = [formatBytes(result.outputSize), sizeChange];
+    if (state.sourceKind === "fbx") meta.push("FBX → GLB");
+    meta.push(result.geometryBefore.vertices ? geometryMethodLabel(result.geometryMethod) : "标准 GLB（无网格）");
+    if (result.geometryMethod === "cocos" && result.geometryBefore.vertices) meta.push(`几何保留约 ${Math.round(result.geometryReduction * 100)}%`);
     if (state.analysis.candidates.length) meta.push(`贴图最长边 ${result.maxSize}px`);
     elements.outputMeta.textContent = meta.join(" · ");
     elements.structureGrid.replaceChildren(...STRUCTURE_KEYS.map((key) => {
@@ -612,8 +641,10 @@
       item.append(label, value);
       return item;
     }));
-    elements.structureBadge.textContent = result.geometryMethod === "cocos"
-      ? "Cocos 兼容标准 GLB + 几何优化"
+    elements.structureBadge.textContent = !result.geometryBefore.vertices
+      ? "Cocos Creator 3.8.3 标准 GLB"
+      : result.geometryMethod === "cocos"
+      ? "Cocos Creator 3.8.3 标准 GLB"
       : !isGeometryCompressionMethod(result.geometryMethod)
         ? "数量与顺序保持不变"
         : "模型结构与压缩扩展有效";
@@ -700,7 +731,7 @@
   function updateGeometryMethodHint() {
     const method = elements.geometryMethodSelect.value;
     const hints = {
-      cocos: "输出为合法标准 GLB，可直接导入 Cocos Creator；会执行网格去重和减面，不写入压缩扩展。",
+      cocos: "输出为无网格压缩扩展的标准 GLB，可直接导入 Cocos Creator 3.8.3；会执行网格去重和减面。",
       meshopt: "输出使用 EXT_meshopt_compression；Cocos Creator 3.8.3 项目需启用 meshopt。它主要减少文件体积，运行时仍会解码网格；要降内存请选 Cocos 兼容并减面。",
       draco: "输出使用 KHR_draco_mesh_compression，需运行时提供 Draco 解码器。它主要减少文件体积，运行时仍会解码网格；不适合作为 Cocos 编辑器导入格式。",
       none: "不处理网格，只缩小内嵌 PNG、JPEG 或 WebP 贴图。",
@@ -730,6 +761,8 @@
   function resetAll() {
     if (state.processing) return;
     state.inputFile = null;
+    state.sourceKind = null;
+    state.conversion = null;
     state.parsed = null;
     state.analysis = null;
     elements.fileInput.value = "";
@@ -738,13 +771,14 @@
     elements.geometryMemoryBefore.textContent = "-";
     elements.geometryMemoryAfter.textContent = "-";
     elements.textureCount.textContent = "0";
-    elements.dropZone.querySelector("strong").textContent = "拖入 GLB 模型";
-    elements.dropZone.querySelector("span:last-child").textContent = "支持无贴图 GLB，文件仅在本地处理";
-    elements.emptyState.querySelector("strong").textContent = "先选择需要优化的 GLB 模型";
-    elements.emptyState.querySelector("span").textContent = "输出文件可重新导入 Cocos，再构建 HTML。";
+    elements.beforeSizeLabel.textContent = "原始文件";
+    elements.dropZone.querySelector("strong").textContent = "拖入 FBX 或 GLB 模型";
+    elements.dropZone.querySelector("span:last-child").textContent = "FBX 将导出为 Cocos 3.8.3 标准 GLB，全程本地处理";
+    elements.emptyState.querySelector("strong").textContent = "先选择需要优化的 FBX 或 GLB 模型";
+    elements.emptyState.querySelector("span").textContent = "输出为可导入 Cocos Creator 3.8.3 的标准 GLB。";
     resetMessages();
     resetResult();
-    setProgress(0, "等待选择 GLB", false);
+    setProgress(0, "等待选择 FBX 或 GLB", false);
     setControlsDisabled(false);
   }
 
@@ -815,6 +849,14 @@
 
   function formatInteger(value) {
     return new Intl.NumberFormat("zh-CN").format(Number(value) || 0);
+  }
+
+  function formatConversionStats(stats = {}) {
+    const parts = [`${formatInteger(stats.meshes)} 个网格`];
+    if (stats.skinnedMeshes) parts.push(`${formatInteger(stats.skinnedMeshes)} 个蒙皮网格`);
+    if (stats.bones) parts.push(`${formatInteger(stats.bones)} 根骨骼`);
+    if (stats.animations) parts.push(`${formatInteger(stats.animations)} 段动画`);
+    return parts.join(" · ");
   }
 
   function errorMessage(error) {

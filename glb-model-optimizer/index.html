@@ -3,14 +3,14 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>GLB 模型压缩 / 特效贴图</title>
+    <title>FBX / GLB 模型压缩 / 特效贴图</title>
     <link rel="icon" href="data:," />
     <link rel="stylesheet" href="./styles.css?v=split-vfx-entry-1" />
   </head>
   <body>
     <main class="app-shell">
       <div class="mode-switch" role="tablist" aria-label="工具模式" hidden>
-        <button class="mode-button" type="button" role="tab" aria-selected="false" data-mode="model">GLB 压缩</button>
+        <button class="mode-button" type="button" role="tab" aria-selected="false" data-mode="model">FBX / GLB 压缩</button>
         <button class="mode-button is-active" type="button" role="tab" aria-selected="true" data-mode="vfx">特效贴图</button>
       </div>
 
@@ -24,8 +24,8 @@
             </svg>
           </div>
           <div>
-            <h1>GLB 模型压缩</h1>
-          <p>压缩网格与内嵌贴图；Cocos 标准模式通过减面降低运行时内存，Meshopt / Draco 主要减少文件体积。</p>
+            <h1>FBX / GLB 模型压缩</h1>
+          <p>FBX 会先在本地转换为标准 GLB，再压缩网格与贴图；默认输出适配 Cocos Creator 3.8.3。</p>
           </div>
         </div>
         <button id="downloadBtn" class="primary-action" type="button" disabled>
@@ -39,27 +39,27 @@
       <section class="workspace">
         <aside class="panel control-panel">
           <label id="dropZone" class="drop-zone" for="fileInput">
-            <input id="fileInput" type="file" accept="model/gltf-binary,.glb" />
+            <input id="fileInput" type="file" accept="model/gltf-binary,model/fbx,application/octet-stream,.glb,.fbx" />
             <span class="drop-icon" aria-hidden="true">
               <svg viewBox="0 0 24 24">
                 <path d="m12 3 8 4.5v9L12 21l-8-4.5v-9z" />
                 <path d="M12 16V8m-3 3 3-3 3 3" />
               </svg>
             </span>
-            <strong>拖入 GLB 模型</strong>
-            <span>支持无贴图 GLB，文件仅在本地处理</span>
+            <strong>拖入 FBX 或 GLB 模型</strong>
+            <span>FBX 将导出为 Cocos 3.8.3 标准 GLB，全程本地处理</span>
           </label>
 
           <div class="settings">
             <label>
               <span>网格压缩</span>
               <select id="geometryMethodSelect">
-                <option value="cocos" selected>Cocos 兼容（标准 GLB）</option>
+                <option value="cocos" selected>Cocos Creator 3.8.3（推荐）</option>
                 <option value="meshopt">Meshopt（Cocos 3.8.3，需启用模块）</option>
                 <option value="draco">Draco（仅支持扩展的运行时）</option>
                 <option value="none">关闭（仅压缩贴图）</option>
               </select>
-              <small id="geometryMethodHint" class="setting-hint">输出为标准 GLB，可直接导入 Cocos Creator；会进行网格减面，不写入压缩扩展。</small>
+              <small id="geometryMethodHint" class="setting-hint">输出为无网格压缩扩展的标准 GLB，可直接导入 Cocos Creator 3.8.3。</small>
             </label>
             <label>
               <span>网格减面</span>
@@ -92,7 +92,7 @@
               <path d="M12 3 5 6v5c0 4.4 2.8 8.2 7 9.8 4.2-1.6 7-5.4 7-9.8V6z" />
               <path d="M9 12l2 2 4-4" />
             </svg>
-            <p>文件只在当前浏览器处理，不会上传。网格压缩保留模型外观、节点、材质、蒙皮和动画。</p>
+            <p>文件只在当前浏览器处理，不会上传。FBX 会保留可转换的节点、材质、蒙皮和动画，并导出为标准 GLB。</p>
           </div>
 
           <button id="optimizeBtn" class="secondary-action" type="button" disabled>
@@ -107,7 +107,7 @@
 
         <section class="panel results-panel" aria-live="polite">
           <div class="summary">
-            <div><span>原始 GLB</span><strong id="beforeSize">0 B</strong></div>
+            <div><span id="beforeSizeLabel">原始文件</span><strong id="beforeSize">0 B</strong></div>
             <div class="saved"><span>优化后</span><strong id="afterSize">-</strong></div>
             <div><span>网格数据</span><strong id="geometryCount">0</strong></div>
             <div><span>原始解码网格内存</span><strong id="geometryMemoryBefore">-</strong></div>
@@ -121,7 +121,7 @@
           <div class="results-head">
             <div>
               <h2>处理结果</h2>
-              <p id="statusText">等待选择 GLB</p>
+              <p id="statusText">等待选择 FBX 或 GLB</p>
             </div>
             <span id="progressText" class="progress">0%</span>
           </div>
@@ -132,8 +132,8 @@
               <path d="m12 3 8 4.5v9L12 21l-8-4.5v-9z" />
               <path d="m4.4 7.7 7.6 4.4 7.6-4.4M12 12.1V21" />
             </svg>
-            <strong>先选择需要优化的 GLB 模型</strong>
-            <span>输出文件可重新导入 Cocos，再构建 HTML。</span>
+            <strong>先选择需要优化的 FBX 或 GLB 模型</strong>
+            <span>输出为可导入 Cocos Creator 3.8.3 的标准 GLB。</span>
           </div>
 
           <div id="errorState" class="message error-message" role="alert" hidden></div>
@@ -296,8 +296,9 @@
     </main>
     <script src="./vendor/draco_decoder.js?v=1.5.7"></script>
     <script src="./vendor/draco_encoder.js?v=1.5.7"></script>
-    <script src="./vendor/geometry-compressor.js?v=mesh-compression-5"></script>
-    <script src="./app.js?v=mesh-compression-5"></script>
+    <script src="./vendor/fbx-converter.js?v=fbx-cocos383-1"></script>
+    <script src="./vendor/geometry-compressor.js?v=fbx-cocos383-1"></script>
+    <script src="./app.js?v=fbx-cocos383-1"></script>
     <script src="./vfx-textures.js?v=split-vfx-entry-1"></script>
   </body>
 </html>

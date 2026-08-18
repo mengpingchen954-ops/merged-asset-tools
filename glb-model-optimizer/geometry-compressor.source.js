@@ -40,18 +40,19 @@ export async function compress(input, method, options = {}) {
     // Keep this path extension-free so Cocos can import it, while allowing a
     // genuinely smaller runtime vertex buffer than file-size-only compression.
     const ratio = Math.max(0.25, Math.min(1, Number(options.ratio) || 0.4));
-    await document.transform(weld());
-    if (ratio < 0.999) {
-      await document.transform(simplify({
-        simplifier: MeshoptSimplifier,
-        ratio,
-        error: 0.001,
-      }));
+    const hasMeshes = document.getRoot().listMeshes().length > 0;
+    if (hasMeshes) {
+      await document.transform(weld());
+      if (ratio < 0.999) {
+        await document.transform(simplify({
+          simplifier: MeshoptSimplifier,
+          ratio,
+          error: 0.001,
+        }));
+      }
+      await document.transform(reorder({ encoder: MeshoptEncoder, target: "size" }));
     }
-    await document.transform(
-      reorder({ encoder: MeshoptEncoder, target: "size" }),
-      dedup({ propertyTypes: [PropertyType.ACCESSOR] }),
-    );
+    await document.transform(dedup({ propertyTypes: [PropertyType.ACCESSOR] }));
   } else if (method === "meshopt") {
     // Encode the buffer data, not only the extension declaration. Cocos 3.8.3
     // can load this output when the project's meshopt module is enabled.

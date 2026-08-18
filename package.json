@@ -12,7 +12,8 @@
     "@gltf-transform/extensions": "4.4.2",
     "@gltf-transform/functions": "4.4.2",
     "draco3dgltf": "1.5.7",
-    "meshoptimizer": "1.2.0"
+    "meshoptimizer": "1.2.0",
+    "three": "0.185.1"
   },
   "devDependencies": {
     "esbuild": "0.25.8"

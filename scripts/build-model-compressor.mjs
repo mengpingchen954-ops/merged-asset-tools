@@ -1,4 +1,4 @@
-import { copyFile, mkdir, writeFile } from "node:fs/promises";
+import { copyFile, mkdir, readFile, writeFile } from "node:fs/promises";
 import { build } from "esbuild";
 
 const vendorDir = "glb-model-optimizer/vendor";
@@ -19,6 +19,23 @@ await build({
     },
   }],
 });
+
+await build({
+  entryPoints: ["glb-model-optimizer/fbx-converter.source.js"],
+  bundle: true,
+  format: "iife",
+  globalName: "FbxConverter",
+  minify: true,
+  outfile: `${vendorDir}/fbx-converter.js`,
+});
+const fbxBundlePath = `${vendorDir}/fbx-converter.js`;
+const fbxBundle = await readFile(fbxBundlePath, "utf8");
+await writeFile(
+  fbxBundlePath,
+  fbxBundle
+    .replace(/[ \t]+(?=\r?\n)/g, "")
+    .replace(/^ +(?=\t)/gm, ""),
+);
 
 await copyFile(
   "node_modules/draco3dgltf/draco_encoder_gltf_nodejs.js",
@@ -43,6 +60,10 @@ await copyFile(
 await copyFile(
   "node_modules/meshoptimizer/LICENSE.md",
   `${vendorDir}/MESHOPTIMIZER.LICENSE.md`,
+);
+await copyFile(
+  "node_modules/three/LICENSE",
+  `${vendorDir}/THREE.LICENSE.txt`,
 );
 await writeFile(
   `${vendorDir}/DRACO.LICENSE.txt`,
