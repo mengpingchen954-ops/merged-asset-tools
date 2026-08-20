@@ -20,6 +20,7 @@ import encodeMp3 from "./vendor/mp3/encoder.js";
   let wasmFallbackReported = false;
   let mp3EncoderFailureReported = false;
   let audioContext = null;
+  let pakoInflateSourcePromise = null;
 
   const elements = {
     dropZone: document.querySelector("#dropZone"),
@@ -234,7 +235,7 @@ import encodeMp3 from "./vendor/mp3/encoder.js";
       try {
         const resources = JSON.parse(html.slice(valueStart, valueEnd));
         if (!isStringMap(resources)) continue;
-        return { format: "resources", resources, valueStart, valueEnd };
+        return { format: "resources", resources, assignmentStart: match.index, valueStart, valueEnd };
       } catch {
         // Try the next assignment if the page contains a malformed resource map.
       }
@@ -347,10 +348,25 @@ import encodeMp3 from "./vendor/mp3/encoder.js";
 
     setPresetProgress(presetIndex, presetCount, 0.86, `${preset.name}：正在重新打包…`);
     const innerZipBytes = await buildInnerPackage(zip, presetIndex, presetCount, preset);
+    const packedResourceExpression = state.resourceFormat === "resources"
+      ? await packEmbeddedResources(innerZipBytes)
+      : null;
 
-    const commonHtml = replaceEmbeddedPackage(setOrientation(state.inputHtml, "portrait,landscape"), innerZipBytes);
-    const landscapeHtml = replaceEmbeddedPackage(setOrientation(state.inputHtml, "landscape"), innerZipBytes);
-    const portraitHtml = replaceEmbeddedPackage(setOrientation(state.inputHtml, "portrait"), innerZipBytes);
+    const commonHtml = replaceEmbeddedPackage(
+      setOrientation(state.inputHtml, "portrait,landscape"),
+      innerZipBytes,
+      packedResourceExpression,
+    );
+    const landscapeHtml = replaceEmbeddedPackage(
+      setOrientation(state.inputHtml, "landscape"),
+      innerZipBytes,
+      packedResourceExpression,
+    );
+    const portraitHtml = replaceEmbeddedPackage(
+      setOrientation(state.inputHtml, "portrait"),
+      innerZipBytes,
+      packedResourceExpression,
+    );
     const [commonZip, landscapeZip, portraitZip] = await Promise.all([
       createOuterZip(commonHtml),
       createOuterZip(landscapeHtml),
@@ -372,6 +388,7 @@ import encodeMp3 from "./vendor/mp3/encoder.js";
       runtimePatched,
       resResult,
       audioResult,
+      resourcePacked: Boolean(packedResourceExpression),
     };
   }
 
@@ -760,6 +777,42 @@ import encodeMp3 from "./vendor/mp3/encoder.js";
       .replace(/\u2029/g, "\\u2029");
   }
 
+  async function packEmbeddedResources(resourceBytes) {
+    const pakoSource = await loadPakoInflateSource();
+    if (!pakoSource || !("CompressionStream" in window)) return null;
+
+    try {
+      const compressed = await deflateBytes(resourceBytes);
+      if (!compressed) return null;
+      const payload = bytesToBase64(compressed);
+      const expression = `${pakoSource}\nwindow.__res=JSON.parse(pako.inflate(Uint8Array.from(atob("${payload}"),function(c){return c.charCodeAt(0)}),{to:"string"}));`;
+      return textEncoder.encode(expression).byteLength < resourceBytes.byteLength ? expression : null;
+    } catch (error) {
+      console.warn("TikTok 资源清单打包失败，将保留普通 JSON。", error);
+      return null;
+    }
+  }
+
+  function loadPakoInflateSource() {
+    if (!pakoInflateSourcePromise) {
+      pakoInflateSourcePromise = fetch("./vendor/pako_inflate.min.js", { cache: "force-cache" })
+        .then((response) => {
+          if (!response.ok) throw new Error(`HTTP ${response.status}`);
+          return response.text();
+        })
+        .catch((error) => {
+          console.warn("无法加载 TikTok 资源打包组件。", error);
+          return null;
+        });
+    }
+    return pakoInflateSourcePromise;
+  }
+
+  async function deflateBytes(source) {
+    const stream = new Blob([source]).stream().pipeThrough(new CompressionStream("deflate"));
+    return new Uint8Array(await new Response(stream).arrayBuffer());
+  }
+
   async function deflateAdapterResources(resources) {
     if (!("CompressionStream" in window)) {
       throw new Error("当前浏览器不支持写回 window.__adapter_zip__，请使用最新版 Chrome 或 Edge。");
@@ -773,11 +826,14 @@ import encodeMp3 from "./vendor/mp3/encoder.js";
     }
   }
 
-  function replaceEmbeddedPackage(html, packageBytes) {
+  function replaceEmbeddedPackage(html, packageBytes, packedResourceExpression = null) {
     const location = findEmbeddedResource(html);
     if (!location) throw new Error("输出模板中的内嵌资源包已丢失。");
     if (location.format === "adapter") return replaceEmbeddedAdapterZip(html, location, packageBytes);
     if (location.format === "resources") {
+      if (packedResourceExpression) {
+        return `${html.slice(0, location.assignmentStart)}${packedResourceExpression}${html.slice(location.valueEnd)}`;
+      }
       return `${html.slice(0, location.valueStart)}${textDecoder.decode(packageBytes)}${html.slice(location.valueEnd)}`;
     }
     const base64 = bytesToBase64(packageBytes);
@@ -855,9 +911,13 @@ import encodeMp3 from "./vendor/mp3/encoder.js";
     const savings = Math.max(0, state.inputFile.size - result.htmlBlob.size);
     const savedPercent = state.inputFile.size ? Math.round((savings / state.inputFile.size) * 100) : 0;
     const audioSummary = result.audioResult.converted > 0 ? `、${result.audioResult.converted} 个 MP3` : "";
-    elements.statusText.textContent = `${result.converted} 张 PNG${audioSummary} 已优化，HTML 减少 ${savedPercent}%`;
+    const packedSummary = result.resourcePacked ? "，资源清单已打包" : "";
+    elements.statusText.textContent = `${result.converted} 张 PNG${audioSummary} 已优化，HTML 减少 ${savedPercent}%${packedSummary}`;
     const warnings = [];
     if (!underTarget) warnings.push(`最小结果仍超过 ${formatBytes(targetBytes)}，请检查大音频或不可压缩资源。`);
+    if (state.resourceFormat === "resources" && !result.resourcePacked) {
+      warnings.push("TikTok 资源清单未打包，无法达到更小的 HTML 体积。");
+    }
     if (state.inputStats.m4aCount > 0) warnings.push(`浏览器版保留了 ${state.inputStats.m4aCount} 个 M4A 音频文件。`);
     if (warnings.length) showWarning(warnings.join(" "));
   }
