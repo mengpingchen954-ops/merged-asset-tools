@@ -118,14 +118,18 @@ import encodeMp3 from "./vendor/mp3/encoder.js";
       const inputHtml = await file.text();
       const zipLocation = findEmbeddedResource(inputHtml);
       if (!zipLocation) {
-        throw new Error("没有找到 window.__zip 或 window.__adapter_zip__。请选择 Cocos 单文件构建结果。");
+        throw new Error("没有找到 window.__zip、window.__adapter_zip__ 或 window.__res。请选择 Cocos 单文件构建结果。");
       }
 
-      const zipBytes = base64ToBytes(zipLocation.base64);
+      const zipBytes = zipLocation.format === "resources"
+        ? null
+        : base64ToBytes(zipLocation.base64);
       setProgress(15, "正在检查内嵌资源…");
       const adapterResources = zipLocation.format === "adapter"
         ? await readAdapterResources(zipBytes)
-        : null;
+        : zipLocation.format === "resources"
+          ? zipLocation.resources
+          : null;
       const zip = adapterResources
         ? createAdapterZip(adapterResources)
         : await window.JSZip.loadAsync(zipBytes);
@@ -133,13 +137,13 @@ import encodeMp3 from "./vendor/mp3/encoder.js";
 
       state.inputFile = file;
       state.inputHtml = inputHtml;
-      state.zipBytes = zipBytes;
+      state.zipBytes = zipBytes || textEncoder.encode(serializeResourceMap(adapterResources));
       state.zipLocation = zipLocation;
       state.resourceFormat = zipLocation.format;
       state.adapterResources = adapterResources;
       state.inputStats = inputStats;
       elements.beforeSize.textContent = formatBytes(file.size);
-      elements.innerSize.textContent = formatBytes(zipBytes.byteLength);
+      elements.innerSize.textContent = formatBytes(state.zipBytes.byteLength);
       elements.imageCount.textContent = String(inputStats.pngCount);
       elements.afterSize.textContent = "-";
       elements.clearBtn.disabled = false;
@@ -174,33 +178,33 @@ import encodeMp3 from "./vendor/mp3/encoder.js";
   }
 
   function findEmbeddedZip(html) {
-    const match = /window\.__zip\s*=\s*(["'])([A-Za-z0-9+/=]+)\1/.exec(html);
+    const match = /window\s*(?:\.\s*__zip|\[\s*(["'])__zip\1\s*\])\s*=\s*(["'])([A-Za-z0-9+/=]+)\2/.exec(html);
     if (!match || match.index === undefined) return null;
-    const relativeStart = match[0].indexOf(match[2]);
+    const relativeStart = match[0].indexOf(match[3]);
     const valueStart = match.index + relativeStart;
     return {
       format: "zip",
       valueStart,
-      valueEnd: valueStart + match[2].length,
-      base64: match[2],
+      valueEnd: valueStart + match[3].length,
+      base64: match[3],
     };
   }
 
   function findEmbeddedResource(html) {
-    return findEmbeddedZip(html) || findEmbeddedAdapterZip(html);
+    return findEmbeddedZip(html) || findEmbeddedAdapterZip(html) || findEmbeddedResources(html);
   }
 
   function findEmbeddedAdapterZip(html) {
     const chunks = [];
-    const assignment = /window\.__adapter_zip__\s*(\+?=)\s*(["'])([A-Za-z0-9+/=]+)\2/g;
+    const assignment = /window\s*(?:\.\s*__adapter_zip_{0,2}|\[\s*(["'])__adapter_zip_{0,2}\1\s*\])\s*(\+?=)\s*(["'])([A-Za-z0-9+/=]+)\3/g;
     let match;
     while ((match = assignment.exec(html))) {
-      const valueStart = match.index + match[0].indexOf(match[3]);
+      const valueStart = match.index + match[0].indexOf(match[4]);
       chunks.push({
-        operator: match[1],
+        operator: match[2],
         valueStart,
-        valueEnd: valueStart + match[3].length,
-        base64: match[3],
+        valueEnd: valueStart + match[4].length,
+        base64: match[4],
       });
     }
     if (!chunks.length || chunks[0].operator !== "=" || chunks.slice(1).some((chunk) => chunk.operator !== "+=")) {
@@ -216,6 +220,63 @@ import encodeMp3 from "./vendor/mp3/encoder.js";
       chunkSize: Math.max(...chunks.map((chunk) => chunk.base64.length)),
       insertionPoint: scriptEnd + "</script>".length,
     };
+  }
+
+  function findEmbeddedResources(html) {
+    const assignment = /window\s*(?:\.\s*__res|\[\s*(["'])__res\1\s*\])\s*=\s*/g;
+    let match;
+    while ((match = assignment.exec(html))) {
+      const valueStart = skipWhitespace(html, assignment.lastIndex);
+      if (html[valueStart] !== "{") continue;
+      const valueEnd = findJsonObjectEnd(html, valueStart);
+      if (valueEnd < 0) continue;
+
+      try {
+        const resources = JSON.parse(html.slice(valueStart, valueEnd));
+        if (!isStringMap(resources)) continue;
+        return { format: "resources", resources, valueStart, valueEnd };
+      } catch {
+        // Try the next assignment if the page contains a malformed resource map.
+      }
+    }
+    return null;
+  }
+
+  function skipWhitespace(value, start) {
+    let index = start;
+    while (/\s/.test(value[index] || "")) index += 1;
+    return index;
+  }
+
+  function findJsonObjectEnd(value, start) {
+    let depth = 0;
+    let inString = false;
+    let escaped = false;
+    for (let index = start; index < value.length; index += 1) {
+      const character = value[index];
+      if (inString) {
+        if (escaped) escaped = false;
+        else if (character === "\\") escaped = true;
+        else if (character === '"') inString = false;
+        continue;
+      }
+      if (character === '"') {
+        inString = true;
+      } else if (character === "{") {
+        depth += 1;
+      } else if (character === "}" && --depth === 0) {
+        return index + 1;
+      }
+    }
+    return -1;
+  }
+
+  function isStringMap(value) {
+    return Boolean(
+      value &&
+      !Array.isArray(value) &&
+      Object.values(value).every((entry) => typeof entry === "string"),
+    );
   }
 
   async function compressInput() {
@@ -399,7 +460,9 @@ import encodeMp3 from "./vendor/mp3/encoder.js";
   }
 
   async function patchAdapterSettings(zip) {
-    if (state.resourceFormat !== "adapter") return { splashRemoved: false };
+    if (state.resourceFormat !== "adapter" && state.resourceFormat !== "resources") {
+      return { splashRemoved: false };
+    }
     const entry = zip.file("src/settings.json");
     if (!entry) return { splashRemoved: false };
     try {
@@ -624,7 +687,9 @@ import encodeMp3 from "./vendor/mp3/encoder.js";
   }
 
   async function createWorkingZip() {
-    if (state.resourceFormat === "adapter") return createAdapterZip(state.adapterResources);
+    if (state.resourceFormat === "adapter" || state.resourceFormat === "resources") {
+      return createAdapterZip(state.adapterResources);
+    }
     return window.JSZip.loadAsync(state.zipBytes);
   }
 
@@ -638,6 +703,10 @@ import encodeMp3 from "./vendor/mp3/encoder.js";
     if (state.resourceFormat === "adapter") {
       setPresetProgress(presetIndex, presetCount, 0.93, `${preset.name}：正在写回 adapter 资源包…`);
       return deflateAdapterResources(await readAdapterResourcesFromZip(zip));
+    }
+    if (state.resourceFormat === "resources") {
+      setPresetProgress(presetIndex, presetCount, 0.93, `${preset.name}：正在写回资源清单…`);
+      return textEncoder.encode(serializeResourceMap(await readAdapterResourcesFromZip(zip)));
     }
     return zip.generateAsync(
       { type: "uint8array", compression: "DEFLATE", compressionOptions: { level: 9 } },
@@ -676,10 +745,19 @@ import encodeMp3 from "./vendor/mp3/encoder.js";
     const resources = {};
     for (const name of Object.keys(state.adapterResources || {})) {
       const entry = zip.file(name);
-      if (!entry) throw new Error(`adapter 资源已丢失：${name}`);
+      if (!entry) throw new Error(`内嵌资源已丢失：${name}`);
       resources[name] = await entry.async("string");
     }
     return resources;
+  }
+
+  function serializeResourceMap(resources) {
+    return JSON.stringify(resources)
+      .replace(/</g, "\\u003c")
+      .replace(/>/g, "\\u003e")
+      .replace(/&/g, "\\u0026")
+      .replace(/\u2028/g, "\\u2028")
+      .replace(/\u2029/g, "\\u2029");
   }
 
   async function deflateAdapterResources(resources) {
@@ -699,6 +777,9 @@ import encodeMp3 from "./vendor/mp3/encoder.js";
     const location = findEmbeddedResource(html);
     if (!location) throw new Error("输出模板中的内嵌资源包已丢失。");
     if (location.format === "adapter") return replaceEmbeddedAdapterZip(html, location, packageBytes);
+    if (location.format === "resources") {
+      return `${html.slice(0, location.valueStart)}${textDecoder.decode(packageBytes)}${html.slice(location.valueEnd)}`;
+    }
     const base64 = bytesToBase64(packageBytes);
     return `${html.slice(0, location.valueStart)}${base64}${html.slice(location.valueEnd)}`;
   }
