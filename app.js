@@ -24,7 +24,7 @@ const toolLabels = {
 };
 
 const toolDescriptions = {
-  cocos: "拖入 Cocos 单文件 HTML，压缩内嵌图片与 MP3 并导出 5MB 提交包。",
+  cocos: "拖入 Cocos HTML 或渠道 ZIP，统一压缩图片与 MP3 并导出 5MB 提交包。",
   gif: "本地处理 GIF、MP4 和 PNG 序列，导出 PNG 序列帧或 Cocos 资源。",
   "green-screen": "拖入任意纯色背景 MP4、MOV 或 GIF，在浏览器本地抠像并导出透明 PNG 序列 ZIP。",
   extractor: "导入单文件 HTML，一键提取并打包下载 UI 图片、图标、音效与音乐，同时保留玩法拆解能力。",

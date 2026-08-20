@@ -4,7 +4,7 @@
 
 一个完全在浏览器本地运行的素材处理工具集合，包含：
 
-- Cocos HTML 压缩：拖入包含 `window.__zip` 或 `window.__adapter_zip__` 的单文件 HTML，使用本地 WebP 与 MP3 WASM 压缩并导出 5MB HTML 和三种方向提交包。
+- Cocos HTML 压缩：拖入包含 `window.__zip`、`window.__adapter_zip__` 或 TikTok `window.__res` 的单文件 HTML，也可直接拖入 Google、Facebook 等渠道 ZIP。浏览器端按项目 5MB 脚本的图片质量与 10-24kbps 音频档位压缩，保留 ZIP 中的 `index.html`、`res.js` 等渠道文件，并导出 5MB HTML 和三种方向提交包。
 - 构建包素材提取：拖入 Cocos 或 playable 单文件 HTML，本地提取内嵌 UI 图片和音频；支持单项下载、UI 图片 ZIP、音频 ZIP、全部素材 ZIP，并提供代码证据与玩法结构拆解。
 - FBX / GLB 模型优化：FBX 会先在浏览器本地转换为 GLB，保留可转换的节点、材质、蒙皮和动画；默认输出 Cocos Creator 3.8.3 可直接导入的标准 GLB，并通过网格去重、索引整理和可调减面降低模型文件与网格内存。也可缩小内嵌 PNG、JPEG 或 WebP 贴图，无贴图模型同样能处理。
 - Meshopt 和 Draco 输出会写入对应的 glTF 压缩扩展，只适用于明确支持这些扩展的运行时；不要把这两种文件直接导入 Cocos Creator 编辑器。

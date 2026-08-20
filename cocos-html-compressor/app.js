@@ -9,10 +9,10 @@ import encodeMp3 from "./vendor/mp3/encoder.js";
     "png", "jpg", "jpeg", "webp", "bmp", "gif", "mp3", "m4a", "ogg", "wav", "cconb",
   ]);
   const PRESETS = {
-    balanced: { name: "均衡", quality: 35, alphaQuality: 55, audioBitrate: 64 },
-    strict: { name: "强力", quality: 23, alphaQuality: 38, audioBitrate: 48 },
-    "very-strict": { name: "更强", quality: 20, alphaQuality: 32, audioBitrate: 40 },
-    tiny: { name: "极限", quality: 16, alphaQuality: 24, audioBitrate: 32 },
+    balanced: { name: "均衡", quality: 35, alphaQuality: 55, audioBitrate: 24 },
+    strict: { name: "强力", quality: 23, alphaQuality: 38, audioBitrate: 14 },
+    "very-strict": { name: "更强", quality: 20, alphaQuality: 32, audioBitrate: 12 },
+    tiny: { name: "极限", quality: 16, alphaQuality: 24, audioBitrate: 10 },
   };
   const AUTO_PRESETS = ["balanced", "strict", "very-strict", "tiny"];
   const textEncoder = new TextEncoder();
@@ -41,6 +41,7 @@ import encodeMp3 from "./vendor/mp3/encoder.js";
     errorState: document.querySelector("#errorState"),
     warningState: document.querySelector("#warningState"),
     resultList: document.querySelector("#resultList"),
+    htmlResult: document.querySelector("#htmlResult"),
     htmlName: document.querySelector("#htmlName"),
     htmlMeta: document.querySelector("#htmlMeta"),
     zipName: document.querySelector("#zipName"),
@@ -59,6 +60,11 @@ import encodeMp3 from "./vendor/mp3/encoder.js";
     resourceFormat: null,
     adapterResources: null,
     inputStats: null,
+    sourceType: null,
+    sourceEntries: null,
+    packageEntryName: null,
+    pageEntryName: null,
+    pageHtml: "",
     outputs: null,
     processing: false,
   };
@@ -107,16 +113,17 @@ import encodeMp3 from "./vendor/mp3/encoder.js";
       showError("ZIP 组件未加载，请刷新页面后重试。");
       return;
     }
-    if (!/\.html?$/i.test(file.name)) {
-      showError("请选择 .html 文件。");
+    if (!/\.(?:html?|zip)$/i.test(file.name)) {
+      showError("请选择 .html 或 .zip 文件。");
       return;
     }
 
     setControlsDisabled(true);
-    setProgress(4, "正在读取 HTML…");
+    setProgress(4, "正在读取文件…");
     let readyToCompress = false;
     try {
-      const inputHtml = await file.text();
+      const source = await readInputSource(file);
+      const inputHtml = source.packageText;
       const zipLocation = findEmbeddedResource(inputHtml);
       if (!zipLocation) {
         throw new Error("没有找到 window.__zip、window.__adapter_zip__ 或 window.__res。请选择 Cocos 单文件构建结果。");
@@ -143,9 +150,14 @@ import encodeMp3 from "./vendor/mp3/encoder.js";
       state.resourceFormat = zipLocation.format;
       state.adapterResources = adapterResources;
       state.inputStats = inputStats;
+      state.sourceType = source.type;
+      state.sourceEntries = source.entries;
+      state.packageEntryName = source.packageEntryName;
+      state.pageEntryName = source.pageEntryName;
+      state.pageHtml = source.pageHtml;
       elements.beforeSize.textContent = formatBytes(file.size);
       elements.innerSize.textContent = formatBytes(state.zipBytes.byteLength);
-      elements.imageCount.textContent = String(inputStats.pngCount);
+      elements.imageCount.textContent = String(inputStats.imageCount);
       elements.afterSize.textContent = "-";
       elements.clearBtn.disabled = false;
       elements.compressBtn.disabled = false;
@@ -153,7 +165,7 @@ import encodeMp3 from "./vendor/mp3/encoder.js";
       readyToCompress = true;
     } catch (error) {
       clearState();
-      showError(error instanceof Error ? error.message : "无法读取这个 HTML。");
+      showError(error instanceof Error ? error.message : "无法读取这个文件。");
       setProgress(0, "文件不可用", false);
     } finally {
       setControlsDisabled(false);
@@ -162,12 +174,14 @@ import encodeMp3 from "./vendor/mp3/encoder.js";
   }
 
   async function inspectZip(zip) {
-    let pngCount = Object.values(zip.files).filter((entry) => !entry.dir && getExtension(entry.name) === "png").length;
+    let imageCount = Object.values(zip.files).filter((entry) => {
+      return !entry.dir && ["png", "jpg", "jpeg"].includes(getExtension(entry.name));
+    }).length;
     const resEntry = zip.file("__res");
     if (resEntry) {
       try {
         const res = JSON.parse(await resEntry.async("string"));
-        pngCount += Object.keys(res).filter((key) => key.toLowerCase().endsWith(".png")).length;
+        imageCount += Object.keys(res).filter((key) => /\.(?:png|jpe?g)$/i.test(key)).length;
       } catch {
         // A malformed __res will be left untouched during compression.
       }
@@ -175,7 +189,59 @@ import encodeMp3 from "./vendor/mp3/encoder.js";
     const audioEntries = Object.values(zip.files).filter((entry) => !entry.dir);
     const mp3Count = audioEntries.filter((entry) => getExtension(entry.name) === "mp3").length;
     const m4aCount = audioEntries.filter((entry) => getExtension(entry.name) === "m4a").length;
-    return { pngCount, mp3Count, m4aCount };
+    return { imageCount, mp3Count, m4aCount };
+  }
+
+  async function readInputSource(file) {
+    if (/\.html?$/i.test(file.name)) {
+      const html = await file.text();
+      return {
+        type: "html",
+        packageText: html,
+        entries: null,
+        packageEntryName: null,
+        pageEntryName: null,
+        pageHtml: html,
+      };
+    }
+
+    const archive = await window.JSZip.loadAsync(await file.arrayBuffer());
+    const files = Object.values(archive.files).filter((entry) => !entry.dir);
+    const htmlEntries = files
+      .filter((entry) => /\.html?$/i.test(entry.name))
+      .sort((a, b) => Number(!/(^|\/)index\.html?$/i.test(a.name)) - Number(!/(^|\/)index\.html?$/i.test(b.name)));
+    const scriptEntries = files.filter((entry) => /\.js$/i.test(entry.name));
+    let packageEntry = null;
+    let packageText = "";
+
+    for (const entry of [...htmlEntries, ...scriptEntries]) {
+      const text = await entry.async("string");
+      if (findEmbeddedResource(text)) {
+        packageEntry = entry;
+        packageText = text;
+        break;
+      }
+    }
+    if (!packageEntry) {
+      throw new Error("ZIP 中没有找到包含 window.__zip、window.__adapter_zip__ 或 window.__res 的 HTML/JS。");
+    }
+
+    const pageEntry = htmlEntries[0] || (/\.html?$/i.test(packageEntry.name) ? packageEntry : null);
+    const pageHtml = pageEntry
+      ? (pageEntry.name === packageEntry.name ? packageText : await pageEntry.async("string"))
+      : "";
+    const entries = await Promise.all(files.map(async (entry) => ({
+      name: entry.name,
+      data: await entry.async("uint8array"),
+    })));
+    return {
+      type: "zip",
+      packageText,
+      entries,
+      packageEntryName: packageEntry.name,
+      pageEntryName: pageEntry?.name || null,
+      pageHtml,
+    };
   }
 
   function findEmbeddedZip(html) {
@@ -318,16 +384,21 @@ import encodeMp3 from "./vendor/mp3/encoder.js";
     const zip = await createWorkingZip();
     const obfuscationIndices = await detectObfuscationIndices(zip);
     const runtimePatched = await patchRuntimeObfuscation(zip);
-    const pngEntries = Object.values(zip.files).filter((entry) => !entry.dir && getExtension(entry.name) === "png");
+    const imageEntries = Object.values(zip.files).filter((entry) => {
+      return !entry.dir && ["png", "jpg", "jpeg"].includes(getExtension(entry.name));
+    });
     let converted = 0;
     let savedBytes = 0;
 
-    for (let index = 0; index < pngEntries.length; index += 1) {
-      const result = await compressLoosePng(zip, pngEntries[index], preset, obfuscationIndices);
+    for (let index = 0; index < imageEntries.length; index += 1) {
+      const entry = imageEntries[index];
+      const result = getExtension(entry.name) === "png"
+        ? await compressLoosePng(zip, entry, preset, obfuscationIndices)
+        : await compressLooseJpeg(zip, entry, preset, obfuscationIndices);
       converted += result.converted;
       savedBytes += result.savedBytes;
-      const fraction = pngEntries.length ? (index + 1) / pngEntries.length : 1;
-      setPresetProgress(presetIndex, presetCount, fraction * 0.58, `${preset.name}：正在压缩 ${pngEntries[index].name}`);
+      const fraction = imageEntries.length ? (index + 1) / imageEntries.length : 1;
+      setPresetProgress(presetIndex, presetCount, fraction * 0.58, `${preset.name}：正在压缩 ${entry.name}`);
       if (index % 2 === 0) await yieldToBrowser();
     }
 
@@ -345,6 +416,7 @@ import encodeMp3 from "./vendor/mp3/encoder.js";
     });
     savedBytes += audioResult.savedBytes;
     await normalizeLooseDataUrls(zip, obfuscationIndices);
+    await compactJsonResources(zip);
 
     setPresetProgress(presetIndex, presetCount, 0.86, `${preset.name}：正在重新打包…`);
     const innerZipBytes = await buildInnerPackage(zip, presetIndex, presetCount, preset);
@@ -352,28 +424,31 @@ import encodeMp3 from "./vendor/mp3/encoder.js";
       ? await packEmbeddedResources(innerZipBytes)
       : null;
 
-    const commonHtml = replaceEmbeddedPackage(
+    const commonPackage = replaceEmbeddedPackage(
       setOrientation(state.inputHtml, "portrait,landscape"),
       innerZipBytes,
       packedResourceExpression,
     );
-    const landscapeHtml = replaceEmbeddedPackage(
+    const landscapePackage = replaceEmbeddedPackage(
       setOrientation(state.inputHtml, "landscape"),
       innerZipBytes,
       packedResourceExpression,
     );
-    const portraitHtml = replaceEmbeddedPackage(
+    const portraitPackage = replaceEmbeddedPackage(
       setOrientation(state.inputHtml, "portrait"),
       innerZipBytes,
       packedResourceExpression,
     );
     const [commonZip, landscapeZip, portraitZip] = await Promise.all([
-      createOuterZip(commonHtml),
-      createOuterZip(landscapeHtml),
-      createOuterZip(portraitHtml),
+      createSubmissionZip(commonPackage, "portrait,landscape"),
+      createSubmissionZip(landscapePackage, "landscape"),
+      createSubmissionZip(portraitPackage, "portrait"),
     ]);
-    const htmlBlob = new Blob([commonHtml], { type: "text/html;charset=utf-8" });
-    const maximumSize = Math.max(htmlBlob.size, commonZip.byteLength, landscapeZip.byteLength, portraitZip.byteLength);
+    const hasStandaloneHtml = state.sourceType !== "zip" || state.packageEntryName === state.pageEntryName;
+    const htmlBlob = hasStandaloneHtml
+      ? new Blob([commonPackage], { type: "text/html;charset=utf-8" })
+      : null;
+    const maximumSize = Math.max(htmlBlob?.size || 0, commonZip.byteLength, landscapeZip.byteLength, portraitZip.byteLength);
 
     return {
       preset,
@@ -412,6 +487,19 @@ import encodeMp3 from "./vendor/mp3/encoder.js";
     return { converted: 1, savedBytes: original.byteLength - next.byteLength };
   }
 
+  async function compressLooseJpeg(zip, entry, preset, obfuscationIndices) {
+    const original = await entry.async("uint8array");
+    const originalText = bytesStartWith(original, "data:") ? textDecoder.decode(original) : null;
+    const parsed = originalText ? parseDataUrl(originalText, obfuscationIndices) : null;
+    const sourceBytes = parsed ? parsed.data : original;
+    const jpeg = await compressImageToJpeg(sourceBytes, preset);
+    if (!jpeg) return { converted: 0, savedBytes: 0 };
+    const next = parsed ? textEncoder.encode(makeDataUrl("image/jpeg", jpeg)) : jpeg;
+    if (next.byteLength >= original.byteLength) return { converted: 0, savedBytes: 0 };
+    zip.file(entry.name, next);
+    return { converted: 1, savedBytes: original.byteLength - next.byteLength };
+  }
+
   async function compressResDataUrls(zip, preset, obfuscationIndices) {
     const entry = zip.file("__res");
     if (!entry) return { converted: 0, savedBytes: 0, splashRemoved: false };
@@ -427,21 +515,35 @@ import encodeMp3 from "./vendor/mp3/encoder.js";
     let converted = 0;
     let imageSavedBytes = 0;
     for (const [key, value] of Object.entries(res)) {
+      if (typeof value === "string" && !value.startsWith("data:") && key.toLowerCase().endsWith(".json")) {
+        try {
+          const compact = JSON.stringify(JSON.parse(value));
+          if (byteLength(compact) < byteLength(value)) res[key] = compact;
+        } catch {
+          // Keep malformed JSON unchanged.
+        }
+        continue;
+      }
       if (typeof value !== "string" || !value.startsWith("data:")) continue;
       const parsed = parseDataUrl(value, obfuscationIndices);
       if (!parsed) continue;
 
-      if (!key.toLowerCase().endsWith(".png") || parsed.mime === "image/webp") {
+      const lowerKey = key.toLowerCase();
+      const isPng = lowerKey.endsWith(".png") || parsed.mime === "image/png";
+      const isJpeg = /\.jpe?g$/i.test(lowerKey) || parsed.mime === "image/jpeg";
+      if ((!isPng && !isJpeg) || (isPng && parsed.mime === "image/webp")) {
         res[key] = makeDataUrl(parsed.mime, parsed.data);
         continue;
       }
 
-      const webp = await compressImageToWebp(parsed.data, preset);
-      if (!webp) {
+      const compressed = isJpeg
+        ? await compressImageToJpeg(parsed.data, preset)
+        : await compressImageToWebp(parsed.data, preset);
+      if (!compressed) {
         res[key] = makeDataUrl(parsed.mime, parsed.data);
         continue;
       }
-      const nextValue = makeDataUrl("image/webp", webp);
+      const nextValue = makeDataUrl(isJpeg ? "image/jpeg" : "image/webp", compressed);
       if (byteLength(nextValue) < byteLength(value)) {
         res[key] = nextValue;
         converted += 1;
@@ -576,6 +678,22 @@ import encodeMp3 from "./vendor/mp3/encoder.js";
     }
   }
 
+  async function compactJsonResources(zip) {
+    const entries = Object.values(zip.files).filter((entry) => {
+      return !entry.dir && getExtension(entry.name) === "json";
+    });
+    for (const entry of entries) {
+      try {
+        const before = await entry.async("string");
+        if (before.startsWith("data:")) continue;
+        const after = JSON.stringify(JSON.parse(before));
+        if (byteLength(after) < byteLength(before)) zip.file(entry.name, after);
+      } catch {
+        // Keep non-JSON or malformed content unchanged.
+      }
+    }
+  }
+
   async function detectObfuscationIndices(zip) {
     const indices = [];
     const jsEntries = Object.values(zip.files).filter((entry) => !entry.dir && getExtension(entry.name) === "js");
@@ -696,6 +814,27 @@ import encodeMp3 from "./vendor/mp3/encoder.js";
         canvas.toBlob(resolve, "image/webp", preset.quality / 100);
       });
       return webpBlob ? new Uint8Array(await webpBlob.arrayBuffer()) : null;
+    } catch {
+      return null;
+    } finally {
+      if (bitmap?.close) bitmap.close();
+    }
+  }
+
+  async function compressImageToJpeg(bytes, preset) {
+    let bitmap;
+    try {
+      bitmap = await createImageBitmap(new Blob([bytes], { type: "image/jpeg" }));
+      const canvas = document.createElement("canvas");
+      canvas.width = bitmap.width;
+      canvas.height = bitmap.height;
+      const context = canvas.getContext("2d", { alpha: false });
+      if (!context) return null;
+      context.drawImage(bitmap, 0, 0);
+      const jpegBlob = await new Promise((resolve) => {
+        canvas.toBlob(resolve, "image/jpeg", preset.quality / 100);
+      });
+      return jpegBlob ? new Uint8Array(await jpegBlob.arrayBuffer()) : null;
     } catch {
       return null;
     } finally {
@@ -876,27 +1015,44 @@ import encodeMp3 from "./vendor/mp3/encoder.js";
     );
   }
 
-  async function createOuterZip(html) {
+  async function createSubmissionZip(packageText, orientation) {
+    if (state.sourceType === "zip") {
+      const zip = new window.JSZip();
+      for (const entry of state.sourceEntries || []) {
+        let data = entry.data;
+        if (entry.name === state.packageEntryName) {
+          data = packageText;
+        } else if (entry.name === state.pageEntryName && state.pageEntryName !== state.packageEntryName) {
+          data = setOrientation(state.pageHtml, orientation);
+        }
+        zip.file(entry.name, data);
+      }
+      return zip.generateAsync({ type: "uint8array", compression: "DEFLATE", compressionOptions: { level: 9 } });
+    }
     const zip = new window.JSZip();
-    zip.file("index.html", html);
+    zip.file("index.html", packageText);
     return zip.generateAsync({ type: "uint8array", compression: "DEFLATE", compressionOptions: { level: 9 } });
   }
 
   function buildOutputRecords(result) {
     const baseName = state.inputFile.name.replace(/\.[^.]+$/, "");
-    return {
-      html: { name: `${baseName}-5mb.html`, blob: result.htmlBlob },
+    const outputs = {
       zip: { name: `${baseName}-5mb.zip`, blob: new Blob([result.commonZip], { type: "application/zip" }) },
       landscape: { name: `${baseName}-5mb-landscape.zip`, blob: new Blob([result.landscapeZip], { type: "application/zip" }) },
       portrait: { name: `${baseName}-5mb-portrait.zip`, blob: new Blob([result.portraitZip], { type: "application/zip" }) },
     };
+    if (result.htmlBlob) outputs.html = { name: `${baseName}-5mb.html`, blob: result.htmlBlob };
+    return outputs;
   }
 
   function renderResults(result, targetBytes) {
     const outputs = state.outputs;
-    elements.afterSize.textContent = formatBytes(result.htmlBlob.size);
-    elements.htmlName.textContent = outputs.html.name;
-    elements.htmlMeta.textContent = `${formatBytes(outputs.html.blob.size)} · ${result.preset.name}预设`;
+    elements.afterSize.textContent = formatBytes(result.maximumSize);
+    elements.htmlResult.hidden = !outputs.html;
+    if (outputs.html) {
+      elements.htmlName.textContent = outputs.html.name;
+      elements.htmlMeta.textContent = `${formatBytes(outputs.html.blob.size)} · ${result.preset.name}预设`;
+    }
     elements.zipName.textContent = outputs.zip.name;
     elements.zipMeta.textContent = `${formatBytes(outputs.zip.blob.size)} · 横竖版通用`;
     elements.landscapeName.textContent = outputs.landscape.name;
@@ -908,11 +1064,12 @@ import encodeMp3 from "./vendor/mp3/encoder.js";
     elements.downloadAllBtn.disabled = false;
 
     const underTarget = allOutputsUnder(result, targetBytes);
-    const savings = Math.max(0, state.inputFile.size - result.htmlBlob.size);
+    const savings = Math.max(0, state.inputFile.size - result.maximumSize);
     const savedPercent = state.inputFile.size ? Math.round((savings / state.inputFile.size) * 100) : 0;
     const audioSummary = result.audioResult.converted > 0 ? `、${result.audioResult.converted} 个 MP3` : "";
     const packedSummary = result.resourcePacked ? "，资源清单已打包" : "";
-    elements.statusText.textContent = `${result.converted} 张 PNG${audioSummary} 已优化，HTML 减少 ${savedPercent}%${packedSummary}`;
+    const sourceLabel = state.sourceType === "zip" ? "提交包" : "HTML";
+    elements.statusText.textContent = `${result.converted} 张图片${audioSummary} 已优化，${sourceLabel} 减少 ${savedPercent}%${packedSummary}`;
     const warnings = [];
     if (!underTarget) warnings.push(`最小结果仍超过 ${formatBytes(targetBytes)}，请检查大音频或不可压缩资源。`);
     if (state.resourceFormat === "resources" && !result.resourcePacked) {
@@ -923,7 +1080,7 @@ import encodeMp3 from "./vendor/mp3/encoder.js";
   }
 
   function allOutputsUnder(result, targetBytes) {
-    return result.htmlBlob.size <= targetBytes
+    return (!result.htmlBlob || result.htmlBlob.size <= targetBytes)
       && result.commonZip.byteLength <= targetBytes
       && result.landscapeZip.byteLength <= targetBytes
       && result.portraitZip.byteLength <= targetBytes;
@@ -973,7 +1130,7 @@ import encodeMp3 from "./vendor/mp3/encoder.js";
     elements.compressBtn.disabled = true;
     resetMessages();
     resetOutputs();
-    setProgress(0, "等待选择 HTML", false);
+    setProgress(0, "等待选择文件", false);
   }
 
   function clearState() {
@@ -984,6 +1141,11 @@ import encodeMp3 from "./vendor/mp3/encoder.js";
     state.resourceFormat = null;
     state.adapterResources = null;
     state.inputStats = null;
+    state.sourceType = null;
+    state.sourceEntries = null;
+    state.packageEntryName = null;
+    state.pageEntryName = null;
+    state.pageHtml = "";
     state.outputs = null;
   }
 
@@ -993,6 +1155,7 @@ import encodeMp3 from "./vendor/mp3/encoder.js";
     elements.resultList.hidden = true;
     elements.downloadAllBtn.disabled = true;
     elements.afterSize.textContent = "-";
+    elements.htmlResult.hidden = false;
   }
 
   function resetMessages() {

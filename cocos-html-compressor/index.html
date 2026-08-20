@@ -20,7 +20,7 @@
           </div>
           <div>
             <h1>Cocos HTML 压缩</h1>
-            <p>压缩 super-html 内嵌资源，输出 HTML 与 Google 提交包。</p>
+            <p>压缩 super-html 内嵌资源，输出 5MB HTML 与渠道提交包。</p>
           </div>
         </div>
         <button id="downloadAllBtn" class="primary-action" type="button" disabled>
@@ -34,7 +34,7 @@
       <section class="workspace">
         <aside class="panel control-panel">
           <label id="dropZone" class="drop-zone" for="fileInput">
-            <input id="fileInput" type="file" accept="text/html,.html" />
+            <input id="fileInput" type="file" accept="text/html,application/zip,.html,.zip" />
             <span class="drop-icon" aria-hidden="true">
               <svg viewBox="0 0 24 24">
                 <path d="M5 3h10l4 4v14H5z" />
@@ -42,8 +42,8 @@
                 <path d="M12 17V10m-3 3 3-3 3 3" />
               </svg>
             </span>
-            <strong>拖入 Cocos 单文件 HTML</strong>
-            <span>支持 window.__zip、window.__adapter_zip__ 与 TikTok 的 window.__res 单文件</span>
+            <strong>拖入 Cocos HTML 或渠道 ZIP</strong>
+            <span>支持 Google、AppLovin、Facebook、Moloco、TikTok 等 super-html 渠道包</span>
           </label>
 
           <div class="settings">
@@ -85,16 +85,16 @@
 
         <section class="panel results-panel" aria-live="polite">
           <div class="summary">
-            <div><span>原始 HTML</span><strong id="beforeSize">0 B</strong></div>
+            <div><span>原始文件</span><strong id="beforeSize">0 B</strong></div>
             <div><span>内嵌资源包</span><strong id="innerSize">0 B</strong></div>
-            <div><span>PNG 资源</span><strong id="imageCount">0</strong></div>
+            <div><span>图片资源</span><strong id="imageCount">0</strong></div>
             <div class="saved"><span>压缩后</span><strong id="afterSize">-</strong></div>
           </div>
 
           <div class="results-head">
             <div>
               <h2>处理结果</h2>
-              <p id="statusText">等待选择 HTML</p>
+            <p id="statusText">等待选择文件</p>
             </div>
             <span id="progressText" class="progress">0%</span>
           </div>
@@ -114,7 +114,7 @@
           <div id="warningState" class="message warning-message" hidden></div>
 
           <div id="resultList" class="result-list" hidden>
-            <article class="result-item primary-result">
+            <article id="htmlResult" class="result-item primary-result">
               <span class="result-icon" aria-hidden="true">
                 <svg viewBox="0 0 24 24"><path d="M5 3h10l4 4v14H5zM15 3v5h5M8 14h8M8 17h5" /></svg>
               </span>
@@ -160,6 +160,6 @@
     </main>
 
     <script src="./vendor/jszip.min.js"></script>
-    <script type="module" src="./app.js?v=tiktok-packed-4"></script>
+    <script type="module" src="./app.js?v=channel-zip-6"></script>
   </body>
 </html>
