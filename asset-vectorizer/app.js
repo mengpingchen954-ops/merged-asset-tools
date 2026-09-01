@@ -2166,6 +2166,7 @@ function bindEvents() {
   });
 }
 
+ui.removeEnclosed.checked = state.settings.removeEnclosed;
 updateControlText();
 updateBgUi();
 bindEvents();
