@@ -92,7 +92,7 @@ const state = {
     tolerance: 32,
     edgeTrim: 1,
     innerStroke: 40,
-    removeEnclosed: true,
+    removeEnclosed: false,
     mergeGap: 8,
     minArea: 120,
     padding: 12,
