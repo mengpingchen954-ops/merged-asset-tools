@@ -4,9 +4,9 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>图片素材拆解</title>
-    <link rel="stylesheet" href="styles.css?v=matte-only-1" />
+    <link rel="stylesheet" href="styles.css?v=batch-folder-1" />
     <script src="./lucide-lite.js" defer></script>
-    <script src="app.js?v=matte-only-2" defer></script>
+    <script src="app.js?v=batch-folder-1" defer></script>
   </head>
   <body>
     <div class="app-shell">
@@ -21,8 +21,20 @@
         <div class="top-actions">
           <label class="file-button">
             <i data-lucide="image-plus"></i>
-            <span>上传图片</span>
-            <input id="fileInput" type="file" accept="image/png,image/jpeg,image/webp" />
+            <span>载入文件</span>
+            <input id="fileInput" type="file" accept="image/png,image/jpeg,image/webp" multiple />
+          </label>
+          <label class="folder-button">
+            <i data-lucide="folder-open"></i>
+            <span>载入文件夹</span>
+            <input
+              id="folderInput"
+              type="file"
+              accept="image/png,image/jpeg,image/webp"
+              webkitdirectory
+              directory
+              multiple
+            />
           </label>
           <button id="sampleBtn" type="button" class="ghost-button">
             <i data-lucide="sparkles"></i>

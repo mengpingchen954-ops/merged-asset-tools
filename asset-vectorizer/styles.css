@@ -46,7 +46,8 @@ select {
 }
 
 button,
-.file-button {
+.file-button,
+.folder-button {
   border: 1px solid transparent;
   border-radius: 8px;
   min-height: 40px;
@@ -66,12 +67,14 @@ button,
 }
 
 button:hover:not(:disabled),
-.file-button:hover {
+.file-button:hover,
+.folder-button:hover {
   transform: translateY(-1px);
 }
 
 button:focus-visible,
 .file-button:focus-within,
+.folder-button:focus-within,
 select:focus-visible,
 input[type="range"]:focus-visible {
   outline: 3px solid rgba(56, 189, 248, 0.28);
@@ -179,7 +182,8 @@ h1 {
   justify-content: flex-end;
 }
 
-.file-button input {
+.file-button input,
+.folder-button input {
   display: none;
 }
 
@@ -188,6 +192,18 @@ h1 {
   color: #ffffff;
   background: var(--accent);
   box-shadow: 0 8px 18px rgba(40, 169, 244, 0.2);
+}
+
+.folder-button {
+  color: var(--ink);
+  background: var(--surface-2);
+  border-color: var(--line);
+}
+
+.folder-button:hover {
+  background: var(--accent-soft);
+  border-color: var(--line-strong);
+  color: #075985;
 }
 
 .file-button:hover,
@@ -595,6 +611,34 @@ h2 {
   box-shadow: 0 0 0 2px rgba(40, 169, 244, 0.15);
 }
 
+.asset-card.is-batch-processing {
+  border-color: var(--accent);
+  background: #f4fbff;
+}
+
+.asset-card.is-batch-error {
+  border-color: #fecaca;
+  background: #fffafa;
+}
+
+.batch-status {
+  color: var(--muted);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+
+.batch-status.is-done {
+  color: #047857;
+}
+
+.batch-status.is-processing {
+  color: var(--accent-strong);
+}
+
+.batch-status.is-error {
+  color: #b91c1c;
+}
+
 .asset-card.is-vfx .asset-preview {
   background:
     linear-gradient(45deg, #384555 25%, transparent 25%),
@@ -671,6 +715,10 @@ h2 {
 
 .asset-title strong {
   font-size: 14px;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .asset-title span,
@@ -768,7 +816,8 @@ h2 {
   }
 
   .top-actions button,
-  .top-actions .file-button {
+  .top-actions .file-button,
+  .top-actions .folder-button {
     flex: 1 1 140px;
   }
 

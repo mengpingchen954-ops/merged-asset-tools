@@ -3,6 +3,7 @@ const $ = (selector) => document.querySelector(selector);
 const ui = {
   appTitle: $("#appTitle"),
   fileInput: $("#fileInput"),
+  folderInput: $("#folderInput"),
   sampleBtn: $("#sampleBtn"),
   analyzeBtn: $("#analyzeBtn"),
   analyzeText: $("#analyzeText"),
@@ -102,6 +103,16 @@ const state = {
     vfxHueRange: 36,
     vfxBright: 210,
     vfxRayCount: 18,
+  },
+  batch: {
+    active: false,
+    processing: false,
+    files: [],
+    items: [],
+    selectedId: null,
+    previewImage: null,
+    totalTime: 0,
+    runId: 0,
   },
 };
 
@@ -275,6 +286,257 @@ async function useImage(image, name) {
   ui.imageMeta.textContent = `${name} · ${sourceCanvas.width}×${sourceCanvas.height}`;
   renderPreview();
   await analyzeImage();
+}
+
+const imageExtensionPattern = /\.(?:png|jpe?g|webp)$/i;
+
+function isSupportedImage(file) {
+  return Boolean(file && (file.type?.startsWith("image/") || imageExtensionPattern.test(file.name)));
+}
+
+function clearBatchState() {
+  state.batch.runId += 1;
+  for (const item of state.batch.items) {
+    if (item.previewUrl) URL.revokeObjectURL(item.previewUrl);
+  }
+  state.batch.active = false;
+  state.batch.processing = false;
+  state.batch.files = [];
+  state.batch.items = [];
+  state.batch.selectedId = null;
+  state.batch.previewImage = null;
+  state.batch.totalTime = 0;
+}
+
+function makeBatchPlaceholders(files) {
+  const usedNames = new Map();
+  return files.map((file, index) => {
+    const baseName = file.name.replace(/\.[^.]+$/, "") || `image-${index + 1}`;
+    const seen = usedNames.get(baseName) ?? 0;
+    usedNames.set(baseName, seen + 1);
+    const outputName = `${baseName}${seen ? `-${seen + 1}` : ""}.png`;
+    return {
+      id: index + 1,
+      file,
+      sourceName: file.name,
+      relativePath: file.webkitRelativePath || file.name,
+      outputName,
+      status: "pending",
+      error: "",
+      sourceWidth: 0,
+      sourceHeight: 0,
+      width: 0,
+      height: 0,
+      blob: null,
+      previewUrl: "",
+      elapsed: 0,
+    };
+  });
+}
+
+async function loadFiles(fileList, options = {}) {
+  if (state.batch.processing) {
+    setStatus("当前批量任务仍在处理中，请稍候");
+    return;
+  }
+  const files = [...fileList].filter(isSupportedImage);
+  if (!files.length) {
+    setStatus("没有找到可处理的 PNG、JPG 或 WebP 图片");
+    return;
+  }
+
+  resetAll();
+  if (files.length === 1 && !options.folder) {
+    setStatus("载入图片...");
+    const result = await fileToImage(files[0]);
+    await useImage(result.image, result.name);
+    return;
+  }
+  await processBatchFiles(files);
+}
+
+function findAlphaBounds(imageData, width, height) {
+  let minX = width;
+  let minY = height;
+  let maxX = -1;
+  let maxY = -1;
+  for (let y = 0; y < height; y += 1) {
+    for (let x = 0; x < width; x += 1) {
+      if (imageData.data[(y * width + x) * 4 + 3] <= 12) continue;
+      minX = Math.min(minX, x);
+      minY = Math.min(minY, y);
+      maxX = Math.max(maxX, x);
+      maxY = Math.max(maxY, y);
+    }
+  }
+  return maxX >= minX && maxY >= minY ? { minX, minY, maxX, maxY } : null;
+}
+
+function makeBatchOutputCanvas(imageData, width, height) {
+  const bounds = findAlphaBounds(imageData, width, height);
+  if (!bounds) throw new Error("未检测到可保留的前景");
+
+  const padding = state.settings.padding;
+  const cropWidth = bounds.maxX - bounds.minX + 1 + padding * 2;
+  const cropHeight = bounds.maxY - bounds.minY + 1 + padding * 2;
+  const source = document.createElement("canvas");
+  source.width = width;
+  source.height = height;
+  source.getContext("2d").putImageData(imageData, 0, 0);
+
+  const crop = document.createElement("canvas");
+  crop.width = Math.max(1, cropWidth);
+  crop.height = Math.max(1, cropHeight);
+  const cropContext = crop.getContext("2d", { willReadFrequently: true });
+  cropContext.drawImage(
+    source,
+    bounds.minX,
+    bounds.minY,
+    bounds.maxX - bounds.minX + 1,
+    bounds.maxY - bounds.minY + 1,
+    padding,
+    padding,
+    bounds.maxX - bounds.minX + 1,
+    bounds.maxY - bounds.minY + 1,
+  );
+
+  if (state.settings.feather > 0) {
+    const cropData = cropContext.getImageData(0, 0, crop.width, crop.height);
+    const mask = new Uint8Array(crop.width * crop.height);
+    for (let index = 0; index < mask.length; index += 1) {
+      if (cropData.data[index * 4 + 3] > 12) mask[index] = 1;
+    }
+    applyFeather(cropData, mask, crop.width, crop.height, state.settings.feather);
+    cropContext.putImageData(cropData, 0, 0);
+  }
+
+  const scale = state.settings.scale;
+  if (scale === 1 && state.settings.sharpness === 0) return crop;
+  const output = document.createElement("canvas");
+  output.width = Math.max(1, Math.round(crop.width * scale));
+  output.height = Math.max(1, Math.round(crop.height * scale));
+  const outputContext = output.getContext("2d", { willReadFrequently: true });
+  outputContext.imageSmoothingEnabled = true;
+  outputContext.imageSmoothingQuality = "high";
+  outputContext.drawImage(crop, 0, 0, output.width, output.height);
+  if (state.settings.sharpness > 0) sharpenCanvas(output, state.settings.sharpness / 100);
+  return output;
+}
+
+async function processBatchItem(item) {
+  const startedAt = performance.now();
+  const { image } = await fileToImage(item.file);
+  const canvas = document.createElement("canvas");
+  canvas.width = image.naturalWidth;
+  canvas.height = image.naturalHeight;
+  const context = canvas.getContext("2d", { willReadFrequently: true });
+  context.drawImage(image, 0, 0);
+  const imageData = context.getImageData(0, 0, canvas.width, canvas.height);
+  const bgColor = sampleCornerColor(imageData, canvas.width, canvas.height);
+  const matte = intelligentMatte(imageData, canvas.width, canvas.height, bgColor, state.settings);
+  const output = makeBatchOutputCanvas(matte.imageData, canvas.width, canvas.height);
+  const blob = await canvasToPngBlob(output);
+  if (!blob) throw new Error("PNG 生成失败");
+  return {
+    status: "done",
+    sourceWidth: canvas.width,
+    sourceHeight: canvas.height,
+    width: output.width,
+    height: output.height,
+    blob,
+    previewUrl: URL.createObjectURL(blob),
+    elapsed: Math.round(performance.now() - startedAt),
+  };
+}
+
+async function selectBatchItem(id) {
+  const item = state.batch.items.find((entry) => entry.id === id && entry.status === "done");
+  if (!item) return;
+  state.batch.selectedId = id;
+  const { image } = await urlToImage(item.previewUrl, item.outputName);
+  if (!state.batch.active || state.batch.selectedId !== id) return;
+  state.batch.previewImage = image;
+  ui.selectedText.textContent = `已选择 ${item.sourceName}`;
+  renderPreview();
+  renderAssets();
+}
+
+async function processBatchFiles(files = state.batch.files) {
+  if (!files.length || state.batch.processing) return;
+  const previousItems = state.batch.items;
+  for (const item of previousItems) {
+    if (item.previewUrl) URL.revokeObjectURL(item.previewUrl);
+  }
+  state.batch.active = true;
+  state.batch.processing = true;
+  state.batch.runId += 1;
+  const runId = state.batch.runId;
+  state.batch.files = [...files];
+  state.batch.items = makeBatchPlaceholders(files);
+  const items = state.batch.items;
+  state.batch.selectedId = null;
+  state.batch.previewImage = null;
+  state.batch.totalTime = 0;
+  state.image = null;
+  state.imageData = null;
+  state.processedImageData = null;
+  state.groups = [];
+  state.selectedId = null;
+  ui.resultHeading.textContent = "批量结果";
+  ui.analyzeText.textContent = "重新处理";
+  ui.splitBtn.disabled = true;
+  ui.pickBgBtn.disabled = true;
+  ui.analyzeBtn.disabled = true;
+  ui.zipBtn.disabled = true;
+  ui.emptyText.textContent = "正在批量抠图";
+  ui.emptyState.classList.remove("is-hidden");
+  ui.assetCount.textContent = "0";
+  ui.processTime.textContent = "0 ms";
+  renderPreview();
+  renderAssets();
+
+  const startedAt = performance.now();
+  for (let index = 0; index < items.length; index += 1) {
+    if (runId !== state.batch.runId) return;
+    const item = items[index];
+    item.status = "processing";
+    setStatus(`正在抠图 ${index + 1}/${files.length}：${item.sourceName}`);
+    ui.imageMeta.textContent = `${index}/${files.length} 张图片已完成`;
+    renderAssets();
+    await nextFrame();
+    try {
+      const result = await processBatchItem(item);
+      if (runId !== state.batch.runId) {
+        if (result.previewUrl) URL.revokeObjectURL(result.previewUrl);
+        return;
+      }
+      Object.assign(item, result);
+      if (state.batch.selectedId === null) await selectBatchItem(item.id);
+    } catch (error) {
+      item.status = "error";
+      item.error = error instanceof Error ? error.message : "处理失败";
+    }
+    const doneCount = state.batch.items.filter((entry) => entry.status === "done").length;
+    ui.assetCount.textContent = String(doneCount);
+    ui.imageMeta.textContent = `${index + 1}/${files.length} 张图片已完成`;
+    renderAssets();
+  }
+
+  if (runId !== state.batch.runId) return;
+  state.batch.processing = false;
+  state.batch.totalTime = Math.round(performance.now() - startedAt);
+  const doneItems = state.batch.items.filter((item) => item.status === "done");
+  const failedCount = state.batch.items.length - doneItems.length;
+  ui.processTime.textContent = `${state.batch.totalTime} ms`;
+  ui.analyzeBtn.disabled = false;
+  ui.zipBtn.disabled = doneItems.length === 0;
+  ui.pickBgBtn.disabled = true;
+  setStatus(
+    failedCount
+      ? `批量抠图完成：成功 ${doneItems.length} 张，失败 ${failedCount} 张`
+      : `批量抠图完成，共 ${doneItems.length} 张图片`,
+  );
+  renderAssets();
 }
 
 function sampleCornerColor(imageData, width, height) {
@@ -1597,6 +1859,27 @@ function renderPreview() {
   previewCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
   previewCtx.clearRect(0, 0, width, height);
 
+  if (state.batch.active) {
+    const image = state.batch.previewImage;
+    if (!image) {
+      ui.emptyState.classList.remove("is-hidden");
+      return;
+    }
+    ui.emptyState.classList.add("is-hidden");
+    const scale = Math.min(width / image.naturalWidth, height / image.naturalHeight);
+    const drawWidth = image.naturalWidth * scale;
+    const drawHeight = image.naturalHeight * scale;
+    const x = (width - drawWidth) / 2;
+    const y = (height - drawHeight) / 2;
+    state.draw = { x, y, width: drawWidth, height: drawHeight, scale, dpr };
+    previewCtx.save();
+    previewCtx.imageSmoothingEnabled = true;
+    previewCtx.imageSmoothingQuality = "high";
+    previewCtx.drawImage(image, x, y, drawWidth, drawHeight);
+    previewCtx.restore();
+    return;
+  }
+
   if (!state.image) {
     ui.emptyState.classList.remove("is-hidden");
     return;
@@ -1711,7 +1994,80 @@ function renderVfxAssets() {
   window.lucide?.createIcons();
 }
 
+function renderBatchAssets() {
+  ui.assetList.textContent = "";
+  const selected = state.batch.items.find((item) => item.id === state.batch.selectedId);
+  ui.selectedText.textContent = selected ? `已选择 ${selected.sourceName}` : "未选择图片";
+  const fragment = document.createDocumentFragment();
+
+  for (const item of state.batch.items) {
+    const card = document.createElement("article");
+    card.className = [
+      "asset-card",
+      item.id === state.batch.selectedId ? "is-selected" : "",
+      item.status === "processing" ? "is-batch-processing" : "",
+      item.status === "error" ? "is-batch-error" : "",
+    ].filter(Boolean).join(" ");
+    card.dataset.batchId = String(item.id);
+
+    const preview = document.createElement("div");
+    preview.className = "asset-preview";
+    if (item.previewUrl) {
+      const image = document.createElement("img");
+      image.alt = `${item.sourceName} 抠图结果`;
+      image.src = item.previewUrl;
+      preview.append(image);
+    } else {
+      const placeholder = document.createElement("span");
+      placeholder.className = `batch-status is-${item.status}`;
+      placeholder.textContent = item.status === "processing" ? "处理中" : item.status === "error" ? "失败" : "等待";
+      preview.append(placeholder);
+    }
+
+    const info = document.createElement("div");
+    info.className = "asset-info";
+    const title = document.createElement("div");
+    title.className = "asset-title";
+    const name = document.createElement("strong");
+    name.textContent = item.sourceName;
+    const status = document.createElement("span");
+    status.className = `batch-status is-${item.status}`;
+    status.textContent = item.status === "done" ? "已完成" : item.status === "processing" ? "处理中" : item.status === "error" ? "失败" : "等待";
+    title.append(name, status);
+
+    const meta = document.createElement("div");
+    meta.className = "asset-meta";
+    meta.textContent = item.status === "done"
+      ? `${item.sourceWidth}×${item.sourceHeight} → ${item.width}×${item.height} · ${item.elapsed} ms`
+      : item.status === "error"
+        ? item.error
+        : item.relativePath;
+    info.append(title, meta);
+
+    if (item.status === "done") {
+      const actions = document.createElement("div");
+      actions.className = "asset-actions";
+      const button = document.createElement("button");
+      button.type = "button";
+      button.className = "small-button primary";
+      button.dataset.batchAction = "png";
+      button.dataset.batchId = String(item.id);
+      button.innerHTML = '<i data-lucide="file-image"></i><span>PNG</span>';
+      actions.append(button);
+      info.append(actions);
+    }
+    card.append(preview, info);
+    fragment.append(card);
+  }
+  ui.assetList.append(fragment);
+  window.lucide?.createIcons();
+}
+
 function renderAssets() {
+  if (state.batch.active) {
+    renderBatchAssets();
+    return;
+  }
   if (state.mode === "vfx") {
     renderVfxAssets();
     return;
@@ -1970,6 +2326,27 @@ function makeZip(files) {
 }
 
 async function downloadZip() {
+  if (state.batch.active) {
+    const items = state.batch.items.filter((item) => item.status === "done" && item.blob);
+    if (!items.length) return;
+    ui.zipBtn.disabled = true;
+    setStatus("正在打包批量抠图结果...");
+    try {
+      const files = await Promise.all(
+        items.map(async (item) => ({
+          name: item.outputName,
+          content: new Uint8Array(await item.blob.arrayBuffer()),
+        })),
+      );
+      downloadBlob(makeZip(files), "batch-matte-png.zip");
+      setStatus(`已打包 ${files.length} 张透明 PNG`);
+    } catch {
+      setStatus("批量 PNG 打包失败");
+    } finally {
+      ui.zipBtn.disabled = items.length === 0;
+    }
+    return;
+  }
   if (!state.groups.length) return;
   ui.zipBtn.disabled = true;
   setStatus(state.mode === "vfx" ? "正在打包 SVG..." : "正在打包 PNG...");
@@ -2007,7 +2384,13 @@ let renderTimer = 0;
 
 function scheduleAnalyze() {
   window.clearTimeout(analyzeTimer);
-  analyzeTimer = window.setTimeout(() => analyzeImage(), 180);
+  analyzeTimer = window.setTimeout(() => {
+    if (state.batch.active) {
+      processBatchFiles();
+    } else {
+      analyzeImage();
+    }
+  }, 180);
 }
 
 function scheduleRenderAssets() {
@@ -2019,6 +2402,7 @@ function scheduleRenderAssets() {
 }
 
 function resetAll() {
+  clearBatchState();
   state.image = null;
   state.imageName = "";
   state.imageData = null;
@@ -2034,26 +2418,43 @@ function resetAll() {
   ui.assetCount.textContent = "0";
   ui.processTime.textContent = "0 ms";
   updateSplitButton();
+  ui.resultHeading.textContent = "分离结果";
+  ui.analyzeText.textContent = "重新分离";
+  ui.splitBtn.hidden = false;
+  ui.pickBgBtn.disabled = false;
+  ui.analyzeBtn.disabled = false;
   ui.zipBtn.disabled = true;
   ui.selectedText.textContent = "未选择素材";
+  ui.emptyText.textContent = "载入图片";
   setStatus(state.mode === "vfx" ? "等待特效参考图" : "准备就绪");
   renderPreview();
 }
 
 function bindEvents() {
   ui.fileInput.addEventListener("change", async () => {
-    const file = ui.fileInput.files?.[0];
-    if (!file) return;
-    setStatus("载入图片...");
-    const result = await fileToImage(file);
-    await useImage(result.image, result.name);
+    const files = ui.fileInput.files;
+    if (!files?.length) return;
+    await loadFiles(files).catch((error) => setStatus(error.message));
     ui.fileInput.value = "";
+  });
+
+  ui.folderInput.addEventListener("change", async () => {
+    const files = ui.folderInput.files;
+    if (!files?.length) return;
+    await loadFiles(files, { folder: true }).catch((error) => setStatus(error.message));
+    ui.folderInput.value = "";
   });
 
   ui.sampleBtn.addEventListener("click", () => {
     loadSample().catch((error) => setStatus(error.message));
   });
-  ui.analyzeBtn.addEventListener("click", () => analyzeImage());
+  ui.analyzeBtn.addEventListener("click", () => {
+    if (state.batch.active) {
+      processBatchFiles().catch((error) => setStatus(error.message));
+    } else {
+      analyzeImage();
+    }
+  });
   ui.splitBtn.addEventListener("click", splitSelectedAsset);
   ui.zipBtn.addEventListener("click", downloadZip);
   ui.clearBtn.addEventListener("click", resetAll);
@@ -2077,6 +2478,7 @@ function bindEvents() {
     input.addEventListener("input", () => {
       updateControlText();
       if (
+        state.batch.active ||
         [
           "tolerance",
           "edgeTrim",
@@ -2122,6 +2524,17 @@ function bindEvents() {
   });
 
   ui.assetList.addEventListener("click", (event) => {
+    const batchButton = event.target.closest("button[data-batch-action]");
+    if (batchButton) {
+      const item = state.batch.items.find((entry) => entry.id === Number(batchButton.dataset.batchId));
+      if (item?.blob) downloadBlob(item.blob, item.outputName);
+      return;
+    }
+    const batchCard = event.target.closest(".asset-card[data-batch-id]");
+    if (batchCard) {
+      selectBatchItem(Number(batchCard.dataset.batchId));
+      return;
+    }
     const button = event.target.closest("button[data-action]");
     if (button) {
       const asset = getAssetById(Number(button.dataset.id));
@@ -2149,10 +2562,9 @@ function bindEvents() {
   ui.dropZone.addEventListener("drop", async (event) => {
     event.preventDefault();
     if (!state.pickingBg) ui.dropZone.classList.remove("is-picking");
-    const file = event.dataTransfer.files?.[0];
-    if (!file) return;
-    const result = await fileToImage(file);
-    await useImage(result.image, result.name);
+    const files = event.dataTransfer.files;
+    if (!files?.length) return;
+    await loadFiles(files).catch((error) => setStatus(error.message));
   });
 
   if (ui.dropZone && typeof ResizeObserver !== "undefined") {
@@ -2174,13 +2586,18 @@ window.lucide?.createIcons();
 window.AssetVectorizer = {
   stats: () => ({
     mode: state.mode,
-    count: state.groups.length,
+    count: state.batch.active
+      ? state.batch.items.filter((item) => item.status === "done").length
+      : state.groups.length,
     imageName: state.imageName,
     selectedId: state.selectedId,
     parts: state.groups.map((asset) => asset.partCount),
     kinds: state.groups.map((asset) => asset.kind).filter(Boolean),
     color: state.vfxAnalysis?.color ?? null,
     rayCount: state.vfxAnalysis?.directions.length ?? 0,
+    batch: state.batch.active,
+    batchTotal: state.batch.items.length,
+    batchFailed: state.batch.items.filter((item) => item.status === "error").length,
   }),
   splitSelected: splitSelectedAsset,
   setMode,

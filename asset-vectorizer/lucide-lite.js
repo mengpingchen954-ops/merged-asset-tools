@@ -16,6 +16,10 @@ const ICONS = {
     '<path d="m9 18 2.5-3 2 2.2 1.5-1.7L18 18z"/>',
     '<circle cx="9" cy="12" r="1.2"/>',
   ],
+  "folder-open": [
+    '<path d="M3 6a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v2"/>',
+    '<path d="M3 10h18l-2 9H5z"/>',
+  ],
   "image": [
     '<rect x="3" y="5" width="18" height="14" rx="2"/>',
     '<path d="m6 16 4.2-4.2 3.2 3.2 1.8-1.8L19 17"/>',
