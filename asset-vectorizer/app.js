@@ -289,6 +289,7 @@ async function useImage(image, name) {
 }
 
 const imageExtensionPattern = /\.(?:png|jpe?g|webp)$/i;
+const droppedFilePaths = new WeakMap();
 
 function isSupportedImage(file) {
   return Boolean(file && (file.type?.startsWith("image/") || imageExtensionPattern.test(file.name)));
@@ -319,7 +320,7 @@ function makeBatchPlaceholders(files) {
       id: index + 1,
       file,
       sourceName: file.name,
-      relativePath: file.webkitRelativePath || file.name,
+      relativePath: droppedFilePaths.get(file) || file.webkitRelativePath || file.name,
       outputName,
       status: "pending",
       error: "",
@@ -353,6 +354,60 @@ async function loadFiles(fileList, options = {}) {
     return;
   }
   await processBatchFiles(files);
+}
+
+function readFileEntry(entry, relativePath) {
+  return new Promise((resolve, reject) => {
+    entry.file(
+      (file) => {
+        droppedFilePaths.set(file, relativePath);
+        resolve(file);
+      },
+      reject,
+    );
+  });
+}
+
+function readDirectoryBatch(reader) {
+  return new Promise((resolve, reject) => reader.readEntries(resolve, reject));
+}
+
+async function collectEntryFiles(entry, parentPath = "") {
+  const relativePath = parentPath ? `${parentPath}/${entry.name}` : entry.name;
+  if (entry.isFile) return [await readFileEntry(entry, relativePath)];
+  if (!entry.isDirectory) return [];
+
+  const reader = entry.createReader();
+  const entries = [];
+  while (true) {
+    const batch = await readDirectoryBatch(reader);
+    if (!batch.length) break;
+    entries.push(...batch);
+  }
+  entries.sort((a, b) => a.name.localeCompare(b.name, "zh-CN"));
+
+  const files = [];
+  for (const child of entries) {
+    files.push(...(await collectEntryFiles(child, relativePath)));
+  }
+  return files;
+}
+
+async function collectDroppedFiles(dataTransfer) {
+  const items = [...(dataTransfer?.items ?? [])];
+  const entries = items
+    .map((item) => item.webkitGetAsEntry?.())
+    .filter(Boolean);
+  const hasDirectory = entries.some((entry) => entry.isDirectory);
+
+  if (entries.length) {
+    const files = [];
+    for (const entry of entries) {
+      files.push(...(await collectEntryFiles(entry)));
+    }
+    return { files, hasDirectory };
+  }
+  return { files: [...(dataTransfer?.files ?? [])], hasDirectory: false };
 }
 
 function findAlphaBounds(imageData, width, height) {
@@ -2381,6 +2436,7 @@ async function downloadZip() {
 
 let analyzeTimer = 0;
 let renderTimer = 0;
+let dropDragDepth = 0;
 
 function scheduleAnalyze() {
   window.clearTimeout(analyzeTimer);
@@ -2427,6 +2483,17 @@ function resetAll() {
   ui.selectedText.textContent = "未选择素材";
   ui.emptyText.textContent = "载入图片";
   setStatus(state.mode === "vfx" ? "等待特效参考图" : "准备就绪");
+  renderPreview();
+}
+
+function setDropZoneActive(active) {
+  ui.dropZone.classList.toggle("is-dropping", active);
+  if (active) {
+    ui.emptyText.textContent = "松开载入文件夹或图片";
+    ui.emptyState.classList.remove("is-hidden");
+    return;
+  }
+  ui.emptyText.textContent = state.batch.processing ? "正在批量抠图" : "载入图片";
   renderPreview();
 }
 
@@ -2550,21 +2617,37 @@ function bindEvents() {
     if (card) selectAsset(Number(card.dataset.assetId));
   });
 
+  ui.dropZone.addEventListener("dragenter", (event) => {
+    event.preventDefault();
+    dropDragDepth += 1;
+    setDropZoneActive(true);
+  });
+
   ui.dropZone.addEventListener("dragover", (event) => {
     event.preventDefault();
-    ui.dropZone.classList.add("is-picking");
+    if (event.dataTransfer) event.dataTransfer.dropEffect = "copy";
   });
 
   ui.dropZone.addEventListener("dragleave", () => {
-    if (!state.pickingBg) ui.dropZone.classList.remove("is-picking");
+    dropDragDepth = Math.max(0, dropDragDepth - 1);
+    if (dropDragDepth === 0) setDropZoneActive(false);
   });
 
   ui.dropZone.addEventListener("drop", async (event) => {
     event.preventDefault();
-    if (!state.pickingBg) ui.dropZone.classList.remove("is-picking");
-    const files = event.dataTransfer.files;
-    if (!files?.length) return;
-    await loadFiles(files).catch((error) => setStatus(error.message));
+    dropDragDepth = 0;
+    ui.dropZone.classList.remove("is-dropping");
+    ui.emptyText.textContent = "正在读取拖入内容";
+    ui.emptyState.classList.remove("is-hidden");
+    setStatus("正在读取拖入的文件夹或图片...");
+    try {
+      const dropped = await collectDroppedFiles(event.dataTransfer);
+      await loadFiles(dropped.files, { folder: dropped.hasDirectory });
+    } catch (error) {
+      setStatus(error instanceof Error ? error.message : "拖入内容读取失败");
+    } finally {
+      setDropZoneActive(false);
+    }
   });
 
   if (ui.dropZone && typeof ResizeObserver !== "undefined") {

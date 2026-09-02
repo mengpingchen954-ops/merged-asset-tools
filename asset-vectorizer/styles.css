@@ -525,6 +525,22 @@ h2 {
   outline-offset: -2px;
 }
 
+.canvas-stage.is-dropping {
+  cursor: copy;
+  outline: 2px dashed var(--accent);
+  outline-offset: -8px;
+}
+
+.canvas-stage.is-dropping .empty-state {
+  color: var(--accent-strong);
+  background: rgba(223, 244, 255, 0.9);
+}
+
+.canvas-stage.is-dropping .empty-state svg {
+  width: 42px;
+  height: 42px;
+}
+
 #previewCanvas {
   position: absolute;
   inset: 0;
@@ -542,6 +558,7 @@ h2 {
   gap: 10px;
   color: var(--muted);
   background: rgba(255, 255, 255, 0.76);
+  pointer-events: none;
 }
 
 .empty-state svg {

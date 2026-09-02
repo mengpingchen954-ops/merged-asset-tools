@@ -4,9 +4,9 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>图片素材拆解</title>
-    <link rel="stylesheet" href="styles.css?v=batch-folder-1" />
+    <link rel="stylesheet" href="styles.css?v=folder-drop-1" />
     <script src="./lucide-lite.js" defer></script>
-    <script src="app.js?v=batch-folder-1" defer></script>
+    <script src="app.js?v=folder-drop-1" defer></script>
   </head>
   <body>
     <div class="app-shell">
@@ -183,7 +183,7 @@
         </aside>
 
         <section class="preview-area">
-          <div class="canvas-stage" id="dropZone">
+          <div class="canvas-stage" id="dropZone" aria-label="图片和文件夹拖放区域">
             <canvas id="previewCanvas"></canvas>
             <div id="emptyState" class="empty-state">
               <i data-lucide="image"></i>
