@@ -9,6 +9,7 @@
     balance: 10,
     user: null,
     ledger: [],
+    authMode: "login",
     pendingConfirmation: null,
     toastTimer: 0,
   };
@@ -102,15 +103,24 @@
       ? "新用户登录即赠 10 积分。预览免费，仅在确认导出后扣除积分。"
       : "当前积分保存在本机，仅用于体验流程。连接 Supabase 后将自动切换为真实账户。";
     $("#auth-state").textContent = productionMode ? (state.user ? "已登录" : "未登录") : "等待接入";
-    $("#login-form").hidden = Boolean(state.user);
+    $("#auth-mode-tabs").hidden = Boolean(state.user);
+    $("#login-form").hidden = Boolean(state.user) || state.authMode !== "login";
+    $("#signup-form").hidden = Boolean(state.user) || state.authMode !== "signup";
+    $("#show-login").classList.toggle("is-active", state.authMode === "login");
+    $("#show-login").setAttribute("aria-pressed", String(state.authMode === "login"));
+    $("#show-signup").classList.toggle("is-active", state.authMode === "signup");
+    $("#show-signup").setAttribute("aria-pressed", String(state.authMode === "signup"));
     $("#signed-in-row").hidden = !state.user;
     $("#password-form").hidden = !state.user;
     $("#signed-in-email").textContent = state.user?.email || "";
     $("#login-form button[type='submit']").disabled = !productionMode;
-    $("#signup-button").disabled = !productionMode;
+    $("#signup-form button[type='submit']").disabled = !productionMode;
     $("#reset-password-button").disabled = !productionMode;
     $("#login-email").disabled = !productionMode;
     $("#login-password").disabled = !productionMode;
+    $("#signup-email").disabled = !productionMode;
+    $("#signup-password").disabled = !productionMode;
+    $("#signup-password-confirm").disabled = !productionMode;
     $("#password-form button").disabled = !productionMode || !state.user;
     $("#account-password").disabled = !productionMode || !state.user;
     $("#redeem-form button").disabled = !productionMode || !state.user;
@@ -204,15 +214,21 @@
     $("#export-cost").textContent = `${getCost(action, durationSeconds)} 积分`;
   }
 
+  function setAuthMode(mode) {
+    state.authMode = mode;
+    $("#auth-message").hidden = true;
+    if (mode === "signup" && !$("#signup-email").value) $("#signup-email").value = $("#login-email").value;
+    if (mode === "login" && !$("#login-email").value) $("#login-email").value = $("#signup-email").value;
+    render();
+  }
+
   async function handleLogin(event) {
     event.preventDefault();
     if (!productionMode) return notify("请先配置 Supabase 积分服务");
     const email = $("#login-email").value.trim();
     const password = $("#login-password").value;
     const button = $("#login-form button[type='submit']");
-    const signupButton = $("#signup-button");
     button.disabled = true;
-    signupButton.disabled = true;
     showAuthMessage("正在登录，请稍候…");
     try {
       const { error } = await client.auth.signInWithPassword({ email, password });
@@ -222,19 +238,19 @@
       showAuthMessage("登录失败：网络连接异常，请稍后重试。", true);
     } finally {
       button.disabled = false;
-      signupButton.disabled = false;
     }
   }
 
-  async function handleSignup() {
+  async function handleSignup(event) {
+    event.preventDefault();
     if (!productionMode) return notify("请先配置 Supabase 积分服务");
-    const form = $("#login-form");
+    const form = $("#signup-form");
     if (!form.reportValidity()) return;
-    const email = $("#login-email").value.trim();
-    const password = $("#login-password").value;
-    const loginButton = $("#login-form button[type='submit']");
-    const signupButton = $("#signup-button");
-    loginButton.disabled = true;
+    const email = $("#signup-email").value.trim();
+    const password = $("#signup-password").value;
+    const passwordConfirm = $("#signup-password-confirm").value;
+    const signupButton = $("#signup-form button[type='submit']");
+    if (password !== passwordConfirm) return showAuthMessage("两次输入的密码不一致。", true);
     signupButton.disabled = true;
     showAuthMessage("正在注册，请稍候…");
     try {
@@ -250,7 +266,6 @@
     } catch (_) {
       showAuthMessage("注册失败：网络连接异常，请稍后重试。", true);
     } finally {
-      loginButton.disabled = false;
       signupButton.disabled = false;
     }
   }
@@ -312,8 +327,10 @@
   async function initialize() {
     $("#credit-button").addEventListener("click", openAccount);
     $("#close-account").addEventListener("click", closeAccount);
+    $("#show-login").addEventListener("click", () => setAuthMode("login"));
+    $("#show-signup").addEventListener("click", () => setAuthMode("signup"));
     $("#login-form").addEventListener("submit", handleLogin);
-    $("#signup-button").addEventListener("click", handleSignup);
+    $("#signup-form").addEventListener("submit", handleSignup);
     $("#reset-password-button").addEventListener("click", handlePasswordReset);
     $("#password-form").addEventListener("submit", handlePasswordUpdate);
     $("#redeem-form").addEventListener("submit", handleRedeem);
