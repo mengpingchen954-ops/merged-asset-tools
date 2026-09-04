@@ -37,6 +37,13 @@
     state.toastTimer = window.setTimeout(() => toast.classList.remove("is-visible"), 2400);
   }
 
+  function showAuthMessage(message, isError = false) {
+    const status = $("#auth-message");
+    status.textContent = message;
+    status.classList.toggle("is-error", isError);
+    status.hidden = false;
+  }
+
   function formatDate(value) {
     return new Intl.DateTimeFormat("zh-CN", { month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit" }).format(new Date(value));
   }
@@ -206,11 +213,17 @@
     const signupButton = $("#signup-button");
     button.disabled = true;
     signupButton.disabled = true;
-    const { error } = await client.auth.signInWithPassword({ email, password });
-    button.disabled = false;
-    signupButton.disabled = false;
-    if (error) return notify("邮箱或密码错误");
-    notify("登录成功");
+    showAuthMessage("正在登录，请稍候…");
+    try {
+      const { error } = await client.auth.signInWithPassword({ email, password });
+      if (error) return showAuthMessage("登录失败：邮箱或密码错误。没有密码请点击下方设置密码邮件。", true);
+      showAuthMessage("登录成功");
+    } catch (_) {
+      showAuthMessage("登录失败：网络连接异常，请稍后重试。", true);
+    } finally {
+      button.disabled = false;
+      signupButton.disabled = false;
+    }
   }
 
   async function handleSignup() {
@@ -223,17 +236,23 @@
     const signupButton = $("#signup-button");
     loginButton.disabled = true;
     signupButton.disabled = true;
-    const { data, error } = await client.auth.signUp({
-      email,
-      password,
-      options: { emailRedirectTo: `${location.origin}${location.pathname}` },
-    });
-    loginButton.disabled = false;
-    signupButton.disabled = false;
-    if (error) return notify(error.message?.toLowerCase().includes("registered") ? "账号已存在，请登录或在手机端设置密码" : "注册失败，请稍后重试");
-    if (data.user && Array.isArray(data.user.identities) && data.user.identities.length === 0) return notify("账号已存在，请登录或发送设置密码邮件");
-    if (data.session) return notify("注册并登录成功");
-    notify("确认邮件已发送；确认后回到电脑登录");
+    showAuthMessage("正在注册，请稍候…");
+    try {
+      const { data, error } = await client.auth.signUp({
+        email,
+        password,
+        options: { emailRedirectTo: `${location.origin}${location.pathname}` },
+      });
+      if (error) return showAuthMessage(error.message?.toLowerCase().includes("registered") ? "这个邮箱已经注册，请直接登录或发送设置密码邮件。" : "注册失败，请稍后重试。", true);
+      if (data.user && Array.isArray(data.user.identities) && data.user.identities.length === 0) return showAuthMessage("这个邮箱已经注册，请直接登录或发送设置密码邮件。", true);
+      if (data.session) return showAuthMessage("注册并登录成功");
+      showAuthMessage("确认邮件已发送，请在手机确认后回到电脑登录。");
+    } catch (_) {
+      showAuthMessage("注册失败：网络连接异常，请稍后重试。", true);
+    } finally {
+      loginButton.disabled = false;
+      signupButton.disabled = false;
+    }
   }
 
   async function handlePasswordReset() {
@@ -242,12 +261,18 @@
     if (!emailInput.checkValidity()) return emailInput.reportValidity();
     const button = $("#reset-password-button");
     button.disabled = true;
-    const { error } = await client.auth.resetPasswordForEmail(emailInput.value.trim(), {
-      redirectTo: `${location.origin}${location.pathname}`,
-    });
-    button.disabled = false;
-    if (error) return notify("设置密码邮件发送失败，请稍后重试");
-    notify("设置密码邮件已发送，请在手机打开");
+    showAuthMessage("正在发送设置密码邮件…");
+    try {
+      const { error } = await client.auth.resetPasswordForEmail(emailInput.value.trim(), {
+        redirectTo: `${location.origin}${location.pathname}`,
+      });
+      if (error) return showAuthMessage("设置密码邮件发送失败，请稍后重试。", true);
+      showAuthMessage("设置密码邮件已发送，请在手机打开。");
+    } catch (_) {
+      showAuthMessage("邮件发送失败：网络连接异常，请稍后重试。", true);
+    } finally {
+      button.disabled = false;
+    }
   }
 
   async function handlePasswordUpdate(event) {
@@ -256,11 +281,17 @@
     const password = $("#account-password").value;
     const button = $("#password-form button");
     button.disabled = true;
-    const { error } = await client.auth.updateUser({ password });
-    button.disabled = false;
-    if (error) return notify("密码保存失败，请稍后重试");
-    $("#account-password").value = "";
-    notify("密码已保存，可在电脑登录");
+    showAuthMessage("正在保存密码…");
+    try {
+      const { error } = await client.auth.updateUser({ password });
+      if (error) return showAuthMessage("密码保存失败，请稍后重试。", true);
+      $("#account-password").value = "";
+      showAuthMessage("密码已保存，现在可以在电脑登录。");
+    } catch (_) {
+      showAuthMessage("密码保存失败：网络连接异常。", true);
+    } finally {
+      button.disabled = false;
+    }
   }
 
   async function handleRedeem(event) {
@@ -318,7 +349,7 @@
         window.setTimeout(() => {
           openAccount();
           $("#account-password").focus();
-          notify("请输入新密码并保存");
+          showAuthMessage("请输入新密码并保存。");
         }, 0);
       }
     });

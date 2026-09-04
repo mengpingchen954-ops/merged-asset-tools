@@ -237,6 +237,8 @@ kbd { padding: 2px 4px; border: 1px solid var(--line-strong); border-bottom-widt
 .account-form .secondary-action { border-color: var(--line-strong); background: white; color: var(--ink); }
 .account-form .text-action { min-height: 28px; padding: 0; border: 0; background: transparent; color: #607800; text-align: left; text-decoration: underline; }
 .auth-help { margin: 2px 0 0; color: var(--muted); font-size: 9px; line-height: 1.6; }
+.auth-message { margin: 12px 0 0; padding: 10px 12px; border: 1px solid #cddd94; border-radius: 6px; background: var(--accent-pale); color: #4e6300; font-size: 10px; font-weight: 700; line-height: 1.5; }
+.auth-message.is-error { border-color: #f0b4ad; background: #fff2f0; color: #a52a1f; }
 .password-form { margin-top: 14px; padding-top: 14px; border-top: 1px solid var(--line); }
 .password-form .auth-help { margin-top: 8px; }
 .signed-in-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; color: var(--muted); font-size: 10px; }
