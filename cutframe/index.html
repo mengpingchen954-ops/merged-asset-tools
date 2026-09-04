@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="theme-color" content="#090909" />
+    <meta name="theme-color" content="#f3f5f7" />
     <meta name="description" content="CUTFRAME 本地图片抠图与绿幕视频处理工具。" />
     <title>CUTFRAME - 本地素材工作台</title>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -12,12 +12,13 @@
     <link rel="stylesheet" href="./styles.css" />
   </head>
   <body>
-    <header class="topbar">
+    <aside class="topbar" aria-label="主导航">
       <a class="brand" href="#image" aria-label="CUTFRAME 首页">
         <span class="brand-mark"><i data-lucide="scan-line"></i></span>
-        <span class="brand-name">CUTFRAME</span>
+        <span class="brand-copy"><strong class="brand-name">CUTFRAME</strong><small>AI 素材处理工作台</small></span>
       </a>
 
+      <span class="nav-label">工具</span>
       <nav class="mode-switch" aria-label="工具模式">
         <button class="mode-button is-active" type="button" data-mode="image" aria-pressed="true">
           <i data-lucide="image"></i><span>一键抠图</span>
@@ -27,14 +28,27 @@
         </button>
       </nav>
 
-      <div class="privacy-state"><span class="state-dot"></span><span>仅在本地处理</span><i data-lucide="shield-check"></i></div>
+      <div class="sidebar-summary">
+        <span class="summary-icon"><i data-lucide="shield-check"></i></span>
+        <span><strong>本地隐私模式</strong><small>素材不离开浏览器</small></span>
+      </div>
+      <div class="privacy-state"><span class="state-dot"></span><span>处理引擎已就绪</span></div>
+    </aside>
+
+    <header class="page-header">
+      <button class="menu-button" type="button" aria-label="展开菜单" title="展开菜单"><i data-lucide="menu"></i></button>
+      <div class="page-title">
+        <h1>AI 素材处理工作台</h1>
+        <p>快速完成图片抠图与绿幕视频处理，所有素材仅在浏览器本地运算。</p>
+      </div>
+      <button class="header-upload" id="header-upload" type="button"><i data-lucide="plus"></i><span>导入新素材</span></button>
     </header>
 
     <main class="studio" data-active-mode="image">
       <aside class="control-panel" aria-label="处理参数">
         <div class="panel-heading">
           <div>
-            <span class="section-index">01</span>
+            <span class="section-index">参数</span>
             <h1 id="panel-title">一键抠图</h1>
           </div>
           <button class="icon-button" id="reset-button" type="button" aria-label="恢复默认参数" title="恢复默认参数">
@@ -162,7 +176,7 @@
         </section>
 
         <section class="export-section">
-          <div class="export-heading"><span class="section-index">02</span><h2>导出</h2></div>
+          <div class="export-heading"><span class="section-index">输出</span><h2>导出结果</h2></div>
           <div class="format-choice image-format">
             <span class="format-icon"><i data-lucide="file-image"></i></span>
             <span><strong>透明 PNG</strong><small>保留原始尺寸</small></span>
@@ -194,5 +208,4 @@
     <script src="./app.js"></script>
   </body>
 </html>
-
 

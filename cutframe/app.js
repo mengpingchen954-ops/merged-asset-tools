@@ -521,6 +521,12 @@
   });
 
   $("#upload-button").addEventListener("click", () => $(state.mode === "image" ? "#image-file" : "#video-file").click());
+  $("#header-upload").addEventListener("click", () => $(state.mode === "image" ? "#image-file" : "#video-file").click());
+  $(".menu-button").addEventListener("click", () => {
+    const collapsed = document.body.classList.toggle("sidebar-collapsed");
+    $(".menu-button").setAttribute("aria-label", collapsed ? "展开侧栏" : "收起侧栏");
+    $(".menu-button").setAttribute("title", collapsed ? "展开侧栏" : "收起侧栏");
+  });
   $("#image-file").addEventListener("change", (event) => loadImageFile(event.target.files[0]));
   $("#video-file").addEventListener("change", (event) => loadVideoFile(event.target.files[0]));
   $("#process-button").addEventListener("click", () => {
@@ -616,5 +622,3 @@
   drawDemo();
   setMode(location.hash.slice(1) === "video" ? "video" : "image", false);
 })();
-
-
