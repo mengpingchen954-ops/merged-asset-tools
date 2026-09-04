@@ -74,21 +74,21 @@
           </div>
 
           <div class="range-field">
-            <div class="range-meta"><label for="image-tolerance">容差</label><output id="image-tolerance-output">22%</output></div>
-            <input id="image-tolerance" type="range" min="2" max="70" value="22" />
+            <div class="range-meta"><label for="image-tolerance">背景容差</label><output id="image-tolerance-output">32</output></div>
+            <input id="image-tolerance" type="range" min="4" max="90" value="32" />
           </div>
           <div class="range-field">
-            <div class="range-meta"><label for="image-softness">边缘柔化</label><output id="image-softness-output">10%</output></div>
-            <input id="image-softness" type="range" min="0" max="35" value="10" />
+            <div class="range-meta"><label for="image-softness">边缘清理</label><output id="image-softness-output">1 px</output></div>
+            <input id="image-softness" type="range" min="0" max="4" value="1" />
           </div>
           <div class="range-field">
-            <div class="range-meta"><label for="image-spill">边缘压色</label><output id="image-spill-output">28%</output></div>
-            <input id="image-spill" type="range" min="0" max="80" value="28" />
+            <div class="range-meta"><label for="image-spill">边缘压色</label><output id="image-spill-output">40%</output></div>
+            <input id="image-spill" type="range" min="0" max="100" value="40" />
           </div>
 
           <label class="toggle-row">
-            <span><strong>保留阴影</strong><small>保留低透明度边缘</small></span>
-            <input id="keep-shadow" type="checkbox" checked />
+            <span><strong>清理封闭背景</strong><small>移除素材内部残留的背景色</small></span>
+            <input id="remove-enclosed" type="checkbox" />
           </label>
         </section>
 

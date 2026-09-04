@@ -124,15 +124,153 @@
     outputContext.putImageData(imageData, 0, 0);
   }
 
+  function intelligentImageMatte(source, targetCanvas, options) {
+    const width = source.width;
+    const height = source.height;
+    const total = width * height;
+    const inputContext = source.getContext("2d", { willReadFrequently: true });
+    const outputContext = targetCanvas.getContext("2d", { willReadFrequently: true });
+    const imageData = inputContext.getImageData(0, 0, width, height);
+    const output = new Uint8ClampedArray(imageData.data);
+    const background = hexToRgb(options.color);
+    const backgroundMask = new Uint8Array(total);
+    let transparentPixels = 0;
+
+    for (let index = 0; index < total; index += 1) {
+      if (output[index * 4 + 3] < 128) transparentPixels += 1;
+    }
+    if (transparentPixels / total > 0.1) {
+      outputContext.putImageData(new ImageData(output, width, height), 0, 0);
+      return;
+    }
+
+    const queue = new Int32Array(total);
+    let head = 0;
+    let tail = 0;
+    const nearWhite = background.r + background.g + background.b > 690;
+    const tolerance = nearWhite ? Math.max(options.tolerance, 42) : options.tolerance;
+    const toleranceSquared = tolerance * tolerance;
+    const isBackgroundColor = (offset, thresholdSquared = toleranceSquared) => {
+      if (output[offset + 3] < 12) return true;
+      const redDistance = output[offset] - background.r;
+      const greenDistance = output[offset + 1] - background.g;
+      const blueDistance = output[offset + 2] - background.b;
+      return redDistance * redDistance + greenDistance * greenDistance + blueDistance * blueDistance <= thresholdSquared;
+    };
+    const pushIfBackground = (index) => {
+      if (backgroundMask[index] || !isBackgroundColor(index * 4)) return;
+      backgroundMask[index] = 1;
+      queue[tail] = index;
+      tail += 1;
+    };
+
+    for (let x = 0; x < width; x += 1) {
+      pushIfBackground(x);
+      pushIfBackground((height - 1) * width + x);
+    }
+    for (let y = 0; y < height; y += 1) {
+      pushIfBackground(y * width);
+      pushIfBackground(y * width + width - 1);
+    }
+
+    while (head < tail) {
+      const index = queue[head];
+      head += 1;
+      const x = index % width;
+      const y = (index - x) / width;
+      if (x > 0) pushIfBackground(index - 1);
+      if (x < width - 1) pushIfBackground(index + 1);
+      if (y > 0) pushIfBackground(index - width);
+      if (y < height - 1) pushIfBackground(index + width);
+    }
+
+    if (options.removeEnclosed) {
+      for (let index = 0; index < total; index += 1) {
+        if (!backgroundMask[index] && isBackgroundColor(index * 4)) backgroundMask[index] = 1;
+      }
+    }
+    for (let index = 0; index < total; index += 1) {
+      if (backgroundMask[index]) output[index * 4 + 3] = 0;
+    }
+
+    const hasTransparentNeighbor = (index, pixels = output) => {
+      const x = index % width;
+      const y = (index - x) / width;
+      for (let dy = -1; dy <= 1; dy += 1) {
+        for (let dx = -1; dx <= 1; dx += 1) {
+          if (dx === 0 && dy === 0) continue;
+          const nextX = x + dx;
+          const nextY = y + dy;
+          if (nextX < 0 || nextX >= width || nextY < 0 || nextY >= height) return true;
+          if (pixels[(nextY * width + nextX) * 4 + 3] === 0) return true;
+        }
+      }
+      return false;
+    };
+
+    for (let pass = 0; pass < options.edgeTrim; pass += 1) {
+      const multiplier = 1 + 0.25 * (pass + 1);
+      const passToleranceSquared = toleranceSquared * multiplier * multiplier;
+      const erase = [];
+      for (let index = 0; index < total; index += 1) {
+        const offset = index * 4;
+        if (output[offset + 3] === 0 || !hasTransparentNeighbor(index)) continue;
+        if (isBackgroundColor(offset, passToleranceSquared)) erase.push(index);
+      }
+      for (const index of erase) {
+        backgroundMask[index] = 1;
+        output[index * 4 + 3] = 0;
+      }
+    }
+
+    const feathered = new Uint8ClampedArray(output);
+    const gaussian = [1, 2, 1, 2, 4, 2, 1, 2, 1];
+    for (let index = 0; index < total; index += 1) {
+      const offset = index * 4;
+      if (output[offset + 3] === 0 || !hasTransparentNeighbor(index)) continue;
+      const x = index % width;
+      const y = (index - x) / width;
+      let alphaSum = 0;
+      let weightSum = 0;
+      let kernelIndex = 0;
+      for (let dy = -1; dy <= 1; dy += 1) {
+        for (let dx = -1; dx <= 1; dx += 1) {
+          const nextX = x + dx;
+          const nextY = y + dy;
+          const weight = gaussian[kernelIndex];
+          kernelIndex += 1;
+          const alpha = nextX < 0 || nextX >= width || nextY < 0 || nextY >= height ? 0 : output[(nextY * width + nextX) * 4 + 3];
+          alphaSum += alpha * weight;
+          weightSum += weight;
+        }
+      }
+      feathered[offset + 3] = Math.round(alphaSum / weightSum);
+    }
+
+    const edgeDarkening = Math.max(0, Math.min(1, options.edgeDarkening / 100));
+    if (edgeDarkening > 0) {
+      for (let index = 0; index < total; index += 1) {
+        const offset = index * 4;
+        if (feathered[offset + 3] === 0 || !hasTransparentNeighbor(index, feathered)) continue;
+        feathered[offset] = Math.round(feathered[offset] * (1 - edgeDarkening));
+        feathered[offset + 1] = Math.round(feathered[offset + 1] * (1 - edgeDarkening));
+        feathered[offset + 2] = Math.round(feathered[offset + 2] * (1 - edgeDarkening));
+      }
+    }
+
+    outputContext.clearRect(0, 0, width, height);
+    outputContext.putImageData(new ImageData(feathered, width, height), 0, 0);
+  }
+
   function processImage() {
     if (!state.imageReady) return;
     const started = performance.now();
-    processPixels(sourceCanvas, processedCanvas, {
+    intelligentImageMatte(sourceCanvas, processedCanvas, {
       color: $("#image-color").value,
       tolerance: Number($("#image-tolerance").value),
-      softness: Number($("#image-softness").value),
-      spill: Number($("#image-spill").value),
-      keepShadow: $("#keep-shadow").checked,
+      edgeTrim: Number($("#image-softness").value),
+      edgeDarkening: Number($("#image-spill").value),
+      removeEnclosed: $("#remove-enclosed").checked,
     });
     renderImagePreview();
     state.imageMeta.time = `${Math.max(1, Math.round(performance.now() - started))} ms`;
@@ -182,18 +320,26 @@
   function sampleCornerColor(mode) {
     const canvas = mode === "image" ? sourceCanvas : videoFrameCanvas;
     const context = canvas.getContext("2d", { willReadFrequently: true });
+    const size = Math.max(2, Math.min(6, Math.floor(Math.min(canvas.width, canvas.height) / 20)));
     const points = [
-      [2, 2],
-      [canvas.width - 3, 2],
-      [2, canvas.height - 3],
-      [canvas.width - 3, canvas.height - 3],
+      [0, 0],
+      [canvas.width - size, 0],
+      [0, canvas.height - size],
+      [canvas.width - size, canvas.height - size],
     ];
-    const colors = points.map(([x, y]) => context.getImageData(x, y, 1, 1).data);
-    const color = rgbToHex(
-      colors.reduce((sum, item) => sum + item[0], 0) / colors.length,
-      colors.reduce((sum, item) => sum + item[1], 0) / colors.length,
-      colors.reduce((sum, item) => sum + item[2], 0) / colors.length,
-    );
+    const reds = [];
+    const greens = [];
+    const blues = [];
+    for (const [startX, startY] of points) {
+      const sample = context.getImageData(startX, startY, size, size).data;
+      for (let offset = 0; offset < sample.length; offset += 4) {
+        reds.push(sample[offset]);
+        greens.push(sample[offset + 1]);
+        blues.push(sample[offset + 2]);
+      }
+    }
+    const median = (values) => values.sort((a, b) => a - b)[Math.floor(values.length / 2)] ?? 255;
+    const color = rgbToHex(median(reds), median(greens), median(blues));
     setColor(mode, color);
   }
 
@@ -206,7 +352,10 @@
 
   function updateRangeOutput(input) {
     const output = $(`#${input.id}-output`);
-    if (output) output.textContent = `${input.value}%`;
+    if (!output) return;
+    if (input.id === "image-tolerance") output.textContent = input.value;
+    else if (input.id === "image-softness") output.textContent = `${input.value} px`;
+    else output.textContent = `${input.value}%`;
   }
 
   function setMode(mode, updateHash = true) {
@@ -434,10 +583,10 @@
   function resetControls() {
     if (state.mode === "image") {
       setColor("image", "#D6D2CC");
-      $("#image-tolerance").value = "22";
-      $("#image-softness").value = "10";
-      $("#image-spill").value = "28";
-      $("#keep-shadow").checked = true;
+      $("#image-tolerance").value = "32";
+      $("#image-softness").value = "1";
+      $("#image-spill").value = "40";
+      $("#remove-enclosed").checked = false;
       $$(".image-controls input[type='range']").forEach(updateRangeOutput);
       processImage();
     } else {
@@ -476,7 +625,7 @@
     setColor("video", event.target.value);
     drawVideoFrame();
   });
-  $("#keep-shadow").addEventListener("change", processImage);
+  $("#remove-enclosed").addEventListener("change", processImage);
   $("#image-eyedropper").addEventListener("click", () => {
     state.pickingColor = "image";
     showToast("点击画面中的背景区域取色");
