@@ -27,6 +27,9 @@
     rafId: 0,
     videoUrl: "",
     toastTimer: 0,
+    imageLabels: null,
+    imageAssets: [],
+    processedImageData: null,
     imageMeta: { name: "未选择图片", size: "-- x --", time: "--", status: "等待载入" },
     videoMeta: { name: "未选择视频", size: "-- x --", time: "--", status: "等待载入" },
   };
@@ -140,8 +143,12 @@
       if (output[index * 4 + 3] < 128) transparentPixels += 1;
     }
     if (transparentPixels / total > 0.1) {
-      outputContext.putImageData(new ImageData(output, width, height), 0, 0);
-      return;
+      for (let index = 0; index < total; index += 1) {
+        if (output[index * 4 + 3] < 12) backgroundMask[index] = 1;
+      }
+      const transparentImageData = new ImageData(output, width, height);
+      outputContext.putImageData(transparentImageData, 0, 0);
+      return { imageData: transparentImageData, backgroundMask };
     }
 
     const queue = new Int32Array(total);
@@ -259,20 +266,233 @@
     }
 
     outputContext.clearRect(0, 0, width, height);
-    outputContext.putImageData(new ImageData(feathered, width, height), 0, 0);
+    const processedImageData = new ImageData(feathered, width, height);
+    outputContext.putImageData(processedImageData, 0, 0);
+    return { imageData: processedImageData, backgroundMask };
+  }
+
+  function labelImageComponents(imageData, backgroundMask, width, height) {
+    const total = width * height;
+    const labels = new Int32Array(total);
+    const queue = new Int32Array(total);
+    const components = [];
+    let label = 0;
+    const isForeground = (index) => !backgroundMask[index] && imageData.data[index * 4 + 3] > 12;
+
+    for (let start = 0; start < total; start += 1) {
+      if (labels[start] || !isForeground(start)) continue;
+      label += 1;
+      let head = 0;
+      let tail = 0;
+      let minX = width;
+      let minY = height;
+      let maxX = 0;
+      let maxY = 0;
+      let area = 0;
+      labels[start] = label;
+      queue[tail] = start;
+      tail += 1;
+
+      while (head < tail) {
+        const current = queue[head];
+        head += 1;
+        const x = current % width;
+        const y = (current - x) / width;
+        minX = Math.min(minX, x);
+        minY = Math.min(minY, y);
+        maxX = Math.max(maxX, x);
+        maxY = Math.max(maxY, y);
+        area += 1;
+
+        for (let deltaY = -1; deltaY <= 1; deltaY += 1) {
+          const nextY = y + deltaY;
+          if (nextY < 0 || nextY >= height) continue;
+          for (let deltaX = -1; deltaX <= 1; deltaX += 1) {
+            if (deltaX === 0 && deltaY === 0) continue;
+            const nextX = x + deltaX;
+            if (nextX < 0 || nextX >= width) continue;
+            const next = nextY * width + nextX;
+            if (labels[next] || !isForeground(next)) continue;
+            labels[next] = label;
+            queue[tail] = next;
+            tail += 1;
+          }
+        }
+      }
+      components.push({ id: label, minX, minY, maxX, maxY, area });
+    }
+    return { labels, components };
+  }
+
+  function groupImageComponents(components, mergeGap = 8, minArea = 120) {
+    const useful = components.filter((component) => component.area >= 3);
+    const parent = new Int32Array(useful.length);
+    const rank = new Uint8Array(useful.length);
+    for (let index = 0; index < useful.length; index += 1) parent[index] = index;
+    const find = (value) => {
+      let root = value;
+      while (parent[root] !== root) root = parent[root];
+      while (parent[value] !== value) {
+        const next = parent[value];
+        parent[value] = root;
+        value = next;
+      }
+      return root;
+    };
+    const union = (first, second) => {
+      let firstRoot = find(first);
+      let secondRoot = find(second);
+      if (firstRoot === secondRoot) return;
+      if (rank[firstRoot] < rank[secondRoot]) [firstRoot, secondRoot] = [secondRoot, firstRoot];
+      parent[secondRoot] = firstRoot;
+      if (rank[firstRoot] === rank[secondRoot]) rank[firstRoot] += 1;
+    };
+    const rectangleDistance = (first, second) => {
+      const distanceX = Math.max(0, Math.max(first.minX - second.maxX - 1, second.minX - first.maxX - 1));
+      const distanceY = Math.max(0, Math.max(first.minY - second.maxY - 1, second.minY - first.maxY - 1));
+      return Math.hypot(distanceX, distanceY);
+    };
+
+    for (let first = 0; first < useful.length; first += 1) {
+      for (let second = first + 1; second < useful.length; second += 1) {
+        if (rectangleDistance(useful[first], useful[second]) <= mergeGap) union(first, second);
+      }
+    }
+
+    const grouped = new Map();
+    for (let index = 0; index < useful.length; index += 1) {
+      const root = find(index);
+      const component = useful[index];
+      if (!grouped.has(root)) {
+        grouped.set(root, {
+          labels: [],
+          labelSet: new Set(),
+          minX: component.minX,
+          minY: component.minY,
+          maxX: component.maxX,
+          maxY: component.maxY,
+          area: 0,
+        });
+      }
+      const group = grouped.get(root);
+      group.labels.push(component.id);
+      group.labelSet.add(component.id);
+      group.minX = Math.min(group.minX, component.minX);
+      group.minY = Math.min(group.minY, component.minY);
+      group.maxX = Math.max(group.maxX, component.maxX);
+      group.maxY = Math.max(group.maxY, component.maxY);
+      group.area += component.area;
+    }
+
+    return [...grouped.values()]
+      .filter((group) => group.area >= minArea)
+      .sort((first, second) => (first.minY === second.minY ? first.minX - second.minX : first.minY - second.minY))
+      .map((group, index) => ({ ...group, id: index + 1 }));
+  }
+
+  function makeSeparatedAssetCanvas(asset, padding = 12) {
+    const width = asset.maxX - asset.minX + 1 + padding * 2;
+    const height = asset.maxY - asset.minY + 1 + padding * 2;
+    const canvas = document.createElement("canvas");
+    canvas.width = Math.max(1, width);
+    canvas.height = Math.max(1, height);
+    const context = canvas.getContext("2d", { willReadFrequently: true });
+    const output = context.createImageData(canvas.width, canvas.height);
+
+    for (let y = 0; y < canvas.height; y += 1) {
+      const sourceY = asset.minY - padding + y;
+      if (sourceY < 0 || sourceY >= processedCanvas.height) continue;
+      for (let x = 0; x < canvas.width; x += 1) {
+        const sourceX = asset.minX - padding + x;
+        if (sourceX < 0 || sourceX >= processedCanvas.width) continue;
+        const sourceIndex = sourceY * processedCanvas.width + sourceX;
+        if (!asset.labelSet.has(state.imageLabels[sourceIndex])) continue;
+        const sourceOffset = sourceIndex * 4;
+        const destinationOffset = (y * canvas.width + x) * 4;
+        output.data[destinationOffset] = state.processedImageData.data[sourceOffset];
+        output.data[destinationOffset + 1] = state.processedImageData.data[sourceOffset + 1];
+        output.data[destinationOffset + 2] = state.processedImageData.data[sourceOffset + 2];
+        output.data[destinationOffset + 3] = state.processedImageData.data[sourceOffset + 3];
+      }
+    }
+    context.putImageData(output, 0, 0);
+    return canvas;
+  }
+
+  function renderSeparatedAssets() {
+    const section = $("#split-results");
+    const list = $("#split-list");
+    section.hidden = state.mode !== "image" || !state.imageReady;
+    $("#split-count").textContent = state.imageAssets.length;
+    list.replaceChildren();
+    if (!state.imageAssets.length) {
+      const empty = document.createElement("div");
+      empty.className = "split-empty";
+      empty.textContent = "未检测到可独立下载的素材";
+      list.appendChild(empty);
+      return;
+    }
+
+    const fragment = document.createDocumentFragment();
+    state.imageAssets.forEach((asset) => {
+      const card = document.createElement("div");
+      card.className = "split-card";
+      const preview = document.createElement("span");
+      preview.className = "split-preview";
+      const canvas = makeSeparatedAssetCanvas(asset);
+      preview.appendChild(canvas);
+      const meta = document.createElement("span");
+      meta.className = "split-meta";
+      const name = `素材 ${String(asset.id).padStart(2, "0")}`;
+      const dimensions = `${canvas.width} x ${canvas.height}`;
+      meta.innerHTML = `<strong>${name}</strong><small>${dimensions}</small>`;
+      const button = document.createElement("button");
+      button.className = "split-download";
+      button.type = "button";
+      button.title = `下载${name}`;
+      button.setAttribute("aria-label", `下载${name}`);
+      button.innerHTML = '<i data-lucide="download"></i>';
+      button.addEventListener("click", () => downloadSeparatedAsset(asset));
+      card.append(preview, meta, button);
+      fragment.appendChild(card);
+    });
+    list.appendChild(fragment);
+    refreshIcons();
+  }
+
+  async function downloadSeparatedAsset(asset) {
+    const approved = await credits.confirmExport("asset_export");
+    if (!approved) return;
+    try {
+      const canvas = makeSeparatedAssetCanvas(asset);
+      const blob = await canvasToBlob(canvas, "image/png");
+      const charged = await credits.charge("asset_export");
+      if (!charged.ok) return;
+      const assetNumber = String(asset.id).padStart(2, "0");
+      downloadBlob(blob, `${fileStem(state.imageMeta.name)}-asset-${assetNumber}.png`);
+      showToast(`素材 ${assetNumber} 已下载，已使用 ${charged.cost} 积分`);
+    } catch (error) {
+      console.error("Separated asset export failed", error);
+      showToast("素材生成失败，本次未扣积分");
+    }
   }
 
   function processImage() {
     if (!state.imageReady) return;
     const started = performance.now();
-    intelligentImageMatte(sourceCanvas, processedCanvas, {
+    const matte = intelligentImageMatte(sourceCanvas, processedCanvas, {
       color: $("#image-color").value,
       tolerance: Number($("#image-tolerance").value),
       edgeTrim: Number($("#image-softness").value),
       edgeDarkening: Number($("#image-spill").value),
       removeEnclosed: $("#remove-enclosed").checked,
     });
+    const separated = labelImageComponents(matte.imageData, matte.backgroundMask, sourceCanvas.width, sourceCanvas.height);
+    state.imageLabels = separated.labels;
+    state.imageAssets = groupImageComponents(separated.components);
+    state.processedImageData = matte.imageData;
     renderImagePreview();
+    renderSeparatedAssets();
     state.imageMeta.time = `${Math.max(1, Math.round(performance.now() - started))} ms`;
     if (state.mode === "image") $("#process-time").textContent = state.imageMeta.time;
   }
@@ -384,6 +604,7 @@
     $(".video-timeline").hidden = mode !== "video";
     $("#image-empty").hidden = mode !== "image" || state.imageReady;
     $("#video-empty").hidden = mode !== "video" || state.videoReady;
+    $("#split-results").hidden = mode !== "image" || !state.imageReady;
     $("#process-button").disabled = mode === "image" ? !state.imageReady : false;
     $("#download-button").disabled = mode === "image" ? !state.imageReady : !state.videoReady;
     $("#primary-shortcut").innerHTML = mode === "video" ? "<kbd>Space</kbd> 播放" : "<kbd>V</kbd> 对比";

@@ -11,7 +11,7 @@ create table if not exists public.credit_transactions (
   id bigint generated always as identity primary key,
   user_id uuid not null references auth.users (id) on delete cascade,
   amount integer not null check (amount <> 0),
-  reason text not null check (reason in ('welcome', 'redeem', 'image_export', 'video_export', 'admin_adjustment')),
+  reason text not null check (reason in ('welcome', 'redeem', 'asset_export', 'image_export', 'video_export', 'admin_adjustment')),
   idempotency_key uuid,
   metadata jsonb not null default '{}'::jsonb,
   created_at timestamptz not null default now()
@@ -107,6 +107,7 @@ immutable
 set search_path = ''
 as $$
   select case
+    when p_action = 'asset_export' then 1
     when p_action = 'image_export' then 2
     when p_action = 'video_export' then 5 + greatest(0, ceil((greatest(0, p_duration_seconds) - 30) / 30))::integer * 3
     else null

@@ -14,6 +14,7 @@
   };
 
   const actionCopy = {
+    asset_export: { title: "下载单项透明 PNG", reason: "单项素材下载", icon: "download" },
     image_export: { title: "导出透明 PNG", reason: "高清 PNG 导出", icon: "file-image" },
     video_export: { title: "导出透明 WEBM", reason: "绿幕视频导出", icon: "file-video" },
     welcome: { reason: "新用户赠送", icon: "gift" },
@@ -41,6 +42,7 @@
   }
 
   function getCost(action, durationSeconds = 0) {
+    if (action === "asset_export") return 1;
     if (action === "image_export") return 2;
     if (action === "video_export") return 5 + Math.max(0, Math.ceil((Math.max(0, durationSeconds) - 30) / 30)) * 3;
     throw new Error("未知积分项目");
