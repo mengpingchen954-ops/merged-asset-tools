@@ -41,7 +41,13 @@
         <h1>AI 素材处理工作台</h1>
         <p>快速完成图片抠图与绿幕视频处理，所有素材仅在浏览器本地运算。</p>
       </div>
-      <button class="header-upload" id="header-upload" type="button"><i data-lucide="plus"></i><span>导入新素材</span></button>
+      <div class="header-actions">
+        <button class="credit-button" id="credit-button" type="button" aria-label="打开积分账户">
+          <i data-lucide="coins"></i>
+          <span><small id="credit-mode">体验积分</small><strong><b id="credit-balance">10</b> 积分</strong></span>
+        </button>
+        <button class="header-upload" id="header-upload" type="button"><i data-lucide="plus"></i><span>导入新素材</span></button>
+      </div>
     </header>
 
     <main class="studio" data-active-mode="image">
@@ -196,6 +202,7 @@
             <span><strong>透明 WEBM</strong><small>VP9 · Alpha</small></span>
             <i data-lucide="check"></i>
           </div>
+          <div class="export-cost"><span>本次导出</span><strong id="export-cost">2 积分</strong></div>
           <button class="primary-button" id="process-button" type="button" disabled><i data-lucide="sparkles"></i><span>一键抠图</span></button>
           <button class="secondary-button" id="download-button" type="button" disabled><i data-lucide="download"></i><span>下载 PNG</span></button>
           <div class="export-progress" id="export-progress" hidden>
@@ -209,11 +216,60 @@
     </main>
 
     <div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+    <dialog class="account-dialog" id="account-dialog" aria-labelledby="account-title">
+      <div class="dialog-heading">
+        <div><span class="section-index">账户</span><h2 id="account-title">积分中心</h2></div>
+        <button class="icon-button" id="close-account" type="button" aria-label="关闭积分中心" title="关闭"><i data-lucide="x"></i></button>
+      </div>
+      <div class="balance-panel">
+        <span class="balance-icon"><i data-lucide="coins"></i></span>
+        <div><small>可用积分</small><strong><span id="dialog-credit-balance">10</span></strong></div>
+        <span class="account-mode-badge" id="account-mode-badge">体验模式</span>
+      </div>
+      <p class="account-note" id="account-note">当前积分保存在本机，仅用于体验流程。连接 Supabase 后将自动切换为真实账户。</p>
+
+      <section class="account-section" id="auth-section">
+        <div class="account-section-title"><h3>账户登录</h3><span id="auth-state">未登录</span></div>
+        <form class="account-form" id="login-form">
+          <label for="login-email">邮箱</label>
+          <div><input id="login-email" type="email" autocomplete="email" placeholder="name@example.com" required /><button type="submit">发送登录链接</button></div>
+        </form>
+        <div class="signed-in-row" id="signed-in-row" hidden><span id="signed-in-email"></span><button id="logout-button" type="button">退出登录</button></div>
+      </section>
+
+      <section class="account-section">
+        <div class="account-section-title"><h3>兑换积分</h3><span>输入兑换码</span></div>
+        <form class="account-form" id="redeem-form">
+          <label for="redeem-code">兑换码</label>
+          <div><input id="redeem-code" type="text" autocomplete="off" placeholder="输入兑换码" required /><button type="submit">兑换</button></div>
+        </form>
+      </section>
+
+      <section class="account-section ledger-section">
+        <div class="account-section-title"><h3>积分明细</h3><span>最近 20 条</span></div>
+        <div class="ledger-list" id="ledger-list"></div>
+      </section>
+    </dialog>
+
+    <dialog class="charge-dialog" id="charge-dialog" aria-labelledby="charge-title">
+      <button class="dialog-close" id="close-charge" type="button" aria-label="取消导出"><i data-lucide="x"></i></button>
+      <span class="charge-icon"><i data-lucide="download"></i></span>
+      <h2 id="charge-title">确认导出</h2>
+      <p id="charge-description">导出透明 PNG</p>
+      <div class="charge-summary"><span>本次消耗</span><strong><b id="charge-cost">2</b> 积分</strong></div>
+      <div class="charge-summary muted"><span>导出后余额</span><strong><b id="charge-after">8</b> 积分</strong></div>
+      <div class="dialog-actions"><button class="dialog-secondary" id="cancel-charge" type="button">取消</button><button class="dialog-primary" id="confirm-charge" type="button">确认导出</button></div>
+    </dialog>
+
     <video id="source-video" playsinline muted hidden></video>
     <canvas id="source-canvas" width="1200" height="800" hidden></canvas>
     <canvas id="processed-canvas" width="1200" height="800" hidden></canvas>
 
     <script src="https://unpkg.com/lucide@0.468.0/dist/umd/lucide.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+    <script src="./supabase-config.js"></script>
+    <script src="./credits.js"></script>
     <script src="./app.js"></script>
   </body>
 </html>

@@ -14,6 +14,7 @@
   const videoFrameCanvas = document.createElement("canvas");
   const videoProcessedCanvas = document.createElement("canvas");
   const videoFrameContext = videoFrameCanvas.getContext("2d", { willReadFrequently: true });
+  const credits = window.CutframeCredits;
 
   const state = {
     mode: "image",
@@ -225,6 +226,7 @@
     $("#drop-text").textContent = copy.drop;
     $("#process-button span").textContent = copy.action;
     $("#download-button span").textContent = copy.download;
+    credits?.updateExportCost(mode === "image" ? "image_export" : "video_export", mode === "video" ? video.duration || 0 : 0);
     $(".image-controls").hidden = mode !== "image";
     $(".video-controls").hidden = mode !== "video";
     $(".image-format").hidden = mode !== "image";
@@ -324,6 +326,9 @@
       return;
     }
 
+    const approved = await credits.confirmExport("video_export", video.duration || 0);
+    if (!approved) return;
+
     state.renderingVideo = true;
     const fps = Number($("#video-fps").value);
     const stream = previewCanvas.captureStream(fps);
@@ -332,32 +337,50 @@
     recorder.ondataavailable = (event) => {
       if (event.data.size) chunks.push(event.data);
     };
-    recorder.onstop = () => {
+    recorder.onstop = async () => {
       const blob = new Blob(chunks, { type: "video/webm" });
-      downloadBlob(blob, `${fileStem(state.videoMeta.name)}-cutframe.webm`);
-      state.renderingVideo = false;
-      $("#export-progress").hidden = true;
-      $("#download-button").disabled = false;
-      showToast("透明 WEBM 已生成");
+      try {
+        if (!blob.size) throw new Error("empty_video_export");
+        const charged = await credits.charge("video_export", video.duration || 0);
+        if (!charged.ok) return;
+        downloadBlob(blob, `${fileStem(state.videoMeta.name)}-cutframe.webm`);
+        showToast(`透明 WEBM 已生成，已使用 ${charged.cost} 积分`);
+      } catch (error) {
+        console.error("Video export failed", error);
+        showToast("视频生成失败，本次未扣积分");
+      } finally {
+        state.renderingVideo = false;
+        $("#export-progress").hidden = true;
+        $("#download-button").disabled = false;
+      }
     };
 
     $("#export-progress").hidden = false;
     $("#download-button").disabled = true;
     video.pause();
     video.currentTime = 0;
-    await new Promise((resolve) => video.addEventListener("seeked", resolve, { once: true }));
-    recorder.start(250);
-    await video.play();
-    drawVideoFrame();
-    video.addEventListener("timeupdate", updateExportProgress);
-    video.addEventListener(
-      "ended",
-      () => {
-        video.removeEventListener("timeupdate", updateExportProgress);
-        recorder.stop();
-      },
-      { once: true },
-    );
+    try {
+      await new Promise((resolve) => video.addEventListener("seeked", resolve, { once: true }));
+      recorder.start(250);
+      await video.play();
+      drawVideoFrame();
+      video.addEventListener("timeupdate", updateExportProgress);
+      video.addEventListener(
+        "ended",
+        () => {
+          video.removeEventListener("timeupdate", updateExportProgress);
+          recorder.stop();
+        },
+        { once: true },
+      );
+    } catch (error) {
+      console.error("Video export could not start", error);
+      if (recorder.state !== "inactive") recorder.stop();
+      state.renderingVideo = false;
+      $("#export-progress").hidden = true;
+      $("#download-button").disabled = false;
+      showToast("视频生成失败，本次未扣积分");
+    }
   }
 
   function updateExportProgress() {
@@ -381,12 +404,25 @@
     window.setTimeout(() => URL.revokeObjectURL(url), 1000);
   }
 
-  function downloadImage() {
-    processedCanvas.toBlob((blob) => {
-      if (!blob) return;
+  function canvasToBlob(canvas, type) {
+    return new Promise((resolve, reject) => {
+      canvas.toBlob((blob) => (blob ? resolve(blob) : reject(new Error("canvas_export_failed"))), type);
+    });
+  }
+
+  async function downloadImage() {
+    const approved = await credits.confirmExport("image_export");
+    if (!approved) return;
+    try {
+      const blob = await canvasToBlob(processedCanvas, "image/png");
+      const charged = await credits.charge("image_export");
+      if (!charged.ok) return;
       downloadBlob(blob, `${fileStem(state.imageMeta.name)}-cutframe.png`);
-      showToast("透明 PNG 已生成");
-    }, "image/png");
+      showToast(`透明 PNG 已生成，已使用 ${charged.cost} 积分`);
+    } catch (error) {
+      console.error("Image export failed", error);
+      showToast("图片生成失败，本次未扣积分");
+    }
   }
 
   function setZoom(nextZoom) {
@@ -527,6 +563,7 @@
     state.videoMeta.status = "已载入";
     $("#file-size").textContent = state.videoMeta.size;
     $("#video-duration").textContent = formatTime(video.duration);
+    credits?.updateExportCost("video_export", video.duration || 0);
     $("#asset-status").textContent = state.videoMeta.status;
     video.currentTime = Math.min(0.05, video.duration || 0);
   });
