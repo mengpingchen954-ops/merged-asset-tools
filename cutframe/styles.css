@@ -243,10 +243,14 @@ input[type="range"]::-webkit-slider-thumb { width: 14px; height: 14px; border: 3
   transition: transform 180ms ease;
 }
 #preview-canvas { display: block; width: 100%; height: auto; max-height: calc(100vh - 280px); object-fit: contain; }
-.empty-state { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; background: #11161c; color: #89929e; font-size: 10px; }
-.empty-state strong { color: white; font-size: 15px; }
+.empty-state { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; padding: 28px; background: #11161c; color: #89929e; font-size: 11px; text-align: center; }
+.empty-state strong { color: white; font-size: 18px; }
+.empty-state small { color: #68727e; font-size: 9px; }
 .empty-icon { display: grid; width: 50px; height: 50px; margin-bottom: 6px; place-items: center; border: 1px solid #303844; border-radius: 7px; background: #1b222a; color: var(--accent); }
 .empty-icon svg { width: 23px; }
+.empty-upload { display: flex; align-items: center; justify-content: center; gap: 7px; min-height: 38px; margin-top: 6px; padding: 0 15px; border: 1px solid var(--accent); border-radius: 6px; background: var(--accent); color: var(--ink); font-size: 10px; font-weight: 800; cursor: pointer; }
+.empty-upload:hover { background: var(--accent-hover); }
+.empty-upload svg { width: 14px; }
 .drop-hint { position: absolute; bottom: 16px; left: 50%; display: flex; align-items: center; gap: 8px; padding: 8px 12px; border: 1px solid var(--line-strong); border-radius: 6px; background: rgb(255 255 255 / 96%); color: var(--muted); font-size: 9px; box-shadow: 0 8px 18px rgb(32 43 57 / 10%); opacity: 0; pointer-events: none; transform: translate(-50%, 8px); transition: opacity 160ms ease, transform 160ms ease; }
 .canvas-shell.is-dragging ~ .drop-hint, .canvas-shell:hover ~ .drop-hint { opacity: 1; transform: translate(-50%, 0); }
 .drop-hint svg { width: 14px; color: #6c8c00; }

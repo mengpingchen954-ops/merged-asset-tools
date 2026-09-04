@@ -19,14 +19,14 @@
     mode: "image",
     view: "result",
     zoom: 1,
-    imageReady: true,
+    imageReady: false,
     videoReady: false,
     pickingColor: false,
     renderingVideo: false,
     rafId: 0,
     videoUrl: "",
     toastTimer: 0,
-    imageMeta: { name: "DEMO_01.PNG", size: "1200 x 800", time: "18 ms", status: "示例" },
+    imageMeta: { name: "未选择图片", size: "-- x --", time: "--", status: "等待载入" },
     videoMeta: { name: "未选择视频", size: "-- x --", time: "--", status: "等待载入" },
   };
 
@@ -84,67 +84,6 @@
     });
     $("#canvas-size").textContent = `${width} x ${height}`;
     $("#file-size").textContent = `${width} x ${height}`;
-  }
-
-  function drawDemo() {
-    const width = 1200;
-    const height = 800;
-    syncCanvasDimensions(width, height, "image");
-    sourceContext.fillStyle = "#d6d2cc";
-    sourceContext.fillRect(0, 0, width, height);
-
-    sourceContext.fillStyle = "rgba(25, 25, 25, .13)";
-    sourceContext.beginPath();
-    sourceContext.ellipse(620, 620, 365, 52, -0.03, 0, Math.PI * 2);
-    sourceContext.fill();
-
-    sourceContext.fillStyle = "#151515";
-    sourceContext.beginPath();
-    sourceContext.moveTo(290, 500);
-    sourceContext.bezierCurveTo(355, 470, 390, 345, 475, 300);
-    sourceContext.bezierCurveTo(560, 255, 650, 360, 730, 420);
-    sourceContext.bezierCurveTo(800, 470, 950, 490, 1010, 550);
-    sourceContext.lineTo(982, 610);
-    sourceContext.bezierCurveTo(760, 632, 535, 634, 318, 608);
-    sourceContext.closePath();
-    sourceContext.fill();
-
-    sourceContext.fillStyle = "#ff641e";
-    sourceContext.beginPath();
-    sourceContext.moveTo(430, 460);
-    sourceContext.bezierCurveTo(475, 370, 535, 342, 605, 385);
-    sourceContext.lineTo(750, 500);
-    sourceContext.lineTo(654, 548);
-    sourceContext.lineTo(510, 520);
-    sourceContext.closePath();
-    sourceContext.fill();
-
-    sourceContext.strokeStyle = "#f1ede7";
-    sourceContext.lineWidth = 15;
-    sourceContext.lineCap = "round";
-    [[492, 414, 626, 460], [478, 449, 606, 490], [470, 486, 575, 515]].forEach((line) => {
-      sourceContext.beginPath();
-      sourceContext.moveTo(line[0], line[1]);
-      sourceContext.lineTo(line[2], line[3]);
-      sourceContext.stroke();
-    });
-
-    sourceContext.fillStyle = "#f4f1ed";
-    sourceContext.beginPath();
-    sourceContext.moveTo(280, 566);
-    sourceContext.bezierCurveTo(490, 594, 760, 592, 1004, 556);
-    sourceContext.lineTo(982, 627);
-    sourceContext.bezierCurveTo(742, 660, 500, 655, 310, 624);
-    sourceContext.closePath();
-    sourceContext.fill();
-
-    sourceContext.fillStyle = "#ff641e";
-    sourceContext.fillRect(785, 579, 95, 12);
-    sourceContext.fillStyle = "#111111";
-    sourceContext.font = "800 23px Manrope, sans-serif";
-    sourceContext.fillText("CF-01", 840, 455);
-
-    processImage();
   }
 
   function processPixels(source, targetCanvas, options) {
@@ -224,6 +163,9 @@
       $("#file-name").textContent = state.imageMeta.name;
       $("#canvas-state").textContent = file.name.toUpperCase();
       $("#asset-status").textContent = state.imageMeta.status;
+      $("#image-empty").hidden = true;
+      $("#process-button").disabled = false;
+      $("#download-button").disabled = false;
       sampleCornerColor("image");
       processImage();
       URL.revokeObjectURL(url);
@@ -289,22 +231,24 @@
     $(".video-format").hidden = mode !== "video";
     $(".image-view-switch").hidden = mode !== "image";
     $(".video-timeline").hidden = mode !== "video";
+    $("#image-empty").hidden = mode !== "image" || state.imageReady;
     $("#video-empty").hidden = mode !== "video" || state.videoReady;
-    $("#download-button").disabled = mode === "video" && !state.videoReady;
+    $("#process-button").disabled = mode === "image" ? !state.imageReady : false;
+    $("#download-button").disabled = mode === "image" ? !state.imageReady : !state.videoReady;
     $("#primary-shortcut").innerHTML = mode === "video" ? "<kbd>Space</kbd> 播放" : "<kbd>V</kbd> 对比";
 
     if (mode === "image") {
       window.cancelAnimationFrame(state.rafId);
       video.pause();
-      previewCanvas.width = sourceCanvas.width;
-      previewCanvas.height = sourceCanvas.height;
+      previewCanvas.width = sourceCanvas.width || 1200;
+      previewCanvas.height = sourceCanvas.height || 800;
       renderImagePreview();
       $("#file-name").textContent = state.imageMeta.name;
       $("#file-size").textContent = state.imageMeta.size;
       $("#process-time").textContent = state.imageMeta.time;
       $("#asset-status").textContent = state.imageMeta.status;
       $("#canvas-state").textContent = state.imageMeta.name.toUpperCase();
-      $("#canvas-size").textContent = `${previewCanvas.width} x ${previewCanvas.height}`;
+      $("#canvas-size").textContent = state.imageReady ? `${previewCanvas.width} x ${previewCanvas.height}` : "-- x --";
     } else if (state.videoReady) {
       previewCanvas.width = videoFrameCanvas.width;
       previewCanvas.height = videoFrameCanvas.height;
@@ -522,6 +466,8 @@
 
   $("#upload-button").addEventListener("click", () => $(state.mode === "image" ? "#image-file" : "#video-file").click());
   $("#header-upload").addEventListener("click", () => $(state.mode === "image" ? "#image-file" : "#video-file").click());
+  $("#empty-image-upload").addEventListener("click", () => $("#image-file").click());
+  $("#empty-video-upload").addEventListener("click", () => $("#video-file").click());
   $(".menu-button").addEventListener("click", () => {
     const collapsed = document.body.classList.toggle("sidebar-collapsed");
     $(".menu-button").setAttribute("aria-label", collapsed ? "展开侧栏" : "收起侧栏");
@@ -530,9 +476,11 @@
   $("#image-file").addEventListener("change", (event) => loadImageFile(event.target.files[0]));
   $("#video-file").addEventListener("change", (event) => loadVideoFile(event.target.files[0]));
   $("#process-button").addEventListener("click", () => {
-    if (state.mode === "image") {
+    if (state.mode === "image" && state.imageReady) {
       processImage();
       showToast("抠图结果已更新");
+    } else if (state.mode === "image") {
+      $("#image-file").click();
     } else if (state.videoReady) {
       drawVideoFrame();
       showToast("绿幕预览已更新");
@@ -619,6 +567,5 @@
   window.addEventListener("hashchange", () => setMode(location.hash.slice(1) === "video" ? "video" : "image", false));
 
   refreshIcons();
-  drawDemo();
   setMode(location.hash.slice(1) === "video" ? "video" : "image", false);
 })();

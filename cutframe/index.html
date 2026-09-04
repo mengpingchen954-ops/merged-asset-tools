@@ -129,7 +129,7 @@
             <button type="button" class="view-button" data-view="source">原图</button>
             <button type="button" class="view-button is-active" data-view="result">结果</button>
           </div>
-          <div class="workspace-label"><span id="canvas-state">DEMO_01.PNG</span><span class="canvas-size" id="canvas-size">1200 x 800</span></div>
+          <div class="workspace-label"><span id="canvas-state">等待载入素材</span><span class="canvas-size" id="canvas-size">-- x --</span></div>
           <div class="zoom-tools">
             <button class="icon-button compact" id="zoom-out" type="button" aria-label="缩小预览" title="缩小预览"><i data-lucide="minus"></i></button>
             <span id="zoom-value">100%</span>
@@ -140,10 +140,19 @@
         <div class="canvas-shell" id="canvas-shell">
           <div class="canvas-frame" id="canvas-frame">
             <canvas id="preview-canvas" width="1200" height="800" aria-label="处理预览"></canvas>
+            <div class="empty-state" id="image-empty">
+              <span class="empty-icon"><i data-lucide="image-up"></i></span>
+              <strong>把图片拖到这里</strong>
+              <span>自动识别并移除纯色背景</span>
+              <button class="empty-upload" id="empty-image-upload" type="button"><i data-lucide="plus"></i><span>选择图片</span></button>
+              <small>PNG / JPG / WEBP · 最大 1600px</small>
+            </div>
             <div class="empty-state" id="video-empty" hidden>
               <span class="empty-icon"><i data-lucide="film"></i></span>
               <strong>载入绿幕视频</strong>
-              <span>MP4 / MOV / WEBM</span>
+              <span>选取幕布颜色并实时预览透明结果</span>
+              <button class="empty-upload" id="empty-video-upload" type="button"><i data-lucide="plus"></i><span>选择视频</span></button>
+              <small>MP4 / MOV / WEBM</small>
             </div>
           </div>
           <input id="image-file" type="file" accept="image/png,image/jpeg,image/webp" hidden />
@@ -162,16 +171,16 @@
 
       <aside class="export-panel" aria-label="素材与导出">
         <section class="asset-section">
-          <div class="asset-heading"><h2>当前素材</h2><span id="asset-status">示例</span></div>
+          <div class="asset-heading"><h2>当前素材</h2><span id="asset-status">等待载入</span></div>
           <button class="upload-tile" id="upload-button" type="button">
             <span class="upload-icon"><i data-lucide="upload"></i></span>
             <span><strong id="upload-title">选择图片</strong><small id="upload-formats">PNG / JPG / WEBP</small></span>
             <i data-lucide="chevron-right"></i>
           </button>
           <dl class="asset-data">
-            <div><dt>文件</dt><dd id="file-name">DEMO_01.PNG</dd></div>
-            <div><dt>尺寸</dt><dd id="file-size">1200 x 800</dd></div>
-            <div><dt>处理耗时</dt><dd id="process-time">18 ms</dd></div>
+            <div><dt>文件</dt><dd id="file-name">未选择图片</dd></div>
+            <div><dt>尺寸</dt><dd id="file-size">-- x --</dd></div>
+            <div><dt>处理耗时</dt><dd id="process-time">--</dd></div>
           </dl>
         </section>
 
@@ -187,8 +196,8 @@
             <span><strong>透明 WEBM</strong><small>VP9 · Alpha</small></span>
             <i data-lucide="check"></i>
           </div>
-          <button class="primary-button" id="process-button" type="button"><i data-lucide="sparkles"></i><span>一键抠图</span></button>
-          <button class="secondary-button" id="download-button" type="button"><i data-lucide="download"></i><span>下载 PNG</span></button>
+          <button class="primary-button" id="process-button" type="button" disabled><i data-lucide="sparkles"></i><span>一键抠图</span></button>
+          <button class="secondary-button" id="download-button" type="button" disabled><i data-lucide="download"></i><span>下载 PNG</span></button>
           <div class="export-progress" id="export-progress" hidden>
             <span id="export-progress-text">正在生成视频 0%</span>
             <div><span id="export-progress-bar"></span></div>
@@ -208,4 +217,3 @@
     <script src="./app.js"></script>
   </body>
 </html>
-
