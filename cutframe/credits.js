@@ -45,6 +45,11 @@
     status.hidden = false;
   }
 
+  function clearLoginCredentials() {
+    $("#login-email").value = "";
+    $("#login-password").value = "";
+  }
+
   function formatDate(value) {
     return new Intl.DateTimeFormat("zh-CN", { month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit" }).format(new Date(value));
   }
@@ -145,11 +150,15 @@
   }
 
   function openAccount() {
-    if (!$("#account-dialog").open) $("#account-dialog").showModal();
+    const dialog = $("#account-dialog");
+    if (!state.user) clearLoginCredentials();
+    if (!dialog.open) dialog.showModal();
+    if (!state.user) window.requestAnimationFrame(clearLoginCredentials);
   }
 
   function closeAccount() {
     if ($("#account-dialog").open) $("#account-dialog").close();
+    clearLoginCredentials();
   }
 
   function finishConfirmation(approved) {
@@ -325,6 +334,7 @@
   }
 
   async function initialize() {
+    clearLoginCredentials();
     $("#credit-button").addEventListener("click", openAccount);
     $("#close-account").addEventListener("click", closeAccount);
     $("#show-login").addEventListener("click", () => setAuthMode("login"));
@@ -361,6 +371,7 @@
     else render();
     client.auth.onAuthStateChange((event, session) => {
       state.user = session?.user || null;
+      if (state.user) clearLoginCredentials();
       window.setTimeout(() => refreshAccount().catch(() => notify("账户信息加载失败")), 0);
       if (event === "PASSWORD_RECOVERY") {
         window.setTimeout(() => {
