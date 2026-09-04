@@ -30,6 +30,7 @@
     imageLabels: null,
     imageAssets: [],
     processedImageData: null,
+    selectedAssetId: null,
     imageMeta: { name: "未选择图片", size: "-- x --", time: "--", status: "等待载入" },
     videoMeta: { name: "未选择视频", size: "-- x --", time: "--", status: "等待载入" },
   };
@@ -38,16 +39,18 @@
     image: {
       hash: "image",
       title: "一键抠图",
-      upload: "选择图片",
+      description: "载入图片后自动抠图分离素材，逐项预览并下载透明 PNG。",
+      upload: "载入图片",
       formats: "PNG / JPG / WEBP",
       drop: "拖放图片到画布",
-      action: "一键抠图",
-      download: "下载 PNG",
+      action: "重新分离",
+      download: "整图 PNG",
     },
     video: {
       hash: "video",
       title: "绿幕转视频",
-      upload: "选择视频",
+      description: "载入绿幕视频，在浏览器本地去除背景并导出透明 WEBM。",
+      upload: "载入视频",
       formats: "MP4 / MOV / WEBM",
       drop: "拖放绿幕视频到画布",
       action: "更新预览",
@@ -390,7 +393,7 @@
       .map((group, index) => ({ ...group, id: index + 1 }));
   }
 
-  function makeSeparatedAssetCanvas(asset, padding = 12) {
+  function makeSeparatedAssetCanvas(asset, padding = Number($("#image-padding")?.value || 12)) {
     const width = asset.maxX - asset.minX + 1 + padding * 2;
     const height = asset.maxY - asset.minY + 1 + padding * 2;
     const canvas = document.createElement("canvas");
@@ -423,6 +426,7 @@
     const section = $("#split-results");
     const list = $("#split-list");
     section.hidden = state.mode !== "image" || !state.imageReady;
+    $("#results-empty").hidden = state.mode !== "image" || state.imageReady;
     $("#split-count").textContent = state.imageAssets.length;
     list.replaceChildren();
     if (!state.imageAssets.length) {
@@ -436,28 +440,49 @@
     const fragment = document.createDocumentFragment();
     state.imageAssets.forEach((asset) => {
       const card = document.createElement("div");
-      card.className = "split-card";
+      card.className = `split-card${asset.id === state.selectedAssetId ? " is-selected" : ""}`;
+      card.dataset.assetId = String(asset.id);
       const preview = document.createElement("span");
       preview.className = "split-preview";
       const canvas = makeSeparatedAssetCanvas(asset);
       preview.appendChild(canvas);
-      const meta = document.createElement("span");
-      meta.className = "split-meta";
+      const info = document.createElement("span");
+      info.className = "split-info";
+      const title = document.createElement("span");
+      title.className = "split-title";
       const name = `素材 ${String(asset.id).padStart(2, "0")}`;
       const dimensions = `${canvas.width} x ${canvas.height}`;
-      meta.innerHTML = `<strong>${name}</strong><small>${dimensions}</small>`;
+      title.innerHTML = `<strong>${name}</strong><em>1 积分</em>`;
+      const meta = document.createElement("span");
+      meta.className = "split-meta";
+      meta.textContent = dimensions;
+      const actions = document.createElement("span");
+      actions.className = "split-actions";
       const button = document.createElement("button");
       button.className = "split-download";
       button.type = "button";
       button.title = `下载${name}`;
       button.setAttribute("aria-label", `下载${name}`);
-      button.innerHTML = '<i data-lucide="download"></i>';
-      button.addEventListener("click", () => downloadSeparatedAsset(asset));
-      card.append(preview, meta, button);
+      button.innerHTML = '<i data-lucide="download"></i><span>PNG</span>';
+      button.addEventListener("click", (event) => {
+        event.stopPropagation();
+        selectSeparatedAsset(asset.id);
+        downloadSeparatedAsset(asset);
+      });
+      actions.appendChild(button);
+      info.append(title, meta, actions);
+      card.addEventListener("click", () => selectSeparatedAsset(asset.id));
+      card.append(preview, info);
       fragment.appendChild(card);
     });
     list.appendChild(fragment);
     refreshIcons();
+  }
+
+  function selectSeparatedAsset(assetId) {
+    state.selectedAssetId = assetId;
+    $$(".split-card").forEach((card) => card.classList.toggle("is-selected", Number(card.dataset.assetId) === assetId));
+    renderImagePreview();
   }
 
   async function downloadSeparatedAsset(asset) {
@@ -489,7 +514,12 @@
     });
     const separated = labelImageComponents(matte.imageData, matte.backgroundMask, sourceCanvas.width, sourceCanvas.height);
     state.imageLabels = separated.labels;
-    state.imageAssets = groupImageComponents(separated.components);
+    state.imageAssets = groupImageComponents(
+      separated.components,
+      Number($("#image-merge-gap").value),
+      Number($("#image-min-area").value),
+    );
+    if (!state.imageAssets.some((asset) => asset.id === state.selectedAssetId)) state.selectedAssetId = state.imageAssets[0]?.id || null;
     state.processedImageData = matte.imageData;
     renderImagePreview();
     renderSeparatedAssets();
@@ -500,6 +530,31 @@
   function renderImagePreview() {
     previewContext.clearRect(0, 0, previewCanvas.width, previewCanvas.height);
     previewContext.drawImage(state.view === "source" ? sourceCanvas : processedCanvas, 0, 0);
+    if (state.view !== "result" || !state.imageReady) return;
+    const lineWidth = Math.max(1.5, previewCanvas.width / 900);
+    const fontSize = Math.max(12, Math.round(previewCanvas.width / 105));
+    previewContext.save();
+    previewContext.font = `700 ${fontSize}px Manrope, sans-serif`;
+    previewContext.textBaseline = "middle";
+    state.imageAssets.forEach((asset) => {
+      const selected = asset.id === state.selectedAssetId;
+      const x = asset.minX - lineWidth;
+      const y = asset.minY - lineWidth;
+      const width = asset.maxX - asset.minX + lineWidth * 2;
+      const height = asset.maxY - asset.minY + lineWidth * 2;
+      previewContext.strokeStyle = selected ? "#ff4f00" : "rgba(255, 106, 0, 0.72)";
+      previewContext.lineWidth = selected ? lineWidth * 1.8 : lineWidth;
+      previewContext.strokeRect(x, y, width, height);
+      const label = String(asset.id).padStart(2, "0");
+      const labelWidth = previewContext.measureText(label).width + fontSize * 0.65;
+      const labelHeight = fontSize * 1.35;
+      const labelY = Math.max(0, asset.minY - labelHeight);
+      previewContext.fillStyle = selected ? "#ff4f00" : "#ff6a00";
+      previewContext.fillRect(asset.minX, labelY, labelWidth, labelHeight);
+      previewContext.fillStyle = "#ffffff";
+      previewContext.fillText(label, asset.minX + fontSize * 0.3, labelY + labelHeight / 2);
+    });
+    previewContext.restore();
   }
 
   function loadImageFile(file) {
@@ -574,7 +629,8 @@
     const output = $(`#${input.id}-output`);
     if (!output) return;
     if (input.id === "image-tolerance") output.textContent = input.value;
-    else if (input.id === "image-softness") output.textContent = `${input.value} px`;
+    else if (["image-softness", "image-merge-gap", "image-padding"].includes(input.id)) output.textContent = `${input.value} px`;
+    else if (input.id === "image-min-area") output.textContent = input.value;
     else output.textContent = `${input.value}%`;
   }
 
@@ -584,6 +640,8 @@
     state.pickingColor = false;
     const copy = modeCopy[mode];
     $(".studio").dataset.activeMode = mode;
+    $("#page-title").textContent = copy.title;
+    $("#page-description").textContent = copy.description;
     $$(".mode-button").forEach((button) => {
       const active = button.dataset.mode === mode;
       button.classList.toggle("is-active", active);
@@ -596,15 +654,17 @@
     $("#process-button span").textContent = copy.action;
     $("#download-button span").textContent = copy.download;
     credits?.updateExportCost(mode === "image" ? "image_export" : "video_export", mode === "video" ? video.duration || 0 : 0);
-    $(".image-controls").hidden = mode !== "image";
-    $(".video-controls").hidden = mode !== "video";
-    $(".image-format").hidden = mode !== "image";
-    $(".video-format").hidden = mode !== "video";
+    $$(".image-controls").forEach((element) => { element.hidden = mode !== "image"; });
+    $$(".video-controls").forEach((element) => { element.hidden = mode !== "video"; });
+    $$(".image-format").forEach((element) => { element.hidden = mode !== "image"; });
+    $$(".video-format").forEach((element) => { element.hidden = mode !== "video"; });
     $(".image-view-switch").hidden = mode !== "image";
     $(".video-timeline").hidden = mode !== "video";
     $("#image-empty").hidden = mode !== "image" || state.imageReady;
     $("#video-empty").hidden = mode !== "video" || state.videoReady;
     $("#split-results").hidden = mode !== "image" || !state.imageReady;
+    $("#results-empty").hidden = mode !== "image" || state.imageReady;
+    $("#result-panel-title").textContent = mode === "image" ? "分离结果" : "视频导出";
     $("#process-button").disabled = mode === "image" ? !state.imageReady : false;
     $("#download-button").disabled = mode === "image" ? !state.imageReady : !state.videoReady;
     $("#primary-shortcut").innerHTML = mode === "video" ? "<kbd>Space</kbd> 播放" : "<kbd>V</kbd> 对比";
@@ -807,6 +867,9 @@
       $("#image-tolerance").value = "32";
       $("#image-softness").value = "1";
       $("#image-spill").value = "40";
+      $("#image-merge-gap").value = "8";
+      $("#image-min-area").value = "120";
+      $("#image-padding").value = "12";
       $("#remove-enclosed").checked = false;
       $$(".image-controls input[type='range']").forEach(updateRangeOutput);
       processImage();

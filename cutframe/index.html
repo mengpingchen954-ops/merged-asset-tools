@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="theme-color" content="#f3f5f7" />
+    <meta name="theme-color" content="#f1f3f5" />
     <meta name="description" content="CUTFRAME 本地图片抠图与绿幕视频处理工具。" />
     <title>CUTFRAME - 本地素材工作台</title>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -12,271 +12,135 @@
     <link rel="stylesheet" href="./styles.css" />
   </head>
   <body>
-    <aside class="topbar" aria-label="主导航">
-      <a class="brand" href="#image" aria-label="CUTFRAME 首页">
-        <span class="brand-mark"><i data-lucide="scan-line"></i></span>
-        <span class="brand-copy"><strong class="brand-name">CUTFRAME</strong><small>AI 素材处理工作台</small></span>
-      </a>
-
-      <span class="nav-label">工具</span>
-      <nav class="mode-switch" aria-label="工具模式">
-        <button class="mode-button is-active" type="button" data-mode="image" aria-pressed="true">
-          <i data-lucide="image"></i><span>一键抠图</span>
-        </button>
-        <button class="mode-button" type="button" data-mode="video" aria-pressed="false">
-          <i data-lucide="clapperboard"></i><span>绿幕转视频</span>
-        </button>
-      </nav>
-
-      <div class="sidebar-summary">
-        <span class="summary-icon"><i data-lucide="shield-check"></i></span>
-        <span><strong>本地隐私模式</strong><small>素材不离开浏览器</small></span>
-      </div>
-      <div class="privacy-state"><span class="state-dot"></span><span>处理引擎已就绪</span></div>
-    </aside>
-
-    <header class="page-header">
-      <button class="menu-button" type="button" aria-label="展开菜单" title="展开菜单"><i data-lucide="menu"></i></button>
-      <div class="page-title">
-        <h1>AI 素材处理工作台</h1>
-        <p>快速完成图片抠图与绿幕视频处理，所有素材仅在浏览器本地运算。</p>
-      </div>
-      <div class="header-actions">
-        <button class="credit-button" id="credit-button" type="button" aria-label="打开积分账户">
-          <i data-lucide="coins"></i>
-          <span><small id="credit-mode">体验积分</small><strong><b id="credit-balance">10</b> 积分</strong></span>
-        </button>
-        <button class="header-upload" id="header-upload" type="button"><i data-lucide="plus"></i><span>导入新素材</span></button>
-      </div>
-    </header>
-
-    <main class="studio" data-active-mode="image">
-      <aside class="control-panel" aria-label="处理参数">
-        <div class="panel-heading">
-          <div>
-            <span class="section-index">参数</span>
-            <h1 id="panel-title">一键抠图</h1>
-          </div>
-          <button class="icon-button" id="reset-button" type="button" aria-label="恢复默认参数" title="恢复默认参数">
-            <i data-lucide="rotate-ccw"></i>
-          </button>
+    <div class="app-shell">
+      <aside class="tool-rail" aria-label="主导航">
+        <a class="brand" href="#image" aria-label="CUTFRAME 首页">
+          <span class="brand-mark"><i data-lucide="scan-line"></i></span>
+          <span class="brand-copy"><strong class="brand-name">CUTFRAME</strong><small>AI 素材工作台</small></span>
+        </a>
+        <div class="rail-utility">
+          <span><i data-lucide="grip-vertical"></i>工具模式</span>
+          <button id="reset-button" type="button"><i data-lucide="rotate-ccw"></i>恢复默认</button>
         </div>
-
-        <section class="control-section image-controls">
-          <h2>背景识别</h2>
-          <label class="field-label" for="image-color">背景色</label>
-          <div class="color-row">
-            <input id="image-color" class="color-input" type="color" value="#d6d2cc" aria-label="图片背景色" />
-            <code id="image-color-value">#D6D2CC</code>
-            <button class="icon-button compact" id="image-eyedropper" type="button" aria-label="从画面取色" title="从画面取色">
-              <i data-lucide="pipette"></i>
-            </button>
-          </div>
-
-          <div class="range-field">
-            <div class="range-meta"><label for="image-tolerance">背景容差</label><output id="image-tolerance-output">32</output></div>
-            <input id="image-tolerance" type="range" min="4" max="90" value="32" />
-          </div>
-          <div class="range-field">
-            <div class="range-meta"><label for="image-softness">边缘清理</label><output id="image-softness-output">1 px</output></div>
-            <input id="image-softness" type="range" min="0" max="4" value="1" />
-          </div>
-          <div class="range-field">
-            <div class="range-meta"><label for="image-spill">边缘压色</label><output id="image-spill-output">40%</output></div>
-            <input id="image-spill" type="range" min="0" max="100" value="40" />
-          </div>
-
-          <label class="toggle-row">
-            <span><strong>清理封闭背景</strong><small>移除素材内部残留的背景色</small></span>
-            <input id="remove-enclosed" type="checkbox" />
-          </label>
-        </section>
-
-        <section class="control-section video-controls" hidden>
-          <h2>绿幕识别</h2>
-          <label class="field-label" for="video-color">幕布色</label>
-          <div class="color-row">
-            <input id="video-color" class="color-input" type="color" value="#00a94f" aria-label="绿幕颜色" />
-            <code id="video-color-value">#00A94F</code>
-            <button class="icon-button compact" id="video-eyedropper" type="button" aria-label="从视频取色" title="从视频取色">
-              <i data-lucide="pipette"></i>
-            </button>
-          </div>
-
-          <div class="range-field">
-            <div class="range-meta"><label for="video-tolerance">背景阈值</label><output id="video-tolerance-output">30%</output></div>
-            <input id="video-tolerance" type="range" min="5" max="70" value="30" />
-          </div>
-          <div class="range-field">
-            <div class="range-meta"><label for="video-softness">边缘柔化</label><output id="video-softness-output">8%</output></div>
-            <input id="video-softness" type="range" min="0" max="30" value="8" />
-          </div>
-          <div class="range-field">
-            <div class="range-meta"><label for="video-spill">去绿溢色</label><output id="video-spill-output">38%</output></div>
-            <input id="video-spill" type="range" min="0" max="100" value="38" />
-          </div>
-
-          <div class="select-field">
-            <label for="video-fps">输出帧率</label>
-            <select id="video-fps">
-              <option value="24">24 FPS</option>
-              <option value="30" selected>30 FPS</option>
-              <option value="60">60 FPS</option>
-            </select>
-          </div>
-        </section>
-
-        <div class="panel-note"><i data-lucide="cpu"></i><span>浏览器本地运算<br /><small>文件不会离开设备</small></span></div>
+        <nav class="mode-switch" aria-label="工具模式">
+          <button class="mode-button is-active" type="button" data-mode="image" aria-pressed="true">
+            <span class="mode-icon"><i data-lucide="scan-search"></i></span>
+            <span><strong>一键抠图</strong><small>抠图 / 分离 / 下载</small></span>
+            <i class="mode-grip" data-lucide="grip-vertical"></i>
+          </button>
+          <button class="mode-button" type="button" data-mode="video" aria-pressed="false">
+            <span class="mode-icon"><i data-lucide="clapperboard"></i></span>
+            <span><strong>绿幕转视频</strong><small>去除纯色背景 / WEBM</small></span>
+            <i class="mode-grip" data-lucide="grip-vertical"></i>
+          </button>
+        </nav>
+        <div class="rail-bottom">
+          <div class="privacy-card"><i data-lucide="shield-check"></i><span><strong>本地隐私模式</strong><small>素材不离开浏览器</small></span></div>
+          <div class="engine-state"><span></span>处理引擎已就绪</div>
+        </div>
       </aside>
 
-      <section class="workspace" aria-label="实时预览">
-        <div class="workspace-toolbar">
-          <div class="view-switch image-view-switch" role="group" aria-label="预览模式">
-            <button type="button" class="view-button" data-view="source">原图</button>
-            <button type="button" class="view-button is-active" data-view="result">结果</button>
+      <div class="content-shell">
+        <header class="page-header">
+          <button class="menu-button" type="button" aria-label="收起侧栏" title="收起侧栏"><i data-lucide="panel-left-close"></i></button>
+          <div class="page-title"><h1 id="page-title">一键抠图</h1><p id="page-description">载入图片后自动抠图分离素材，逐项预览并下载透明 PNG。</p></div>
+          <div class="header-actions">
+            <span class="local-badge"><i data-lucide="shield-check"></i>本地处理</span>
+            <button class="credit-button" id="credit-button" type="button" aria-label="打开积分账户"><i data-lucide="coins"></i><span><small id="credit-mode">体验积分</small><strong><b id="credit-balance">10</b> 积分</strong></span></button>
+            <button id="header-upload" type="button" hidden>导入素材</button>
           </div>
-          <div class="workspace-label"><span id="canvas-state">等待载入素材</span><span class="canvas-size" id="canvas-size">-- x --</span></div>
-          <div class="zoom-tools">
-            <button class="icon-button compact" id="zoom-out" type="button" aria-label="缩小预览" title="缩小预览"><i data-lucide="minus"></i></button>
-            <span id="zoom-value">100%</span>
-            <button class="icon-button compact" id="zoom-in" type="button" aria-label="放大预览" title="放大预览"><i data-lucide="plus"></i></button>
-          </div>
-        </div>
+        </header>
 
-        <div class="canvas-shell" id="canvas-shell">
-          <div class="canvas-frame" id="canvas-frame">
-            <canvas id="preview-canvas" width="1200" height="800" aria-label="处理预览"></canvas>
-            <div class="empty-state" id="image-empty">
-              <span class="empty-icon"><i data-lucide="image-up"></i></span>
-              <strong>把图片拖到这里</strong>
-              <span>自动识别并移除纯色背景</span>
-              <button class="empty-upload" id="empty-image-upload" type="button"><i data-lucide="plus"></i><span>选择图片</span></button>
-              <small>PNG / JPG / WEBP · 最大 1600px</small>
+        <section class="editor-shell">
+          <div class="editor-toolbar">
+            <div class="file-summary">
+              <span class="file-icon"><i data-lucide="panels-top-left"></i></span>
+              <span><strong id="canvas-state">等待载入素材</strong><small><b id="file-name">未选择图片</b><i></i><span id="file-size">-- x --</span><i></i><span id="process-time">--</span></small></span>
+              <em id="asset-status">等待载入</em>
             </div>
-            <div class="empty-state" id="video-empty" hidden>
-              <span class="empty-icon"><i data-lucide="film"></i></span>
-              <strong>载入绿幕视频</strong>
-              <span>选取幕布颜色并实时预览透明结果</span>
-              <button class="empty-upload" id="empty-video-upload" type="button"><i data-lucide="plus"></i><span>选择视频</span></button>
-              <small>MP4 / MOV / WEBM</small>
+            <span id="canvas-size" hidden>-- x --</span>
+            <div class="toolbar-actions">
+              <button class="toolbar-button primary" id="upload-button" type="button"><i data-lucide="image-up"></i><span id="upload-title">载入图片</span><small id="upload-formats">PNG / JPG / WEBP</small></button>
+              <button class="toolbar-button" id="process-button" type="button" disabled><i data-lucide="scan-line"></i><span>重新分离</span></button>
+              <button class="toolbar-button dark" id="download-button" type="button" disabled><i data-lucide="download"></i><span>整图 PNG</span><small id="export-cost">2 积分</small></button>
             </div>
           </div>
-          <input id="image-file" type="file" accept="image/png,image/jpeg,image/webp" hidden />
-          <input id="video-file" type="file" accept="video/mp4,video/quicktime,video/webm" hidden />
-        </div>
 
-        <div class="timeline video-timeline" hidden>
-          <button class="play-button" id="play-video" type="button" aria-label="播放视频" disabled><i data-lucide="play"></i></button>
-          <span id="video-current">00:00</span>
-          <input id="video-seek" type="range" min="0" max="1000" value="0" disabled aria-label="视频位置" />
-          <span id="video-duration">00:00</span>
-        </div>
+          <main class="studio" data-active-mode="image">
+            <aside class="control-panel" aria-label="处理参数">
+              <div class="panel-intro"><span>按连通区域分离图片素材</span><i data-lucide="sliders-horizontal"></i></div>
+              <div class="panel-heading"><div><h1 id="panel-title">一键抠图</h1><span>本地处理</span></div><i data-lucide="wand-sparkles"></i></div>
+              <section class="control-section image-controls">
+                <h2>智能抠图</h2>
+                <label class="field-label" for="image-color">背景色</label>
+                <div class="color-row"><input id="image-color" class="color-input" type="color" value="#d6d2cc" aria-label="图片背景色" /><code id="image-color-value">#D6D2CC</code><button class="icon-button compact" id="image-eyedropper" type="button" aria-label="从画面取色" title="从画面取色"><i data-lucide="pipette"></i></button></div>
+                <div class="range-field"><div class="range-meta"><label for="image-tolerance">背景容差</label><output id="image-tolerance-output">32</output></div><input id="image-tolerance" type="range" min="4" max="90" value="32" /></div>
+                <div class="range-field"><div class="range-meta"><label for="image-softness">边缘清理</label><output id="image-softness-output">1 px</output></div><input id="image-softness" type="range" min="0" max="4" value="1" /></div>
+                <div class="range-field"><div class="range-meta"><label for="image-spill">边缘压色</label><output id="image-spill-output">40%</output></div><input id="image-spill" type="range" min="0" max="100" value="40" /></div>
+                <label class="toggle-row"><span><strong>清理封闭背景</strong><small>移除素材内部残留的背景色</small></span><input id="remove-enclosed" type="checkbox" /></label>
+              </section>
+              <section class="control-section image-controls separation-controls">
+                <h2>素材分离</h2>
+                <div class="range-field"><div class="range-meta"><label for="image-merge-gap">合并间距</label><output id="image-merge-gap-output">8 px</output></div><input id="image-merge-gap" type="range" min="0" max="36" value="8" /></div>
+                <div class="range-field"><div class="range-meta"><label for="image-min-area">最小面积</label><output id="image-min-area-output">120</output></div><input id="image-min-area" type="range" min="12" max="2000" step="4" value="120" /></div>
+                <div class="range-field"><div class="range-meta"><label for="image-padding">导出边距</label><output id="image-padding-output">12 px</output></div><input id="image-padding" type="range" min="0" max="48" value="12" /></div>
+              </section>
+              <section class="control-section video-controls" hidden>
+                <h2>绿幕识别</h2>
+                <label class="field-label" for="video-color">幕布色</label>
+                <div class="color-row"><input id="video-color" class="color-input" type="color" value="#00a94f" aria-label="绿幕颜色" /><code id="video-color-value">#00A94F</code><button class="icon-button compact" id="video-eyedropper" type="button" aria-label="从视频取色" title="从视频取色"><i data-lucide="pipette"></i></button></div>
+                <div class="range-field"><div class="range-meta"><label for="video-tolerance">背景阈值</label><output id="video-tolerance-output">30%</output></div><input id="video-tolerance" type="range" min="5" max="70" value="30" /></div>
+                <div class="range-field"><div class="range-meta"><label for="video-softness">边缘柔化</label><output id="video-softness-output">8%</output></div><input id="video-softness" type="range" min="0" max="30" value="8" /></div>
+                <div class="range-field"><div class="range-meta"><label for="video-spill">去绿溢色</label><output id="video-spill-output">38%</output></div><input id="video-spill" type="range" min="0" max="100" value="38" /></div>
+                <div class="select-field"><label for="video-fps">输出帧率</label><select id="video-fps"><option value="24">24 FPS</option><option value="30" selected>30 FPS</option><option value="60">60 FPS</option></select></div>
+              </section>
+            </aside>
 
-        <div class="drop-hint" id="drop-hint"><i data-lucide="move-up"></i><span id="drop-text">拖放图片到画布</span></div>
-      </section>
+            <section class="workspace" aria-label="实时预览">
+              <div class="canvas-shell" id="canvas-shell">
+                <div class="canvas-frame" id="canvas-frame">
+                  <canvas id="preview-canvas" width="1200" height="800" aria-label="处理预览"></canvas>
+                  <div class="empty-state" id="image-empty"><span class="empty-icon"><i data-lucide="image-up"></i></span><strong>载入图片开始分离</strong><span>支持 PNG、JPG、WEBP</span><button class="empty-upload" id="empty-image-upload" type="button"><i data-lucide="plus"></i><span>选择图片</span></button></div>
+                  <div class="empty-state" id="video-empty" hidden><span class="empty-icon"><i data-lucide="film"></i></span><strong>载入绿幕视频</strong><span>支持 MP4、MOV、WEBM</span><button class="empty-upload" id="empty-video-upload" type="button"><i data-lucide="plus"></i><span>选择视频</span></button></div>
+                </div>
+                <input id="image-file" type="file" accept="image/png,image/jpeg,image/webp" hidden /><input id="video-file" type="file" accept="video/mp4,video/quicktime,video/webm" hidden />
+              </div>
+              <div class="statusbar">
+                <span class="status-message"><i data-lucide="sparkles"></i><span id="drop-text">拖放图片到画布</span></span>
+                <div class="view-switch image-view-switch" role="group" aria-label="预览模式"><button type="button" class="view-button" data-view="source">原图</button><button type="button" class="view-button is-active" data-view="result">结果</button></div>
+                <div class="zoom-tools"><button class="icon-button compact" id="zoom-out" type="button" aria-label="缩小预览" title="缩小预览"><i data-lucide="minus"></i></button><span id="zoom-value">100%</span><button class="icon-button compact" id="zoom-in" type="button" aria-label="放大预览" title="放大预览"><i data-lucide="plus"></i></button></div>
+                <div class="timeline video-timeline" hidden><button class="play-button" id="play-video" type="button" aria-label="播放视频" disabled><i data-lucide="play"></i></button><span id="video-current">00:00</span><input id="video-seek" type="range" min="0" max="1000" value="0" disabled aria-label="视频位置" /><span id="video-duration">00:00</span></div>
+              </div>
+              <div class="drop-hint" id="drop-hint"><span id="primary-shortcut"><kbd>V</kbd> 对比</span><span><kbd>R</kbd> 重新处理</span></div>
+            </section>
 
-      <aside class="export-panel" aria-label="素材与导出">
-        <section class="asset-section">
-          <div class="asset-heading"><h2>当前素材</h2><span id="asset-status">等待载入</span></div>
-          <button class="upload-tile" id="upload-button" type="button">
-            <span class="upload-icon"><i data-lucide="upload"></i></span>
-            <span><strong id="upload-title">选择图片</strong><small id="upload-formats">PNG / JPG / WEBP</small></span>
-            <i data-lucide="chevron-right"></i>
-          </button>
-          <dl class="asset-data">
-            <div><dt>文件</dt><dd id="file-name">未选择图片</dd></div>
-            <div><dt>尺寸</dt><dd id="file-size">-- x --</dd></div>
-            <div><dt>处理耗时</dt><dd id="process-time">--</dd></div>
-          </dl>
+            <aside class="export-panel" aria-label="分离结果">
+              <div class="asset-head"><div><h2 id="result-panel-title">分离结果</h2><span class="result-note image-format">单项下载 1 积分</span><span class="result-note video-format" hidden>透明 WEBM 导出</span></div><strong class="result-count image-format"><b id="split-count">0</b> 项</strong></div>
+              <div class="results-empty" id="results-empty"><i data-lucide="layers-3"></i><strong>等待分离结果</strong><span>载入图片后，素材会显示在这里</span></div>
+              <div class="split-results" id="split-results" hidden><div class="split-list" id="split-list"></div></div>
+              <div class="video-result video-format" hidden><span class="video-result-icon"><i data-lucide="file-video"></i></span><strong>透明 WEBM</strong><span>保留透明通道与原始画面比例</span></div>
+              <div class="export-progress" id="export-progress" hidden><span id="export-progress-text">正在生成视频 0%</span><div><span id="export-progress-bar"></span></div></div>
+            </aside>
+          </main>
         </section>
-
-        <section class="export-section">
-          <div class="export-heading"><span class="section-index">输出</span><h2>导出结果</h2></div>
-          <div class="format-choice image-format">
-            <span class="format-icon"><i data-lucide="file-image"></i></span>
-            <span><strong>透明 PNG</strong><small>保留原始尺寸</small></span>
-            <i data-lucide="check"></i>
-          </div>
-          <div class="format-choice video-format" hidden>
-            <span class="format-icon"><i data-lucide="file-video"></i></span>
-            <span><strong>透明 WEBM</strong><small>VP9 · Alpha</small></span>
-            <i data-lucide="check"></i>
-          </div>
-          <div class="export-cost"><span>本次导出</span><strong id="export-cost">2 积分</strong></div>
-          <button class="primary-button" id="process-button" type="button" disabled><i data-lucide="sparkles"></i><span>一键抠图</span></button>
-          <button class="secondary-button" id="download-button" type="button" disabled><i data-lucide="download"></i><span>下载 PNG</span></button>
-          <div class="export-progress" id="export-progress" hidden>
-            <span id="export-progress-text">正在生成视频 0%</span>
-            <div><span id="export-progress-bar"></span></div>
-          </div>
-          <div class="split-results" id="split-results" hidden>
-            <div class="split-heading">
-              <div><h3>分离素材</h3><span>单项下载 1 积分</span></div>
-              <strong><b id="split-count">0</b> 项</strong>
-            </div>
-            <div class="split-list" id="split-list"></div>
-          </div>
-        </section>
-
-        <div class="shortcut-row"><span id="primary-shortcut"><kbd>V</kbd> 对比</span><span><kbd>R</kbd> 重新处理</span></div>
-      </aside>
-    </main>
+      </div>
+    </div>
 
     <div class="toast" id="toast" role="status" aria-live="polite"></div>
-
     <dialog class="account-dialog" id="account-dialog" aria-labelledby="account-title">
-      <div class="dialog-heading">
-        <div><span class="section-index">账户</span><h2 id="account-title">积分中心</h2></div>
-        <button class="icon-button" id="close-account" type="button" aria-label="关闭积分中心" title="关闭"><i data-lucide="x"></i></button>
-      </div>
-      <div class="balance-panel">
-        <span class="balance-icon"><i data-lucide="coins"></i></span>
-        <div><small>可用积分</small><strong><span id="dialog-credit-balance">10</span></strong></div>
-        <span class="account-mode-badge" id="account-mode-badge">体验模式</span>
-      </div>
+      <div class="dialog-heading"><div><span class="section-index">账户</span><h2 id="account-title">积分中心</h2></div><button class="icon-button" id="close-account" type="button" aria-label="关闭积分中心" title="关闭"><i data-lucide="x"></i></button></div>
+      <div class="balance-panel"><span class="balance-icon"><i data-lucide="coins"></i></span><div><small>可用积分</small><strong><span id="dialog-credit-balance">10</span></strong></div><span class="account-mode-badge" id="account-mode-badge">体验模式</span></div>
       <p class="account-note" id="account-note">当前积分保存在本机，仅用于体验流程。连接 Supabase 后将自动切换为真实账户。</p>
-
-      <section class="account-section" id="auth-section">
-        <div class="account-section-title"><h3>账户登录</h3><span id="auth-state">未登录</span></div>
-        <form class="account-form" id="login-form">
-          <label for="login-email">邮箱</label>
-          <div><input id="login-email" type="email" autocomplete="email" placeholder="name@example.com" required /><button type="submit">发送登录链接</button></div>
-        </form>
-        <div class="signed-in-row" id="signed-in-row" hidden><span id="signed-in-email"></span><button id="logout-button" type="button">退出登录</button></div>
-      </section>
-
-      <section class="account-section">
-        <div class="account-section-title"><h3>兑换积分</h3><span>输入兑换码</span></div>
-        <form class="account-form" id="redeem-form">
-          <label for="redeem-code">兑换码</label>
-          <div><input id="redeem-code" type="text" autocomplete="off" placeholder="输入兑换码" required /><button type="submit">兑换</button></div>
-        </form>
-      </section>
-
-      <section class="account-section ledger-section">
-        <div class="account-section-title"><h3>积分明细</h3><span>最近 20 条</span></div>
-        <div class="ledger-list" id="ledger-list"></div>
-      </section>
+      <section class="account-section" id="auth-section"><div class="account-section-title"><h3>账户登录</h3><span id="auth-state">未登录</span></div><form class="account-form" id="login-form"><label for="login-email">邮箱</label><div><input id="login-email" type="email" autocomplete="email" placeholder="name@example.com" required /><button type="submit">发送登录链接</button></div></form><div class="signed-in-row" id="signed-in-row" hidden><span id="signed-in-email"></span><button id="logout-button" type="button">退出登录</button></div></section>
+      <section class="account-section"><div class="account-section-title"><h3>兑换积分</h3><span>输入兑换码</span></div><form class="account-form" id="redeem-form"><label for="redeem-code">兑换码</label><div><input id="redeem-code" type="text" autocomplete="off" placeholder="输入兑换码" required /><button type="submit">兑换</button></div></form></section>
+      <section class="account-section ledger-section"><div class="account-section-title"><h3>积分明细</h3><span>最近 20 条</span></div><div class="ledger-list" id="ledger-list"></div></section>
     </dialog>
-
     <dialog class="charge-dialog" id="charge-dialog" aria-labelledby="charge-title">
-      <button class="dialog-close" id="close-charge" type="button" aria-label="取消导出"><i data-lucide="x"></i></button>
-      <span class="charge-icon"><i data-lucide="download"></i></span>
-      <h2 id="charge-title">确认导出</h2>
-      <p id="charge-description">导出透明 PNG</p>
-      <div class="charge-summary"><span>本次消耗</span><strong><b id="charge-cost">2</b> 积分</strong></div>
-      <div class="charge-summary muted"><span>导出后余额</span><strong><b id="charge-after">8</b> 积分</strong></div>
+      <button class="dialog-close" id="close-charge" type="button" aria-label="取消导出"><i data-lucide="x"></i></button><span class="charge-icon"><i data-lucide="download"></i></span><h2 id="charge-title">确认导出</h2><p id="charge-description">导出透明 PNG</p>
+      <div class="charge-summary"><span>本次消耗</span><strong><b id="charge-cost">2</b> 积分</strong></div><div class="charge-summary muted"><span>导出后余额</span><strong><b id="charge-after">8</b> 积分</strong></div>
       <div class="dialog-actions"><button class="dialog-secondary" id="cancel-charge" type="button">取消</button><button class="dialog-primary" id="confirm-charge" type="button">确认导出</button></div>
     </dialog>
-
-    <video id="source-video" playsinline muted hidden></video>
-    <canvas id="source-canvas" width="1200" height="800" hidden></canvas>
-    <canvas id="processed-canvas" width="1200" height="800" hidden></canvas>
-
-    <script src="https://unpkg.com/lucide@0.468.0/dist/umd/lucide.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
-    <script src="./supabase-config.js"></script>
-    <script src="./credits.js"></script>
-    <script src="./app.js"></script>
+    <video id="source-video" playsinline muted hidden></video><canvas id="source-canvas" width="1200" height="800" hidden></canvas><canvas id="processed-canvas" width="1200" height="800" hidden></canvas>
+    <script src="https://unpkg.com/lucide@0.468.0/dist/umd/lucide.min.js"></script><script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script><script src="./supabase-config.js"></script><script src="./credits.js"></script><script src="./app.js"></script>
   </body>
 </html>
