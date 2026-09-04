@@ -208,52 +208,54 @@ kbd { padding: 2px 4px; border: 1px solid var(--line-strong); border-bottom-widt
 .export-progress > div { height: 4px; margin-top: 7px; overflow: hidden; border-radius: 4px; background: #e2e5e8; }
 .export-progress > div > span { display: block; width: 0; height: 100%; background: var(--accent); transition: width 120ms linear; }
 
-.account-dialog, .charge-dialog { width: min(calc(100vw - 32px), 470px); max-height: min(760px, calc(100vh - 40px)); margin: auto; padding: 0; overflow: auto; border: 1px solid var(--line-strong); border-radius: 8px; background: white; color: var(--ink); box-shadow: 0 28px 80px rgb(9 13 18 / 28%); }
+.account-dialog, .charge-dialog { width: min(calc(100vw - 48px), 640px); max-height: min(860px, calc(100dvh - 48px)); margin: auto; padding: 0; overflow: auto; border: 1px solid var(--line-strong); border-radius: 10px; background: white; color: var(--ink); box-shadow: 0 28px 80px rgb(9 13 18 / 28%); }
 .account-dialog::backdrop, .charge-dialog::backdrop { background: rgb(9 13 18 / 58%); backdrop-filter: blur(3px); }
-.dialog-heading { position: sticky; top: 0; z-index: 2; display: flex; align-items: center; justify-content: space-between; padding: 18px 20px; border-bottom: 1px solid var(--line); background: rgb(255 255 255 / 96%); }
-.dialog-heading > div { display: flex; align-items: baseline; gap: 9px; }
-.dialog-heading h2 { font-size: 18px; }
-.section-index { color: var(--accent-strong); font-size: 9px; font-weight: 800; }
-.balance-panel { display: grid; grid-template-columns: 42px 1fr auto; gap: 12px; align-items: center; margin: 20px; padding: 17px; border: 1px solid #dce8b5; border-radius: 7px; background: var(--accent-pale); }
-.balance-icon { display: grid; width: 42px; height: 42px; place-items: center; border-radius: 7px; background: var(--accent); color: var(--ink); }
-.balance-icon svg { width: 20px; }
+.dialog-heading { position: sticky; top: 0; z-index: 2; display: flex; align-items: center; justify-content: space-between; padding: 22px 28px; border-bottom: 1px solid var(--line); background: rgb(255 255 255 / 96%); }
+.dialog-heading > div { display: flex; align-items: baseline; gap: 11px; }
+.dialog-heading h2 { font-size: 22px; }
+.dialog-heading .icon-button { width: 38px; height: 38px; }
+.dialog-heading .icon-button svg { width: 18px; }
+.section-index { color: var(--accent-strong); font-size: 11px; font-weight: 800; }
+.balance-panel { display: grid; grid-template-columns: 50px 1fr auto; gap: 15px; align-items: center; margin: 26px 28px; padding: 21px; border: 1px solid #dce8b5; border-radius: 8px; background: var(--accent-pale); }
+.balance-icon { display: grid; width: 50px; height: 50px; place-items: center; border-radius: 8px; background: var(--accent); color: var(--ink); }
+.balance-icon svg { width: 23px; }
 .balance-panel > div { display: flex; flex-direction: column; gap: 2px; }
-.balance-panel small { color: var(--muted); font-size: 9px; }
-.balance-panel strong { font-family: "Manrope", sans-serif; font-size: 28px; line-height: 1; }
-.account-mode-badge { padding: 4px 7px; border: 1px solid #cddd94; border-radius: 4px; color: #607800; font-size: 8px; font-weight: 800; }
-.account-note { margin: -6px 20px 18px; color: var(--muted); font-size: 10px; line-height: 1.7; }
-.account-section { padding: 18px 20px; border-top: 1px solid var(--line); }
-.account-section-title { display: flex; align-items: center; justify-content: space-between; margin-bottom: 13px; }
-.account-section-title h3 { font-size: 12px; }
-.account-section-title span { color: var(--muted-soft); font-size: 9px; }
-.account-form label { display: block; margin-bottom: 7px; color: var(--muted); font-size: 9px; }
+.balance-panel small { color: var(--muted); font-size: 12px; }
+.balance-panel strong { font-family: "Manrope", sans-serif; font-size: 34px; line-height: 1; }
+.account-mode-badge { padding: 6px 9px; border: 1px solid #cddd94; border-radius: 5px; color: #607800; font-size: 11px; font-weight: 800; }
+.account-note { margin: -8px 28px 24px; color: var(--muted); font-size: 13px; line-height: 1.7; }
+.account-section { padding: 24px 28px; border-top: 1px solid var(--line); }
+.account-section-title { display: flex; align-items: center; justify-content: space-between; margin-bottom: 17px; }
+.account-section-title h3 { font-size: 15px; }
+.account-section-title span { color: var(--muted-soft); font-size: 12px; }
+.account-form label { display: block; margin-bottom: 8px; color: var(--muted); font-size: 12px; }
 .account-form > div { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px; }
-.account-form input { min-width: 0; height: 38px; padding: 0 11px; border: 1px solid var(--line-strong); border-radius: 6px; background: white; font-size: 10px; }
-.account-form button, .signed-in-row button { min-height: 38px; padding: 0 13px; border: 1px solid var(--ink); border-radius: 6px; background: var(--ink); color: white; font-size: 9px; font-weight: 800; cursor: pointer; }
+.account-form input { min-width: 0; height: 46px; padding: 0 14px; border: 1px solid var(--line-strong); border-radius: 7px; background: white; font-size: 14px; }
+.account-form button, .signed-in-row button { min-height: 46px; padding: 0 17px; border: 1px solid var(--ink); border-radius: 7px; background: var(--ink); color: white; font-size: 13px; font-weight: 800; cursor: pointer; }
 .account-form button:disabled { cursor: not-allowed; opacity: .45; }
-.auth-mode-tabs { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-bottom: 14px; padding: 4px; border-radius: 7px; background: var(--paper-soft); }
-.auth-mode-tabs button { min-height: 34px; border: 0; border-radius: 5px; background: transparent; color: var(--muted); font-size: 10px; font-weight: 800; cursor: pointer; }
+.auth-mode-tabs { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-bottom: 18px; padding: 5px; border-radius: 8px; background: var(--paper-soft); }
+.auth-mode-tabs button { min-height: 42px; border: 0; border-radius: 6px; background: transparent; color: var(--muted); font-size: 13px; font-weight: 800; cursor: pointer; }
 .auth-mode-tabs button.is-active { background: var(--ink); color: white; box-shadow: 0 4px 12px rgb(9 13 18 / 14%); }
-.auth-login-form { display: grid; gap: 7px; }
+.auth-login-form { display: grid; gap: 10px; }
 .auth-login-form label { margin: 0; }
-.auth-login-form > button[type="submit"] { width: 100%; margin-top: 3px; }
+.auth-login-form > button[type="submit"] { width: 100%; margin-top: 5px; }
 .account-form .secondary-action { border-color: var(--line-strong); background: white; color: var(--ink); }
-.account-form .text-action { min-height: 28px; padding: 0; border: 0; background: transparent; color: #607800; text-align: left; text-decoration: underline; }
-.auth-help { margin: 2px 0 0; color: var(--muted); font-size: 9px; line-height: 1.6; }
-.auth-message { margin: 12px 0 0; padding: 10px 12px; border: 1px solid #cddd94; border-radius: 6px; background: var(--accent-pale); color: #4e6300; font-size: 10px; font-weight: 700; line-height: 1.5; }
+.account-form .text-action { min-height: 34px; padding: 0; border: 0; background: transparent; color: #607800; text-align: left; text-decoration: underline; }
+.auth-help { margin: 3px 0 0; color: var(--muted); font-size: 12px; line-height: 1.6; }
+.auth-message { margin: 15px 0 0; padding: 13px 15px; border: 1px solid #cddd94; border-radius: 7px; background: var(--accent-pale); color: #4e6300; font-size: 13px; font-weight: 700; line-height: 1.5; }
 .auth-message.is-error { border-color: #f0b4ad; background: #fff2f0; color: #a52a1f; }
-.password-form { margin-top: 14px; padding-top: 14px; border-top: 1px solid var(--line); }
-.password-form .auth-help { margin-top: 8px; }
-.signed-in-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; color: var(--muted); font-size: 10px; }
-.ledger-list { display: flex; min-height: 60px; flex-direction: column; }
-.ledger-row { display: grid; grid-template-columns: 32px minmax(0, 1fr) auto; gap: 10px; align-items: center; padding: 10px 0; border-top: 1px solid #edf0f3; }
+.password-form { margin-top: 18px; padding-top: 18px; border-top: 1px solid var(--line); }
+.password-form .auth-help { margin-top: 10px; }
+.signed-in-row { display: flex; align-items: center; justify-content: space-between; gap: 14px; color: var(--muted); font-size: 13px; }
+.ledger-list { display: flex; min-height: 72px; flex-direction: column; }
+.ledger-row { display: grid; grid-template-columns: 38px minmax(0, 1fr) auto; gap: 12px; align-items: center; padding: 13px 0; border-top: 1px solid #edf0f3; }
 .ledger-row:first-child { border-top: 0; }
-.ledger-row > span:first-child { display: grid; width: 32px; height: 32px; place-items: center; border-radius: 6px; background: var(--paper-soft); color: var(--muted); }
-.ledger-row > span:first-child svg { width: 14px; }
+.ledger-row > span:first-child { display: grid; width: 38px; height: 38px; place-items: center; border-radius: 7px; background: var(--paper-soft); color: var(--muted); }
+.ledger-row > span:first-child svg { width: 17px; }
 .ledger-row > span:nth-child(2) { display: flex; min-width: 0; flex-direction: column; gap: 2px; }
-.ledger-row strong { font-size: 10px; }
-.ledger-row small, .ledger-empty { color: var(--muted-soft); font-size: 8px; }
-.ledger-amount { font-family: "Manrope", sans-serif; font-size: 11px; font-weight: 800; }
+.ledger-row strong { font-size: 13px; }
+.ledger-row small, .ledger-empty { color: var(--muted-soft); font-size: 11px; }
+.ledger-amount { font-family: "Manrope", sans-serif; font-size: 14px; font-weight: 800; }
 .ledger-amount.is-positive { color: var(--success); }
 .ledger-empty { display: grid; min-height: 60px; place-items: center; }
 .charge-dialog { width: min(calc(100vw - 32px), 360px); padding: 26px; overflow: visible; text-align: center; }
@@ -344,7 +346,12 @@ kbd { padding: 2px 4px; border: 1px solid var(--line-strong); border-bottom-widt
   .split-card { grid-template-columns: 76px minmax(0, 1fr); }
   .split-preview { width: 76px; height: 76px; }
   .split-preview canvas { max-width: 70px; max-height: 70px; }
-  .account-dialog { width: calc(100vw - 20px); max-height: calc(100vh - 20px); }
+  .account-dialog { width: calc(100vw - 16px); max-height: calc(100dvh - 16px); }
+  .dialog-heading { padding: 18px 20px; }
+  .balance-panel { grid-template-columns: 46px 1fr auto; gap: 11px; margin: 20px; padding: 16px; }
+  .balance-icon { width: 46px; height: 46px; }
+  .account-note { margin: -4px 20px 20px; }
+  .account-section { padding: 21px 20px; }
   .account-form > div { grid-template-columns: 1fr; }
 }
 
