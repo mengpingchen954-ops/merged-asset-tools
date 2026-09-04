@@ -235,6 +235,7 @@ kbd { padding: 2px 4px; border: 1px solid var(--line-strong); border-bottom-widt
 .auth-login-form label { margin: 0; }
 .auth-actions { grid-template-columns: 1fr 1fr !important; margin-top: 3px; }
 .account-form .secondary-action { border-color: var(--line-strong); background: white; color: var(--ink); }
+.account-form .text-action { min-height: 28px; padding: 0; border: 0; background: transparent; color: #607800; text-align: left; text-decoration: underline; }
 .auth-help { margin: 2px 0 0; color: var(--muted); font-size: 9px; line-height: 1.6; }
 .password-form { margin-top: 14px; padding-top: 14px; border-top: 1px solid var(--line); }
 .password-form .auth-help { margin-top: 8px; }

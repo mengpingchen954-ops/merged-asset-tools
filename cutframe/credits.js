@@ -101,6 +101,7 @@
     $("#signed-in-email").textContent = state.user?.email || "";
     $("#login-form button[type='submit']").disabled = !productionMode;
     $("#signup-button").disabled = !productionMode;
+    $("#reset-password-button").disabled = !productionMode;
     $("#login-email").disabled = !productionMode;
     $("#login-password").disabled = !productionMode;
     $("#password-form button").disabled = !productionMode || !state.user;
@@ -230,8 +231,23 @@
     loginButton.disabled = false;
     signupButton.disabled = false;
     if (error) return notify(error.message?.toLowerCase().includes("registered") ? "账号已存在，请登录或在手机端设置密码" : "注册失败，请稍后重试");
+    if (data.user && Array.isArray(data.user.identities) && data.user.identities.length === 0) return notify("账号已存在，请登录或发送设置密码邮件");
     if (data.session) return notify("注册并登录成功");
     notify("确认邮件已发送；确认后回到电脑登录");
+  }
+
+  async function handlePasswordReset() {
+    if (!productionMode) return notify("请先配置 Supabase 积分服务");
+    const emailInput = $("#login-email");
+    if (!emailInput.checkValidity()) return emailInput.reportValidity();
+    const button = $("#reset-password-button");
+    button.disabled = true;
+    const { error } = await client.auth.resetPasswordForEmail(emailInput.value.trim(), {
+      redirectTo: `${location.origin}${location.pathname}`,
+    });
+    button.disabled = false;
+    if (error) return notify("设置密码邮件发送失败，请稍后重试");
+    notify("设置密码邮件已发送，请在手机打开");
   }
 
   async function handlePasswordUpdate(event) {
@@ -267,6 +283,7 @@
     $("#close-account").addEventListener("click", closeAccount);
     $("#login-form").addEventListener("submit", handleLogin);
     $("#signup-button").addEventListener("click", handleSignup);
+    $("#reset-password-button").addEventListener("click", handlePasswordReset);
     $("#password-form").addEventListener("submit", handlePasswordUpdate);
     $("#redeem-form").addEventListener("submit", handleRedeem);
     $("#logout-button").addEventListener("click", async () => {
@@ -294,9 +311,16 @@
     state.user = data.session?.user || null;
     if (state.user) await refreshAccount();
     else render();
-    client.auth.onAuthStateChange((_event, session) => {
+    client.auth.onAuthStateChange((event, session) => {
       state.user = session?.user || null;
       window.setTimeout(() => refreshAccount().catch(() => notify("账户信息加载失败")), 0);
+      if (event === "PASSWORD_RECOVERY") {
+        window.setTimeout(() => {
+          openAccount();
+          $("#account-password").focus();
+          notify("请输入新密码并保存");
+        }, 0);
+      }
     });
   }
 
