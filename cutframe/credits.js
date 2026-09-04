@@ -97,9 +97,14 @@
     $("#auth-state").textContent = productionMode ? (state.user ? "已登录" : "未登录") : "等待接入";
     $("#login-form").hidden = Boolean(state.user);
     $("#signed-in-row").hidden = !state.user;
+    $("#password-form").hidden = !state.user;
     $("#signed-in-email").textContent = state.user?.email || "";
-    $("#login-form button").disabled = !productionMode;
+    $("#login-form button[type='submit']").disabled = !productionMode;
+    $("#signup-button").disabled = !productionMode;
     $("#login-email").disabled = !productionMode;
+    $("#login-password").disabled = !productionMode;
+    $("#password-form button").disabled = !productionMode || !state.user;
+    $("#account-password").disabled = !productionMode || !state.user;
     $("#redeem-form button").disabled = !productionMode || !state.user;
     $("#redeem-code").disabled = !productionMode || !state.user;
     renderLedger();
@@ -195,15 +200,51 @@
     event.preventDefault();
     if (!productionMode) return notify("请先配置 Supabase 积分服务");
     const email = $("#login-email").value.trim();
-    const button = $("#login-form button");
+    const password = $("#login-password").value;
+    const button = $("#login-form button[type='submit']");
+    const signupButton = $("#signup-button");
     button.disabled = true;
-    const { error } = await client.auth.signInWithOtp({
+    signupButton.disabled = true;
+    const { error } = await client.auth.signInWithPassword({ email, password });
+    button.disabled = false;
+    signupButton.disabled = false;
+    if (error) return notify("邮箱或密码错误");
+    notify("登录成功");
+  }
+
+  async function handleSignup() {
+    if (!productionMode) return notify("请先配置 Supabase 积分服务");
+    const form = $("#login-form");
+    if (!form.reportValidity()) return;
+    const email = $("#login-email").value.trim();
+    const password = $("#login-password").value;
+    const loginButton = $("#login-form button[type='submit']");
+    const signupButton = $("#signup-button");
+    loginButton.disabled = true;
+    signupButton.disabled = true;
+    const { data, error } = await client.auth.signUp({
       email,
+      password,
       options: { emailRedirectTo: `${location.origin}${location.pathname}` },
     });
+    loginButton.disabled = false;
+    signupButton.disabled = false;
+    if (error) return notify(error.message?.toLowerCase().includes("registered") ? "账号已存在，请登录或在手机端设置密码" : "注册失败，请稍后重试");
+    if (data.session) return notify("注册并登录成功");
+    notify("确认邮件已发送；确认后回到电脑登录");
+  }
+
+  async function handlePasswordUpdate(event) {
+    event.preventDefault();
+    if (!productionMode || !state.user) return notify("请先登录");
+    const password = $("#account-password").value;
+    const button = $("#password-form button");
+    button.disabled = true;
+    const { error } = await client.auth.updateUser({ password });
     button.disabled = false;
-    if (error) return notify("登录链接发送失败，请检查邮箱");
-    notify("登录链接已发送，请查看邮箱");
+    if (error) return notify("密码保存失败，请稍后重试");
+    $("#account-password").value = "";
+    notify("密码已保存，可在电脑登录");
   }
 
   async function handleRedeem(event) {
@@ -225,6 +266,8 @@
     $("#credit-button").addEventListener("click", openAccount);
     $("#close-account").addEventListener("click", closeAccount);
     $("#login-form").addEventListener("submit", handleLogin);
+    $("#signup-button").addEventListener("click", handleSignup);
+    $("#password-form").addEventListener("submit", handlePasswordUpdate);
     $("#redeem-form").addEventListener("submit", handleRedeem);
     $("#logout-button").addEventListener("click", async () => {
       await client?.auth.signOut();
