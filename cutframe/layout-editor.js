@@ -1,6 +1,20 @@
 (function () {
   'use strict';
   const storageKey = 'cutframe:layout:v1';
+  const defaultLayout = {
+    version: 1,
+    global: { rail: 297 },
+    tools: {
+      gif: { column: 441 },
+      cocos: { column: 620 },
+      model: { column: 620 },
+      extractor: { upload: 561 },
+      vfx: { column: 620 },
+      video: { column: 264 },
+      image: { column: 296 },
+      'green-screen': { column: 396 },
+    },
+  };
   const modes = [...document.querySelectorAll('.mode-button')].map(el => el.dataset.mode);
   const originals = Object.fromEntries(modes.map(mode => {
     const button = document.querySelector(`.mode-button[data-mode="${mode}"]`);
@@ -31,7 +45,15 @@
     }
     return clean;
   }
-  try { const saved = localStorage.getItem(storageKey); if (saved) state = validate(JSON.parse(saved)); } catch (_) { /* Invalid or unavailable storage keeps the default layout. */ }
+  state = validate(defaultLayout);
+  try {
+    const saved = localStorage.getItem(storageKey);
+    if (saved) {
+      const custom = validate(JSON.parse(saved));
+      state.global = { ...state.global, ...custom.global };
+      for (const mode of modes) if (custom.tools[mode]) state.tools[mode] = { ...state.tools[mode], ...custom.tools[mode] };
+    }
+  } catch (_) { /* Invalid or unavailable storage keeps the published defaults. */ }
 
   const toggle = document.createElement('button');
   toggle.id = 'layout-edit-toggle';
@@ -282,7 +304,7 @@
     changed();
   });
   $('layout-reset').addEventListener('click', () => {
-    state = { version: 1, global: {}, tools: {} };
+    state = validate(defaultLayout);
     window.dispatchEvent(new HashChangeEvent('hashchange'));
     changed(); status('已恢复默认');
   });
