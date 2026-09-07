@@ -1,4 +1,6 @@
-const $ = (selector) => document.querySelector(selector);
+// The same image engine powers the original tool and the native CutFrame workspace.
+const imageRoot = document.querySelector('#image-studio') || document;
+const $ = (selector) => imageRoot.querySelector(selector);
 
 const ui = {
   appTitle: $("#appTitle"),
@@ -25,10 +27,10 @@ const ui = {
   bgText: $("#bgText"),
   removeEnclosed: $("#removeEnclosed"),
   exportMode: $("#exportMode"),
-  modeButtons: [...document.querySelectorAll(".mode-button")],
+  modeButtons: [...imageRoot.querySelectorAll(".mode-button")],
   modeNote: $("#modeNote"),
-  matteOnly: [...document.querySelectorAll(".matte-only")],
-  vfxOnly: [...document.querySelectorAll(".vfx-only")],
+  matteOnly: [...imageRoot.querySelectorAll(".matte-only")],
+  vfxOnly: [...imageRoot.querySelectorAll(".vfx-only")],
   resultHeading: $("#resultHeading"),
   emptyText: $("#emptyText"),
   controls: {
@@ -69,6 +71,8 @@ const previewCtx = ui.previewCanvas.getContext("2d");
 
 const state = {
   mode: "matte",
+  previewView: "result",
+  previewZoom: 1,
   image: null,
   imageName: "",
   imageData: null,
@@ -261,7 +265,9 @@ async function loadSample() {
     await useImage(result.image, result.name);
     return;
   }
-  const response = await fetch("sample.png");
+  clearBatchState();
+  const response = await fetch(imageRoot === document ? "sample.png" : "../asset-vectorizer/sample.png");
+  if (!response.ok) throw new Error("示例图载入失败");
   const blob = await response.blob();
   const file = new File([blob], "sample.png", { type: blob.type || "image/png" });
   const result = await fileToImage(file, "sample.png");
@@ -1903,8 +1909,8 @@ function renderPreview() {
   const stage = ui.dropZone;
   const rect = stage.getBoundingClientRect();
   const dpr = window.devicePixelRatio || 1;
-  const width = Math.max(320, Math.floor(rect.width));
-  const height = Math.max(320, Math.floor(rect.height));
+  const width = Math.max(1, Math.floor(rect.width));
+  const height = Math.max(1, Math.floor(rect.height));
   const pixelWidth = Math.round(width * dpr);
   const pixelHeight = Math.round(height * dpr);
   if (canvas.width !== pixelWidth) canvas.width = pixelWidth;
@@ -1921,7 +1927,7 @@ function renderPreview() {
       return;
     }
     ui.emptyState.classList.add("is-hidden");
-    const scale = Math.min(width / image.naturalWidth, height / image.naturalHeight);
+    const scale = Math.min(width / image.naturalWidth, height / image.naturalHeight) * state.previewZoom;
     const drawWidth = image.naturalWidth * scale;
     const drawHeight = image.naturalHeight * scale;
     const x = (width - drawWidth) / 2;
@@ -1940,7 +1946,7 @@ function renderPreview() {
     return;
   }
 
-  const scale = Math.min(width / sourceCanvas.width, height / sourceCanvas.height);
+  const scale = Math.min(width / sourceCanvas.width, height / sourceCanvas.height) * state.previewZoom;
   const drawWidth = sourceCanvas.width * scale;
   const drawHeight = sourceCanvas.height * scale;
   const x = (width - drawWidth) / 2;
@@ -1950,10 +1956,10 @@ function renderPreview() {
   previewCtx.save();
   previewCtx.imageSmoothingEnabled = true;
   previewCtx.imageSmoothingQuality = "high";
-  previewCtx.drawImage(state.processedImageData ? processedCanvas : state.image, x, y, drawWidth, drawHeight);
+  previewCtx.drawImage(state.previewView === "source" ? state.image : state.processedImageData ? processedCanvas : state.image, x, y, drawWidth, drawHeight);
   previewCtx.restore();
 
-  if (!state.groups.length) return;
+  if (!state.groups.length || state.previewView === "source") return;
 
   if (state.mode === "vfx" && state.vfxAnalysis) {
     const analysis = state.vfxAnalysis;
@@ -2206,7 +2212,13 @@ function pickAssetAt(imageX, imageY) {
   if (found) selectAsset(found.id);
 }
 
-function downloadBlob(blob, filename) {
+async function downloadBlob(blob, filename) {
+  if (imageRoot !== document && window.CutframeCredits) {
+    const action = filename.endsWith('.zip') || filename.endsWith('-cutframe.png') ? 'image_export' : 'asset_export';
+    if (!await window.CutframeCredits.confirmExport(action)) return;
+    const charged = await window.CutframeCredits.charge(action);
+    if (!charged.ok) return;
+  }
   const url = URL.createObjectURL(blob);
   const anchor = document.createElement("a");
   anchor.href = url;
@@ -2458,6 +2470,10 @@ function scheduleRenderAssets() {
 }
 
 function resetAll() {
+  window.clearTimeout(analyzeTimer);
+  window.clearTimeout(renderTimer);
+  state.pickingBg = false;
+  ui.dropZone.classList.remove("is-picking");
   clearBatchState();
   state.image = null;
   state.imageName = "";
@@ -2667,8 +2683,37 @@ updateBgUi();
 bindEvents();
 window.lucide?.createIcons();
 window.AssetVectorizer = {
+  setPreview: ({ view = state.previewView, zoom = state.previewZoom } = {}) => {
+    state.previewView = view === 'source' ? 'source' : 'result';
+    state.previewZoom = clamp(zoom, 0.6, 2);
+    renderPreview();
+  },
+  setBackground: (hex) => {
+    state.bgColor = { r: parseInt(hex.slice(1,3),16), g: parseInt(hex.slice(3,5),16), b: parseInt(hex.slice(5,7),16), a: 255 };
+    updateBgUi();
+    if (state.image) analyzeImage();
+  },
+  resetControls: () => {
+    for (const input of Object.values(ui.controls)) input.value = input.defaultValue;
+    ui.removeEnclosed.checked = false;
+    ui.exportMode.value = 'color';
+    updateControlText();
+    if (state.batch.active) processBatchFiles();
+    else if (state.image) {
+      state.bgColor = sampleCornerColor(state.imageData, sourceCanvas.width, sourceCanvas.height);
+      updateBgUi();
+      analyzeImage();
+    }
+  },
+  downloadFullImage: async () => {
+    if (!state.processedImageData || state.batch.active) return;
+    const blob = await canvasToPngBlob(processedCanvas);
+    if (blob) await downloadBlob(blob, (state.imageName.replace(/\.[^.]+$/, '') || 'image') + '-cutframe.png');
+  },
   stats: () => ({
     mode: state.mode,
+    imageReady: Boolean(state.processedImageData),
+    processing: state.batch.processing,
     count: state.batch.active
       ? state.batch.items.filter((item) => item.status === "done").length
       : state.groups.length,

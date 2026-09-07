@@ -27,3 +27,11 @@ node server.mjs
 
 然后打开 `http://127.0.0.1:4176/`。
 
+
+## CutFrame 一键抠图
+
+`cutframe/#image` 原生接入与 `asset-vectorizer` 相同的图片处理引擎，包含单图/多图/嵌套文件夹导入与拖放、自动背景取样与画布取色、背景容差和边缘清理、封闭背景清理、区域合并与元素拆分、边距/1–4 倍放大/锐化/柔化、保留颜色或纯剪影 SVG、单项 PNG、全部 PNG ZIP、批量结果下载及示例。保留 CutFrame 的整图透明 PNG、原图对比、缩放和绿幕 WEBM 导出。
+
+2026-09-07 暂停积分制：`cutframe/feature-flags.js` 中 `creditsEnabled: false` 会在积分服务创建账户客户端之前返回，不要求登录、不确认扣费、不读写余额及账本。原账户和兑换数据保留；恢复时将该值改为 `true` 并更新页面资源版本。图片和视频导出均经过同一积分接口。
+
+图片引擎的 DOM 作用域限定在 `#image-studio` 内，避免与 CutFrame 的视频控件和导航相互影响。图片资源和示例仍从 `asset-vectorizer/` 读取，部署时保留该目录。

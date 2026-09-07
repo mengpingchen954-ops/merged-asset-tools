@@ -5,11 +5,13 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="theme-color" content="#f3f5f7" />
     <meta name="description" content="CUTFRAME 本地图片抠图与绿幕视频处理工具。" />
-    <title>CUTFRAME - 本地素材工作台</title>
+    <title>CUTFRAME - 本地素材工作台</title><link rel="icon" href="data:," />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@500;600;700;800&family=Noto+Sans+SC:wght@400;500;600;700&display=swap" rel="stylesheet" />
-    <link rel="stylesheet" href="./styles.css?v=20260904-7" />
+    <script src="./feature-flags.js?v=20260907-1"></script>
+    <link rel="stylesheet" href="./styles.css?v=20260907-1" />
+    <link rel="stylesheet" href="./image-tools.css?v=20260907-1" />
   </head>
   <body>
     <div class="app-shell">
@@ -25,7 +27,7 @@
         <nav class="mode-switch" aria-label="工具模式">
           <button class="mode-button is-active" type="button" data-mode="image" aria-pressed="true">
             <span class="mode-icon"><i data-lucide="scan-search"></i></span>
-            <span><strong>一键抠图</strong><small>抠图 / 分离 / 下载</small></span>
+            <span><strong>一键抠图</strong><small>批量抠图 / 分离 / SVG · PNG</small></span>
             <i class="mode-grip" data-lucide="grip-vertical"></i>
           </button>
           <button class="mode-button" type="button" data-mode="video" aria-pressed="false">
@@ -43,15 +45,213 @@
       <div class="content-shell">
         <header class="page-header">
           <button class="menu-button" type="button" aria-label="收起侧栏" title="收起侧栏"><i data-lucide="panel-left-close"></i></button>
-          <div class="page-title"><h1 id="page-title">一键抠图</h1><p id="page-description">载入图片后自动抠图分离素材，逐项预览并下载透明 PNG。</p></div>
+          <div class="page-title"><h1 id="page-title">一键抠图</h1><p id="page-description">载入图片后自动抠图分离素材，支持文件夹批量抠图、元素拆分及 SVG / PNG 导出。</p></div>
           <div class="header-actions">
             <span class="local-badge"><i data-lucide="shield-check"></i>本地处理</span>
-            <button class="credit-button" id="credit-button" type="button" aria-label="打开积分账户"><i data-lucide="coins"></i><span><small id="credit-mode">体验积分</small><strong><b id="credit-balance">10</b> 积分</strong></span></button>
+            <span id="free-mode-badge" class="local-badge">免费使用</span><button hidden class="credit-button" id="credit-button" type="button" aria-label="打开积分账户"><i data-lucide="coins"></i><span><small id="credit-mode">体验积分</small><strong><b id="credit-balance">10</b> 积分</strong></span></button>
             <button id="header-upload" type="button" hidden>导入素材</button>
           </div>
         </header>
 
-        <section class="editor-shell">
+        <section id="image-studio" class="image-studio" aria-label="一键抠图工作台">
+      <header class="image-toolbar">
+        <div class="image-summary">
+          <span class="file-icon"><i data-lucide="panels-top-left"></i></span>
+          <div>
+            <h1 id="appTitle">图片素材拆解</h1>
+            <p id="imageMeta">等待载入图片</p>
+          </div>
+        </div>
+        <div class="top-actions"><button type="button" class="ghost-button" id="image-full-export" disabled><i data-lucide="download"></i><span>整图 PNG</span></button>
+          <label class="file-button">
+            <i data-lucide="image-plus"></i>
+            <span>载入文件</span>
+            <input id="fileInput" type="file" accept="image/png,image/jpeg,image/webp" multiple />
+          </label>
+          <label class="folder-button">
+            <i data-lucide="folder-open"></i>
+            <span>载入文件夹</span>
+            <input
+              id="folderInput"
+              type="file"
+              accept="image/png,image/jpeg,image/webp"
+              webkitdirectory
+              directory
+              multiple
+            />
+          </label>
+          <button id="sampleBtn" type="button" class="ghost-button">
+            <i data-lucide="sparkles"></i>
+            <span>载入示例</span>
+          </button>
+          <button id="analyzeBtn" type="button" class="primary-button">
+            <i data-lucide="scan-line"></i>
+            <span id="analyzeText">重新分离</span>
+          </button>
+          <button
+            id="splitBtn"
+            type="button"
+            class="ghost-button"
+            title="将选中素材拆成独立元素"
+            disabled
+          >
+            <i data-lucide="ungroup"></i>
+            <span>拆分元素</span>
+          </button>
+          <button id="zipBtn" type="button" class="dark-button" disabled>
+            <i data-lucide="download"></i>
+            <span id="zipText">全部 PNG</span>
+          </button>
+        </div>
+      </header>
+
+      <main class="image-workspace">
+        <aside class="control-panel">
+          <section class="mode-section single-mode">
+            <p id="modeNote" class="mode-note">按连通区域分离图片素材。</p>
+          </section>
+
+          <section>
+            <div class="section-head">
+              <div class="section-title">
+                <h2>智能抠图</h2>
+                <span class="feature-chip">本地处理</span>
+              </div>
+              <button id="pickBgBtn" type="button" class="icon-button" title="取背景色" aria-label="取背景色">
+                <i data-lucide="pipette"></i>
+              </button>
+            </div>
+            <div class="bg-row">
+              <input id="image-bg-color" type="color" value="#ffffff" aria-label="图片背景色" /><span id="bgSwatch" class="bg-swatch" hidden></span>
+              <span id="bgText">#ffffff</span>
+            </div>
+            <label class="range-row">
+              <span>背景容差</span>
+              <output id="toleranceOut">32</output>
+              <input id="tolerance" type="range" min="4" max="90" value="32" />
+            </label>
+            <label class="range-row matte-only">
+              <span>边缘清理</span>
+              <output id="edgeTrimOut">1 px</output>
+              <input id="edgeTrim" type="range" min="0" max="4" value="1" />
+            </label>
+            <label class="range-row matte-only">
+              <span>边缘压色</span>
+              <output id="innerStrokeOut">40%</output>
+              <input id="innerStroke" type="range" min="0" max="100" step="5" value="40" />
+            </label>
+            <label class="check-row matte-only">
+              <span>
+                <strong>清理封闭背景</strong>
+                <small>移除轮廓内部残留的背景色</small>
+              </span>
+              <input id="removeEnclosed" type="checkbox" />
+            </label>
+            <label class="range-row matte-only">
+              <span>合并间距</span>
+              <output id="mergeGapOut">8 px</output>
+              <input id="mergeGap" type="range" min="0" max="36" value="8" />
+            </label>
+            <label class="range-row matte-only">
+              <span>最小面积</span>
+              <output id="minAreaOut">120</output>
+              <input id="minArea" type="range" min="12" max="2000" step="4" value="120" />
+            </label>
+            <div class="vfx-only" hidden>
+              <label class="range-row">
+                <span>特效颜色范围</span>
+                <output id="vfxHueRangeOut">36°</output>
+                <input id="vfxHueRange" type="range" min="12" max="80" value="36" />
+              </label>
+              <label class="range-row">
+                <span>白色亮部阈值</span>
+                <output id="vfxBrightOut">210</output>
+                <input id="vfxBright" type="range" min="140" max="250" value="210" />
+              </label>
+              <label class="range-row">
+                <span>放射线数量上限</span>
+                <output id="vfxRayCountOut">18</output>
+                <input id="vfxRayCount" type="range" min="8" max="28" value="18" />
+              </label>
+            </div>
+          </section>
+
+          <section class="matte-only">
+            <div class="section-head">
+              <h2>清晰度</h2>
+            </div>
+            <label class="range-row">
+              <span>边距</span>
+              <output id="paddingOut">12 px</output>
+              <input id="padding" type="range" min="0" max="48" value="12" />
+            </label>
+            <label class="range-row">
+              <span>放大倍率</span>
+              <output id="scaleOut">2x</output>
+              <input id="scale" type="range" min="1" max="4" step="1" value="2" />
+            </label>
+            <label class="range-row">
+              <span>锐化</span>
+              <output id="sharpnessOut">22%</output>
+              <input id="sharpness" type="range" min="0" max="100" value="22" />
+            </label>
+            <label class="range-row">
+              <span>边缘柔化</span>
+              <output id="featherOut">0 px</output>
+              <input id="feather" type="range" min="0" max="6" value="0" />
+            </label>
+          </section>
+
+          <section>
+            <div class="section-head">
+              <h2>导出</h2>
+            </div>
+            <label class="select-row matte-only">
+              <span>SVG 模式</span>
+              <select id="exportMode">
+                <option value="color">保留颜色</option>
+                <option value="silhouette">纯剪影</option>
+              </select>
+            </label>
+            <div class="stat-grid">
+              <div>
+                <strong id="assetCount">0</strong>
+                <span>素材</span>
+              </div>
+              <div>
+                <strong id="processTime">0 ms</strong>
+                <span>耗时</span>
+              </div>
+            </div>
+          </section>
+        </aside>
+
+        <section class="preview-area">
+          <div class="canvas-stage" id="dropZone" aria-label="图片和文件夹拖放区域">
+            <canvas id="previewCanvas"></canvas>
+            <div id="emptyState" class="empty-state">
+              <i data-lucide="image"></i>
+              <strong id="emptyText">载入图片</strong><span>拖放图片或文件夹 · PNG / JPG / WEBP</span><button type="button" id="image-empty-upload" class="primary-button">选择图片</button>
+            </div>
+          </div>
+          <div class="image-statusbar">
+            <span role="status" aria-live="polite" id="statusText">准备就绪</span>
+            <span id="selectedText">未选择素材</span></div><div class="image-viewbar"><div class="image-view-switch" role="group" aria-label="预览模式"><button type="button" data-image-view="source" aria-pressed="false">原图</button><button type="button" data-image-view="result" class="is-active" aria-pressed="true">结果</button></div><div class="image-zoom"><button type="button" id="image-zoom-out" aria-label="缩小预览">−</button><span id="image-zoom-value">100%</span><button type="button" id="image-zoom-in" aria-label="放大预览">+</button></div>
+          </div>
+        </section>
+
+        <aside class="asset-panel">
+          <div class="asset-head">
+            <h2 id="resultHeading">分离结果</h2>
+            <button id="clearBtn" type="button" class="icon-button" title="清空" aria-label="清空">
+              <i data-lucide="trash-2"></i>
+            </button>
+          </div>
+          <div id="assetList" class="asset-list"></div>
+        </aside>
+      </main>
+        </section>
+        <section class="editor-shell" id="video-studio" hidden>
           <div class="editor-toolbar">
             <div class="file-summary">
               <span class="file-icon"><i data-lucide="panels-top-left"></i></span>
@@ -141,6 +341,6 @@
       <div class="dialog-actions"><button class="dialog-secondary" id="cancel-charge" type="button">取消</button><button class="dialog-primary" id="confirm-charge" type="button">确认导出</button></div>
     </dialog>
     <video id="source-video" playsinline muted hidden></video><canvas id="source-canvas" width="1200" height="800" hidden></canvas><canvas id="processed-canvas" width="1200" height="800" hidden></canvas>
-    <script src="https://unpkg.com/lucide@0.468.0/dist/umd/lucide.min.js"></script><script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script><script src="./supabase-config.js?v=20260904-1"></script><script src="./credits.js?v=20260904-6"></script><script src="./app.js?v=20260904-2"></script>
+    <script src="https://unpkg.com/lucide@0.468.0/dist/umd/lucide.min.js"></script><script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script><script src="./supabase-config.js?v=20260907-1"></script><script src="./credits.js?v=20260907-1"></script><script src="./app.js?v=20260907-1"></script><script type="module" src="./image-tools.js?v=20260907-1"></script>
   </body>
 </html>

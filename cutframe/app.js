@@ -39,7 +39,7 @@
     image: {
       hash: "image",
       title: "一键抠图",
-      description: "载入图片后自动抠图分离素材，逐项预览并下载透明 PNG。",
+      description: "支持单图与文件夹批量抠图、元素拆分、清晰度调节及 SVG / PNG 导出。",
       upload: "载入图片",
       formats: "PNG / JPG / WEBP",
       drop: "拖放图片到画布",
@@ -636,7 +636,14 @@
 
   function setMode(mode, updateHash = true) {
     if (!modeCopy[mode]) return;
+    if (state.renderingVideo && mode !== "video") {
+      showToast("视频正在导出，请完成后切换工具");
+      history.replaceState(null, "", "#video");
+      return;
+    }
     state.mode = mode;
+    $("#image-studio").hidden = mode !== "image";
+    $("#video-studio").hidden = mode !== "video";
     state.pickingColor = false;
     const copy = modeCopy[mode];
     $(".studio").dataset.activeMode = mode;
@@ -774,11 +781,12 @@
         const charged = await credits.charge("video_export", video.duration || 0);
         if (!charged.ok) return;
         downloadBlob(blob, `${fileStem(state.videoMeta.name)}-cutframe.webm`);
-        showToast(`透明 WEBM 已生成，已使用 ${charged.cost} 积分`);
+        showToast(charged.cost ? `透明 WEBM 已生成，已使用 ${charged.cost} 积分` : "透明 WEBM 已生成");
       } catch (error) {
         console.error("Video export failed", error);
-        showToast("视频生成失败，本次未扣积分");
+        showToast("视频生成失败，请重试");
       } finally {
+        stream.getTracks().forEach((track) => track.stop());
         state.renderingVideo = false;
         $("#export-progress").hidden = true;
         $("#download-button").disabled = false;
@@ -793,7 +801,6 @@
       await new Promise((resolve) => video.addEventListener("seeked", resolve, { once: true }));
       recorder.start(250);
       await video.play();
-      drawVideoFrame();
       video.addEventListener("timeupdate", updateExportProgress);
       video.addEventListener(
         "ended",
@@ -809,7 +816,7 @@
       state.renderingVideo = false;
       $("#export-progress").hidden = true;
       $("#download-button").disabled = false;
-      showToast("视频生成失败，本次未扣积分");
+      showToast("视频生成失败，请重试");
     }
   }
 
@@ -863,21 +870,13 @@
 
   function resetControls() {
     if (state.mode === "image") {
-      setColor("image", "#D6D2CC");
-      $("#image-tolerance").value = "32";
-      $("#image-softness").value = "1";
-      $("#image-spill").value = "40";
-      $("#image-merge-gap").value = "8";
-      $("#image-min-area").value = "120";
-      $("#image-padding").value = "12";
-      $("#remove-enclosed").checked = false;
-      $$(".image-controls input[type='range']").forEach(updateRangeOutput);
-      processImage();
+      window.dispatchEvent(new Event("cutframe:reset-image"));
     } else {
       setColor("video", "#00A94F");
       $("#video-tolerance").value = "30";
       $("#video-softness").value = "8";
       $("#video-spill").value = "38";
+      $("#video-fps").value = "30";
       $$(".video-controls input[type='range']").forEach(updateRangeOutput);
       drawVideoFrame();
     }
@@ -1020,7 +1019,7 @@
   });
 
   window.addEventListener("keydown", (event) => {
-    if (event.target.matches("input, select, button")) return;
+    if (event.target.matches("input, select, button") || state.mode === "image") return;
     if (event.code === "Space" && state.mode === "video" && state.videoReady) {
       event.preventDefault();
       video.paused ? video.play() : video.pause();

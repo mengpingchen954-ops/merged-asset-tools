@@ -1,6 +1,26 @@
 (function () {
   "use strict";
 
+  // Skip account initialization and all balance/ledger reads and writes while paused.
+  if (window.CUTFRAME_FEATURES?.creditsEnabled === false) {
+    document.querySelector('#credit-button').hidden = true;
+    document.querySelector('#free-mode-badge').hidden = false;
+    const updateExportCost = () => { document.querySelector('#export-cost').textContent = '免费'; };
+    updateExportCost();
+    window.CutframeCredits = Object.freeze({
+      enabled: false,
+      ready: Promise.resolve(),
+      getCost: () => 0,
+      confirmExport: async () => true,
+      charge: async () => ({ ok: true, cost: 0 }),
+      openAccount: () => {},
+      updateExportCost,
+    });
+    return;
+  }
+  document.querySelector('#credit-button').hidden = false;
+  document.querySelector('#free-mode-badge').hidden = true;
+
   const DEMO_STORAGE_KEY = "cutframe-demo-credits-v1";
   const config = window.CUTFRAME_SUPABASE || {};
   const productionMode = Boolean(config.url && config.anonKey && window.supabase?.createClient);
