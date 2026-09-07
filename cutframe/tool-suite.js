@@ -33,6 +33,7 @@
       doc.documentElement.dataset.cutframeTool = mode;
       const markReady = () => {
         frame.dataset.ready = 'true';
+        window.CutframeLayoutEditor?.attachFrame(frame, mode);
         if (activeMode === mode) loading.hidden = true;
       };
       if (!doc.querySelector('#cutframe-embedded-theme')) {
