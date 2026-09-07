@@ -39,7 +39,7 @@
         const theme = doc.createElement('link');
         theme.id = 'cutframe-embedded-theme';
         theme.rel = 'stylesheet';
-        theme.href = new URL('./embedded-tools.css?v=20260907-2', location.href).href;
+        theme.href = new URL('./embedded-tools.css?v=20260907-compact1', location.href).href;
         theme.onload = markReady;
         theme.onerror = markReady;
         doc.head.append(theme);

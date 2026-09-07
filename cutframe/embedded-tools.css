@@ -36,3 +36,88 @@ html[data-cutframe-tool] .panel, html[data-cutframe-tool] .texture-results { min
   html[data-cutframe-tool] .download-actions .primary-action,
   html[data-cutframe-tool] .download-actions .outline-action { flex: 1 1 170px; width: 100%; justify-content: center; }
 }
+
+/* Dense, full-width workspaces within the shared CutFrame navigation. */
+html[data-cutframe-tool] body { background: #fff; letter-spacing: 0; }
+html[data-cutframe-tool] .app-shell { width: 100%; max-width: none; margin: 0; padding: 0; }
+html[data-cutframe-tool] .toolbar,
+html[data-cutframe-tool] .app-header,
+html[data-cutframe-tool] .topbar { position: static; min-height: 60px; margin: 0; padding: 10px 16px; gap: 12px; border-bottom: 1px solid var(--line); box-shadow: none; }
+html[data-cutframe-tool] .brand { gap: 10px; min-width: 0; }
+html[data-cutframe-tool] .brand-mark,
+html[data-cutframe-tool] .brandmark { width: 34px; height: 34px; border-radius: 6px; }
+html[data-cutframe-tool] .brand-mark svg { width: 21px; height: 21px; }
+html[data-cutframe-tool] .toolbar .brand p,
+html[data-cutframe-tool] .app-header .brand p,
+html[data-cutframe-tool] .topbar .brand small { display: none; }
+html[data-cutframe-tool] .workspace,
+html[data-cutframe-tool] .vfx-workspace { width: 100%; max-width: none; margin: 0; padding: 14px 16px 20px; gap: 16px; }
+html[data-cutframe-tool] .panel,
+html[data-cutframe-tool] .texture-results { box-shadow: none; }
+html[data-cutframe-tool] .control-panel,
+html[data-cutframe-tool] .results-panel,
+html[data-cutframe-tool] .vfx-controls,
+html[data-cutframe-tool] .texture-results { padding: 0; border: 0; border-radius: 0; background: transparent; }
+html[data-cutframe-tool] .drop-zone { min-height: 156px; padding: 16px 12px; gap: 8px; border-radius: 6px; }
+html[data-cutframe-tool] .drop-icon { width: 38px; height: 38px; border-radius: 6px; }
+html[data-cutframe-tool] .drop-icon svg { width: 22px; height: 22px; }
+html[data-cutframe-tool] .drop-zone strong { font-size: 15px; }
+html[data-cutframe-tool] .drop-zone > span:last-child { font-size: 12px; line-height: 1.5; }
+html[data-cutframe-tool] .settings { gap: 11px; margin: 14px 0; }
+html[data-cutframe-tool] .settings label { gap: 5px; }
+html[data-cutframe-tool] .settings select { height: 35px; border-radius: 5px; font-size: 12px; }
+html[data-cutframe-tool] .secondary-action { margin-top: 11px; height: 38px; border-radius: 6px; }
+html[data-cutframe-tool] .results-head h2,
+html[data-cutframe-tool] .texture-head h2 { font-size: 16px; }
+html[data-cutframe-tool] .results-head p,
+html[data-cutframe-tool] .texture-head p { font-size: 12px; line-height: 1.5; }
+html[data-cutframe-tool]:is([data-cutframe-tool='model'], [data-cutframe-tool='cocos']) .summary { gap: 8px; margin-bottom: 14px; }
+html[data-cutframe-tool]:is([data-cutframe-tool='model'], [data-cutframe-tool='cocos']) .summary div { min-height: 64px; padding: 10px 12px; gap: 5px; border-radius: 6px; }
+html[data-cutframe-tool]:is([data-cutframe-tool='model'], [data-cutframe-tool='cocos']) .summary strong { font-size: 18px; }
+html[data-cutframe-tool] .empty-state { min-height: 240px; padding: 24px 12px; border-radius: 6px; }
+html[data-cutframe-tool] .empty-state svg { width: 36px; height: 36px; }
+html[data-cutframe-tool] .empty-state strong { font-size: 15px; }
+html[data-cutframe-tool] .empty-state span { font-size: 12px; line-height: 1.6; }
+html[data-cutframe-tool='extractor'] .intro-panel { padding: 0; border: 0; border-radius: 0; box-shadow: none; }
+html[data-cutframe-tool='extractor'] .intro-row { display: none; }
+html[data-cutframe-tool='extractor'] .drop { min-height: 110px; margin: 0; padding: 20px; flex-direction: row; justify-content: space-between; gap: 20px; border: 1px dashed var(--line-strong); border-radius: 6px; text-align: left; }
+html[data-cutframe-tool='extractor'] .dropcopy { flex-direction: row; gap: 14px; width: auto; min-width: 0; }
+html[data-cutframe-tool='extractor'] .dropicon { width: 44px; height: 44px; border-radius: 6px; background: var(--blue-soft); color: var(--blue-strong); box-shadow: none; }
+html[data-cutframe-tool='extractor'] .dropicon svg { width: 24px; height: 24px; }
+html[data-cutframe-tool='extractor'] .drop strong { font-size: 16px; }
+html[data-cutframe-tool='extractor'] .drop span { font-size: 12px; }
+html[data-cutframe-tool='extractor'] .drop .btn { min-height: 40px; margin: 0; padding: 0 16px; font-size: 13px; }
+html[data-cutframe-tool='extractor'] .empty { min-height: 150px; margin-top: 16px; padding: 24px; border-bottom: 1px solid var(--line); }
+html[data-cutframe-tool='extractor'] .empty > div { display: grid; grid-template-columns: 38px minmax(0, 1fr); gap: 3px 12px; text-align: left; align-items: center; }
+html[data-cutframe-tool='extractor'] .emptymark { grid-row: span 2; width: 38px; height: 38px; margin: 0; border-radius: 6px; }
+html[data-cutframe-tool='extractor'] .empty p { margin: 0; }
+html[data-cutframe-tool='extractor'] .summary { margin: 14px 0; gap: 8px; }
+html[data-cutframe-tool='extractor'] .metric { padding: 10px 12px; box-shadow: none; border-radius: 6px; }
+html[data-cutframe-tool='extractor'] .metric b { min-height: 26px; font-size: 17px; }
+html[data-cutframe-tool='extractor'] .download-hub { padding: 12px 0; margin: 0 0 8px; border: 0; border-bottom: 1px solid var(--line); border-radius: 0; background: transparent; gap: 12px; }
+html[data-cutframe-tool='extractor'] .download-hub h2 { font-size: 16px; }
+html[data-cutframe-tool='extractor'] .download-hub p { display: none; }
+html[data-cutframe-tool='extractor'] .panel { padding: 14px 0; border: 0; border-radius: 0; border-bottom: 1px solid var(--line); }
+html[data-cutframe-tool='extractor'] .panel h2 { font-size: 16px; letter-spacing: 0; }
+html[data-cutframe-tool='extractor'] .panelhead { margin-bottom: 12px; }
+html[data-cutframe-tool='extractor'] .section-label { display: none; }
+html[data-cutframe-tool='extractor'] .panel + .panel { margin-top: 0; }
+@media (min-width: 901px) {
+  html[data-cutframe-tool]:is([data-cutframe-tool='model'], [data-cutframe-tool='cocos']) .workspace { grid-template-columns: 292px minmax(0, 1fr); }
+  html[data-cutframe-tool] .vfx-workspace { grid-template-columns: 310px minmax(0, 1fr); }
+  html[data-cutframe-tool] .control-panel,
+  html[data-cutframe-tool] .vfx-controls { padding-right: 16px; border-right: 1px solid var(--line); }
+}
+@media (max-width: 760px) {
+  html[data-cutframe-tool] .toolbar,
+  html[data-cutframe-tool] .app-header,
+  html[data-cutframe-tool] .topbar { padding: 10px 12px; }
+  html[data-cutframe-tool] .workspace,
+  html[data-cutframe-tool] .vfx-workspace { padding: 12px; gap: 14px; }
+  html[data-cutframe-tool='extractor'] .drop { flex-direction: column; align-items: stretch; padding: 16px 12px; gap: 16px; }
+  html[data-cutframe-tool='extractor'] .dropcopy { align-items: flex-start; gap: 10px; }
+  html[data-cutframe-tool='extractor'] .drop strong { font-size: 14px; line-height: 1.5; }
+  html[data-cutframe-tool='extractor'] .empty { padding: 16px 0; min-height: 120px; }
+  html[data-cutframe-tool='extractor'] .metric { padding: 10px 8px; }
+  html[data-cutframe-tool] .empty-state { min-height: 180px; }
+}

@@ -38,3 +38,12 @@
   .tool-nav-item .mode-button { min-height: 60px; }
   .rail-bottom { padding-top: 6px; }
 }
+
+/* Let the tool workspace meet the shell edges without an extra card or gutter. */
+.suite-studio { margin: 0; border: 0; border-radius: 0; box-shadow: none; background: #fff; }
+@media (min-width: 761px) and (max-width: 1040px) {
+  .suite-studio { height: calc(100vh - var(--header-height)); }
+}
+@media (max-width: 760px) {
+  .suite-studio { margin: 0; height: calc(100dvh - 140px); }
+}
