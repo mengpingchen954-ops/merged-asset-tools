@@ -29,7 +29,7 @@
     frame.setAttribute('allow', 'autoplay; clipboard-write; fullscreen');
     frame.addEventListener('load', () => {
       const doc = frame.contentDocument;
-      if (!doc?.body) return;
+      if (!doc?.body || doc.URL === 'about:blank') return;
       doc.documentElement.dataset.cutframeTool = mode;
       const markReady = () => {
         frame.dataset.ready = 'true';
@@ -48,8 +48,8 @@
       }
     });
     frames.set(mode, frame);
-    studio.append(frame);
     frame.src = definition.src;
+    studio.append(frame);
     return frame;
   }
   function activate(mode) {
@@ -182,3 +182,4 @@
     fromHash,
   });
 })();
+
