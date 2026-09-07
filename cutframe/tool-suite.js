@@ -20,24 +20,6 @@
     if (hash === 'vector') return 'image';
     return known.has(hash) ? hash : 'image';
   }
-  function elevateImportArea(doc, mode) {
-    if (!['gif', 'cocos', 'model', 'vfx'].includes(mode) || doc.querySelector('.cutframe-import-area')) return;
-    const drop = doc.querySelector(mode === 'vfx' ? '#vfxDropZone' : '#dropZone');
-    const workspace = drop?.closest('.workspace, .vfx-workspace');
-    if (!workspace) return;
-    // Move the existing nodes so their inputs and drag handlers remain attached.
-    const area = doc.createElement('div');
-    area.className = 'cutframe-import-area';
-    workspace.prepend(area);
-    area.append(drop);
-    if (mode === 'gif') {
-      const folder = doc.querySelector('label[for="pngFolderInput"]');
-      if (folder) {
-        area.classList.add('has-folder-picker');
-        area.append(folder);
-      }
-    }
-  }
   function createFrame(mode) {
     const definition = definitions[mode];
     const frame = document.createElement('iframe');
@@ -49,7 +31,6 @@
       const doc = frame.contentDocument;
       if (!doc?.body || doc.URL === 'about:blank') return;
       doc.documentElement.dataset.cutframeTool = mode;
-      elevateImportArea(doc, mode);
       const markReady = () => {
         frame.dataset.ready = 'true';
         if (activeMode === mode) loading.hidden = true;
@@ -58,7 +39,7 @@
         const theme = doc.createElement('link');
         theme.id = 'cutframe-embedded-theme';
         theme.rel = 'stylesheet';
-        theme.href = new URL('./embedded-tools.css?v=20260907-upload3', location.href).href;
+        theme.href = new URL('./embedded-tools.css?v=20260907-upload2', location.href).href;
         theme.onload = markReady;
         theme.onerror = markReady;
         doc.head.append(theme);
