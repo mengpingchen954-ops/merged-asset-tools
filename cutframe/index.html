@@ -12,6 +12,7 @@
     <script src="./feature-flags.js?v=20260907-1"></script>
     <link rel="stylesheet" href="./styles.css?v=20260907-1" />
     <link rel="stylesheet" href="./image-tools.css?v=20260907-1" />
+    <link rel="stylesheet" href="./tool-suite.css?v=20260907-2" />
   </head>
   <body>
     <div class="app-shell">
@@ -21,22 +22,22 @@
           <span class="brand-copy"><strong class="brand-name">CUTFRAME</strong><small>AI 素材工作台</small></span>
         </a>
         <div class="rail-utility">
-          <span><i data-lucide="grip-vertical"></i>工具模式</span>
-          <button id="reset-button" type="button"><i data-lucide="rotate-ccw"></i>恢复默认</button>
+          <span><i data-lucide="grip-vertical"></i>拖动排序</span>
+          <button id="reset-tool-order" type="button"><i data-lucide="rotate-ccw"></i>恢复排序</button>
         </div>
-        <nav class="mode-switch" aria-label="工具模式">
-          <button class="mode-button is-active" type="button" data-mode="image" aria-pressed="true">
-            <span class="mode-icon"><i data-lucide="scan-search"></i></span>
-            <span><strong>一键抠图</strong><small>批量抠图 / 分离 / SVG · PNG</small></span>
-            <i class="mode-grip" data-lucide="grip-vertical"></i>
-          </button>
-          <button class="mode-button" type="button" data-mode="video" aria-pressed="false">
-            <span class="mode-icon"><i data-lucide="clapperboard"></i></span>
-            <span><strong>绿幕转视频</strong><small>去除纯色背景 / WEBM</small></span>
-            <i class="mode-grip" data-lucide="grip-vertical"></i>
-          </button>
+        <nav class="mode-switch" aria-label="工具切换">
+          <button class="mode-button is-active" type="button" data-mode="image" aria-pressed="true"><span class="mode-icon"><i data-lucide="scan-search"></i></span><span><strong>一键抠图</strong><small>批量抠图 / 分离 / SVG · PNG</small></span></button>
+          <button class="mode-button" type="button" data-mode="green-screen" aria-pressed="false"><span class="mode-icon"><i data-lucide="film"></i></span><span><strong>绿幕视频转序列帧</strong><small>纯色背景 / 透明 PNG 序列</small></span></button>
+          <button class="mode-button" type="button" data-mode="gif" aria-pressed="false"><span class="mode-icon"><i data-lucide="layers-3"></i></span><span><strong>序列帧压缩</strong><small>GIF / MP4 / PNG 转 Cocos</small></span></button>
+          <button class="mode-button" type="button" data-mode="cocos" aria-pressed="false"><span class="mode-icon"><i data-lucide="file-code-2"></i></span><span><strong>Cocos HTML 压缩</strong><small>HTML / 渠道 ZIP / 5MB 包</small></span></button>
+          <button class="mode-button" type="button" data-mode="model" aria-pressed="false"><span class="mode-icon"><i data-lucide="box"></i></span><span><strong>FBX / GLB 模型压缩</strong><small>适配 Cocos 3.8.3 / 减面 / 贴图</small></span></button>
+          <button class="mode-button" type="button" data-mode="extractor" aria-pressed="false"><span class="mode-icon"><i data-lucide="package-open"></i></span><span><strong>构建包素材提取</strong><small>UI 图片 / 音频 / 批量下载</small></span></button>
+          <button class="mode-button" type="button" data-mode="vfx" aria-pressed="false"><span class="mode-icon"><i data-lucide="sparkles"></i></span><span><strong>特效贴图生成</strong><small>参考图 / 透明 PNG 粒子</small></span></button>
+          <button class="mode-button" type="button" data-mode="video" aria-pressed="false"><span class="mode-icon"><i data-lucide="clapperboard"></i></span><span><strong>绿幕转视频</strong><small>去除纯色背景 / WEBM</small></span></button>
         </nav>
-        <div class="rail-bottom">
+        <select id="mobile-tool-select" aria-label="选择工具"><option value="image">一键抠图</option><option value="green-screen">绿幕视频转序列帧</option><option value="gif">序列帧压缩</option><option value="cocos">Cocos HTML 压缩</option><option value="model">FBX / GLB 模型压缩</option><option value="extractor">构建包素材提取</option><option value="vfx">特效贴图生成</option><option value="video">绿幕转视频</option></select>
+        <p id="tool-order-status" class="sr-only" role="status" aria-live="polite"></p>
+        <div class="rail-bottom"><div class="suite-actions"><button id="reload-current-tool" type="button"><i data-lucide="rotate-cw"></i>刷新工具</button><button id="open-current-tool" type="button"><i data-lucide="external-link"></i>单独打开</button></div>
           <div class="privacy-card"><i data-lucide="shield-check"></i><span><strong>本地隐私模式</strong><small>素材不离开浏览器</small></span></div>
           <div class="engine-state"><span></span>处理引擎已就绪</div>
         </div>
@@ -46,13 +47,14 @@
         <header class="page-header">
           <button class="menu-button" type="button" aria-label="收起侧栏" title="收起侧栏"><i data-lucide="panel-left-close"></i></button>
           <div class="page-title"><h1 id="page-title">一键抠图</h1><p id="page-description">载入图片后自动抠图分离素材，支持文件夹批量抠图、元素拆分及 SVG / PNG 导出。</p></div>
-          <div class="header-actions">
+          <div class="header-actions"><button id="reset-button" class="toolbar-button" type="button" title="恢复当前工具参数"><i data-lucide="rotate-ccw"></i><span>恢复参数</span></button>
             <span class="local-badge"><i data-lucide="shield-check"></i>本地处理</span>
             <span id="free-mode-badge" class="local-badge">免费使用</span><button hidden class="credit-button" id="credit-button" type="button" aria-label="打开积分账户"><i data-lucide="coins"></i><span><small id="credit-mode">体验积分</small><strong><b id="credit-balance">10</b> 积分</strong></span></button>
             <button id="header-upload" type="button" hidden>导入素材</button>
           </div>
         </header>
 
+        <section id="suite-studio" class="suite-studio" aria-label="素材工具工作区" hidden><div id="suite-loading" class="suite-loading" role="status" hidden>正在载入工具…</div></section>
         <section id="image-studio" class="image-studio" aria-label="一键抠图工作台">
       <header class="image-toolbar">
         <div class="image-summary">
@@ -341,6 +343,6 @@
       <div class="dialog-actions"><button class="dialog-secondary" id="cancel-charge" type="button">取消</button><button class="dialog-primary" id="confirm-charge" type="button">确认导出</button></div>
     </dialog>
     <video id="source-video" playsinline muted hidden></video><canvas id="source-canvas" width="1200" height="800" hidden></canvas><canvas id="processed-canvas" width="1200" height="800" hidden></canvas>
-    <script src="https://unpkg.com/lucide@0.468.0/dist/umd/lucide.min.js"></script><script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script><script src="./supabase-config.js?v=20260907-1"></script><script src="./credits.js?v=20260907-1"></script><script src="./app.js?v=20260907-1"></script><script type="module" src="./image-tools.js?v=20260907-1"></script>
+    <script src="https://unpkg.com/lucide@0.468.0/dist/umd/lucide.min.js"></script><script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script><script src="./supabase-config.js?v=20260907-1"></script><script src="./credits.js?v=20260907-1"></script><script src="./tool-suite.js?v=20260907-2"></script><script src="./app.js?v=20260907-2"></script><script type="module" src="./image-tools.js?v=20260907-1"></script>
   </body>
 </html>

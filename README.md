@@ -35,3 +35,9 @@ node server.mjs
 2026-09-07 暂停积分制：`cutframe/feature-flags.js` 中 `creditsEnabled: false` 会在积分服务创建账户客户端之前返回，不要求登录、不确认扣费、不读写余额及账本。原账户和兑换数据保留；恢复时将该值改为 `true` 并更新页面资源版本。图片和视频导出均经过同一积分接口。
 
 图片引擎的 DOM 作用域限定在 `#image-studio` 内，避免与 CutFrame 的视频控件和导航相互影响。图片资源和示例仍从 `asset-vectorizer/` 读取，部署时保留该目录。
+
+## CutFrame 完整工具集
+
+CutFrame 左侧现已包含原工具台全部七项工具：一键抠图、绿幕视频转序列帧、序列帧压缩、Cocos HTML 压缩、FBX / GLB 模型压缩、构建包素材提取、特效贴图生成，并额外保留原有绿幕 WEBM 导出。六个新增工具复用原页面和处理引擎，在 CutFrame 内按需载入；切换保留输入文件和处理结果。
+
+支持拖动或使用排序手柄的方向键调整导航顺序、恢复默认排序、刷新当前工具和单独打开。手机使用顶部工具选择器。工具链接采用 `#green-screen`、`#gif`、`#cocos`、`#model`、`#extractor`、`#vfx`；`#vector` 兼容映射到 `#image`。积分继续暂停。

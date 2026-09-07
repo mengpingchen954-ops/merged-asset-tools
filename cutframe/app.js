@@ -36,6 +36,7 @@
   };
 
   const modeCopy = {
+    ...window.CutframeToolSuite.modes,
     image: {
       hash: "image",
       title: "一键抠图",
@@ -638,7 +639,7 @@
     if (!modeCopy[mode]) return;
     if (state.renderingVideo && mode !== "video") {
       showToast("视频正在导出，请完成后切换工具");
-      history.replaceState(null, "", "#video");
+      history.replaceState(null, "", "#video"); document.querySelector("#mobile-tool-select").value = "video";
       return;
     }
     state.mode = mode;
@@ -646,6 +647,8 @@
     $("#video-studio").hidden = mode !== "video";
     state.pickingColor = false;
     const copy = modeCopy[mode];
+    window.CutframeToolSuite.activate(mode);
+    $("#reset-button").hidden = mode !== "image" && mode !== "video";
     $(".studio").dataset.activeMode = mode;
     $("#page-title").textContent = copy.title;
     $("#page-description").textContent = copy.description;
@@ -654,6 +657,12 @@
       button.classList.toggle("is-active", active);
       button.setAttribute("aria-pressed", String(active));
     });
+    if (mode !== "image" && mode !== "video") {
+      window.cancelAnimationFrame(state.rafId);
+      video.pause();
+      if (updateHash) history.replaceState(null, "", '#' + mode);
+      return;
+    }
     $("#panel-title").textContent = copy.title;
     $("#upload-title").textContent = copy.upload;
     $("#upload-formats").textContent = copy.formats;
@@ -884,6 +893,8 @@
   }
 
   $$(".mode-button").forEach((button) => button.addEventListener("click", () => setMode(button.dataset.mode)));
+  $("#mobile-tool-select").addEventListener("change", (event) => setMode(event.target.value));
+  window.addEventListener("cutframe:open-tool", (event) => setMode(event.detail));
   $$(".view-button").forEach((button) => {
     button.addEventListener("click", () => {
       state.view = button.dataset.view;
@@ -1019,7 +1030,7 @@
   });
 
   window.addEventListener("keydown", (event) => {
-    if (event.target.matches("input, select, button") || state.mode === "image") return;
+    if (event.target.matches("input, select, button") || state.mode !== "video") return;
     if (event.code === "Space" && state.mode === "video" && state.videoReady) {
       event.preventDefault();
       video.paused ? video.play() : video.pause();
@@ -1033,8 +1044,8 @@
     }
   });
 
-  window.addEventListener("hashchange", () => setMode(location.hash.slice(1) === "video" ? "video" : "image", false));
+  window.addEventListener("hashchange", () => setMode(window.CutframeToolSuite.fromHash(), false));
 
   refreshIcons();
-  setMode(location.hash.slice(1) === "video" ? "video" : "image", false);
+  setMode(window.CutframeToolSuite.fromHash(), false);
 })();

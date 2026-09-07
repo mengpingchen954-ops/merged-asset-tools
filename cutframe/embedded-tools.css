@@ -1,0 +1,38 @@
+/* Applied only inside the tools embedded by CutFrame; standalone tools keep their theme. */
+:root[data-cutframe-tool] { --bg: #f3f5f7; --paper: #f3f5f7; --panel: #fff; --surface: #f7f8fa; --surface-2: #f7f8fa; --surface-3: #edf0f3; --ink: #111317; --muted: #66707a; --line: #dce1e6; --line-strong: #c7cdd4; --blue: #668300; --blue-strong: #4f6700; --blue-soft: #f3ffcf; --blue2: #f3ffcf; --accent: #668300; --accent-strong: #4f6700; --accent-soft: #f3ffcf; --accent-2: #668300; --dark: #111317; --shadow: 0 8px 20px rgb(32 39 46 / 6%); }
+html[data-cutframe-tool] body { min-width: 0; font-family: 'Noto Sans SC', 'Microsoft YaHei', system-ui, sans-serif; }
+html[data-cutframe-tool] .brand-mark, html[data-cutframe-tool] .brandmark { background: #caff3d; color: #111317; box-shadow: none; }
+html[data-cutframe-tool] .primary-action, html[data-cutframe-tool] .export-button, html[data-cutframe-tool] .btn.primary { background: #caff3d; border-color: #caff3d; color: #111317; box-shadow: none; }
+html[data-cutframe-tool] .primary-action:hover:not(:disabled), html[data-cutframe-tool] .export-button:hover:not(:disabled), html[data-cutframe-tool] .btn.primary:hover:not(:disabled) { background: #baf02d; border-color: #baf02d; }
+html[data-cutframe-tool] input[type='range'], html[data-cutframe-tool] input[type='checkbox'] { accent-color: #668300; }
+html[data-cutframe-tool] .drop-zone, html[data-cutframe-tool] .drop, html[data-cutframe-tool] .feature-row, html[data-cutframe-tool] .resource { background-color: #f7f8fa; }
+html[data-cutframe-tool] .toolbar, html[data-cutframe-tool] .topbar, html[data-cutframe-tool] .app-header { background: #fff; }
+html[data-cutframe-tool] .drop-icon, html[data-cutframe-tool] .upload-icon, html[data-cutframe-tool] .feature-icon { background: #f3ffcf; color: #668300; }
+html[data-cutframe-tool] .toolbar h1, html[data-cutframe-tool] .app-header h1 { font-size: 16px; }
+html[data-cutframe-tool] .toolbar .brand p, html[data-cutframe-tool] .app-header .brand p { font-size: 11px; }
+@media (max-width: 400px) {
+  html[data-cutframe-tool] .toolbar, html[data-cutframe-tool] .topbar { padding: 12px; }
+  html[data-cutframe-tool] .workspace { padding: 10px; }
+}
+html[data-cutframe-tool] .settings, html[data-cutframe-tool] .settings label { min-width: 0; }
+html[data-cutframe-tool] .settings select { width: 100%; min-width: 0; max-width: 100%; }
+html[data-cutframe-tool] .secondary-action { background: #111317; color: #fff; }
+html[data-cutframe-tool] button { transition-property: transform, opacity; }
+html[data-cutframe-tool] .panel, html[data-cutframe-tool] .texture-results { min-width: 0; }
+@media (max-width: 900px) {
+  html[data-cutframe-tool] .vfx-workspace { grid-template-columns: minmax(0, 1fr); }
+}
+@media (max-width: 700px) {
+  html[data-cutframe-tool] .texture-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  html[data-cutframe-tool] .reference-copy { overflow-wrap: anywhere; }
+  html[data-cutframe-tool] .reference-card { grid-template-columns: 58px minmax(0, 1fr) 28px; gap: 7px; padding: 8px; }
+  html[data-cutframe-tool] .reference-preview { width: 58px; height: 58px; }
+  html[data-cutframe-tool] .reference-card .icon-action { width: 28px; }
+  html[data-cutframe-tool] .audio-grid, html[data-cutframe-tool] .resources { grid-template-columns: minmax(0, 1fr); }
+  html[data-cutframe-tool] .top-actions, html[data-cutframe-tool] .actions { min-width: 0; max-width: 100%; }
+}
+@media (max-width: 700px) {
+  html[data-cutframe-tool] .download-actions { flex-wrap: wrap; }
+  html[data-cutframe-tool] .download-actions .primary-action,
+  html[data-cutframe-tool] .download-actions .outline-action { flex: 1 1 170px; width: 100%; justify-content: center; }
+}
