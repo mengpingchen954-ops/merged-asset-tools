@@ -141,3 +141,27 @@ html[data-cutframe-tool='green-screen'] .upload-icon svg { width: 30px; height: 
   html[data-cutframe-tool] .drop-zone strong,
   html[data-cutframe-tool='gif'] .drop-title { font-size: 17px; }
 }
+
+/* Full-width import area above parameters and results. */
+html[data-cutframe-tool] .cutframe-import-area { position: relative; grid-column: 1 / -1; min-width: 0; }
+html[data-cutframe-tool] .cutframe-import-area:has(> .drop-zone[hidden]) { display: none; }
+html[data-cutframe-tool] .cutframe-import-area > .drop-zone { width: 100%; min-height: 380px; padding: 40px 32px; gap: 18px; background-image: none; }
+html[data-cutframe-tool] .cutframe-import-area .drop-icon { width: 76px; height: 76px; }
+html[data-cutframe-tool] .cutframe-import-area .drop-icon svg { width: 38px; height: 38px; }
+html[data-cutframe-tool] .cutframe-import-area .drop-zone strong,
+html[data-cutframe-tool] .cutframe-import-area .drop-title { font-size: 22px; line-height: 1.5; }
+html[data-cutframe-tool] .cutframe-import-area .drop-zone > span:last-child { font-size: 14px; overflow-wrap: anywhere; }
+html[data-cutframe-tool] .cutframe-import-area.has-folder-picker > .drop-zone { padding-bottom: 108px; }
+html[data-cutframe-tool] .cutframe-import-area > .png-folder-action { position: absolute; bottom: 30px; left: 50%; transform: translateX(-50%); width: min(320px, calc(100% - 48px)); min-height: 50px; margin: 0; background: #fff; }
+html[data-cutframe-tool='extractor'] .drop { min-height: 380px; padding: 40px 32px; }
+html[data-cutframe-tool='extractor'] .dropicon { width: 76px; height: 76px; }
+html[data-cutframe-tool='extractor'] .dropicon svg { width: 38px; height: 38px; }
+html[data-cutframe-tool='extractor'] .drop strong { font-size: 22px; }
+@media (max-width: 760px) {
+  html[data-cutframe-tool] .cutframe-import-area > .drop-zone,
+  html[data-cutframe-tool='extractor'] .drop { min-height: 320px; padding: 28px 20px; }
+  html[data-cutframe-tool] .cutframe-import-area .drop-zone strong,
+  html[data-cutframe-tool] .cutframe-import-area .drop-title,
+  html[data-cutframe-tool='extractor'] .drop strong { font-size: 18px; }
+  html[data-cutframe-tool] .cutframe-import-area.has-folder-picker > .drop-zone { min-height: 360px; padding-bottom: 108px; }
+}
