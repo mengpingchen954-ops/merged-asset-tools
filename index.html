@@ -60,6 +60,19 @@
               <span class="tab-subtitle">抠图 / 分离 / 导出</span>
             </span>
           </button>
+          <button class="tool-tab" type="button" data-tool="pieceforge">
+            <span class="tab-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24">
+                <path d="M4 5h6v6H4z" />
+                <path d="M14 13h6v6h-6z" />
+                <path d="M10 8c4.6.4 7.4 2.8 8 7" />
+              </svg>
+            </span>
+            <span class="tab-copy">
+              <span class="tab-title">片形工坊</span>
+              <span class="tab-subtitle">材质 / 拆分 / 布局导出</span>
+            </span>
+          </button>
           <button class="tool-tab" type="button" data-tool="extractor">
             <span class="tab-icon extractor-tab-icon" aria-hidden="true">
               <svg viewBox="0 0 24 24">
@@ -179,7 +192,13 @@
             class="tool-frame is-active"
             data-tool="vector"
             title="一键抠图"
-            data-src="./pieceforge/index.html?v=pieceforge-1"
+            data-src="./asset-vectorizer/index.html?v=folder-drop-1"
+          ></iframe>
+          <iframe
+            class="tool-frame"
+            data-tool="pieceforge"
+            title="片形工坊"
+            data-src="./pieceforge/index.html?v=pieceforge-2"
           ></iframe>
           <iframe
             class="tool-frame"
