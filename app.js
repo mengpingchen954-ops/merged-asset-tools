@@ -30,7 +30,7 @@ const toolDescriptions = {
   extractor: "导入单文件 HTML，一键提取并打包下载 UI 图片、图标、音效与音乐，同时保留玩法拆解能力。",
   model: "本地导入 FBX 或 GLB，默认输出可直接导入 Cocos Creator 3.8.3 的标准 GLB，并通过减面降低模型内存。",
   vfx: "上传特效参考图，生成光条、碎片、爆闪和柔光四类透明 PNG 粒子贴图。",
-  vector: "载入图片后自动抠图分离素材，支持 SVG、PNG 和批量导出。",
+  vector: "上传图案后生成完整材质或可编辑的 30 / 60 / 80 块拆分成品，并支持绿幕 PNG 与碎片 ZIP 导出。",
 };
 
 function currentToolItems() {
