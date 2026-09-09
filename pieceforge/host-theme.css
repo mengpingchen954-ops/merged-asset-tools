@@ -1,0 +1,30 @@
+:root { font-family: Inter, "Microsoft YaHei", "PingFang SC", system-ui, sans-serif; color: #102436; background: #f5fbff; --ink: #102436; --muted: #637789; --line: #cfe5f4; --soft: #f5fbff; --green: #28a9f4; --green-dark: #0788d8; --lime: #dff4ff; }
+body { min-width: 0; background: #f5fbff; }
+body * { letter-spacing: 0; }
+.host-tool-nav { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 12px 18px; border-bottom: 1px solid #cfe5f4; background: #fff; font-size: 13px; }
+.host-tool-nav a { color: #0788d8; font-size: 12px; text-decoration: none; }
+.host-tool-nav a:hover { text-decoration: underline; }
+.topbar { display: none; }
+.body-grid { grid-template-columns: 250px minmax(0, 1fr); min-height: calc(100vh - 43px); }
+.sidebar { padding: 20px 16px; border-color: #cfe5f4; }
+.workspace { padding: 22px; }
+.right-rail { display: none; }
+.side-title h1, .workspace-head h2 { font-size: 20px; }
+.upload-art, .material-option, .canvas-board, .source-card, .silhouette-card, .result-card, .fragment-tile, .fragment-section, .layout-editor-section { border-radius: 8px; border-color: #cfe5f4; box-shadow: none; }
+.canvas-board { background-color: #eef8ff; background-image: none; }
+.source-card .upload-art, .source-card .upload-art.has-image, .upload-art:hover { background: #f5fbff; }
+.step > span, .upload-ring, .material-option.selected, .preset-row button.active, .node-index, .mask-chip, .mini-status, .mobile-tabs button.active, .workspace-tools .ghost-btn.active { background: #dff4ff; color: #0788d8; border-color: #a9d7f2; }
+.count-readout, .material-option > svg, .text-btn, .result-footer button, .fragment-download, .mask-footer span:first-child { color: #0788d8; }
+.range-row input { accent-color: #28a9f4; }
+.generate-btn, .generate-btn.loading { background: #0788d8; box-shadow: none; }
+.generate-btn:hover { background: #0875b5; }
+.generate-btn span { color: #dff4ff; }
+.ghost-btn { text-decoration: none; color: #637789; border-color: #cfe5f4; }
+.ghost-btn:hover { color: #0788d8; border-color: #a9d7f2; }
+.result-card.featured, .fragment-tile.selected { border-color: #28a9f4; box-shadow: none; }
+.fragment-tile.selected { background: #eef8ff; }
+.fragment-section-head { flex-wrap: wrap; }
+.fragment-actions, .workspace-tools { flex-wrap: wrap; }
+.layout-editor-board { border-color: #cfe5f4; }
+@media (max-width: 900px) { .body-grid { display: block; padding-bottom: 58px; } .sidebar { border-right: 0; border-bottom: 1px solid #cfe5f4; } .workspace { padding: 18px 14px; } .control-section { max-width: none; } .result-grid { grid-template-columns: 1fr 1fr; } .board-grid { grid-template-columns: minmax(0, 1fr) 28px minmax(0, 1fr); } .connector { transform: none; height: auto; } .connector-line { width: 100%; } }
+@media (max-width: 540px) { .result-grid, .board-grid { grid-template-columns: 1fr; } .connector { transform: rotate(90deg); height: 24px; } .connector-line { width: 48px; } .workspace-head { display: block; } .workspace-tools { margin-top: 12px; } }
