@@ -5,7 +5,7 @@ body * { letter-spacing: 0; }
 .host-tool-nav a { color: #0788d8; font-size: 12px; text-decoration: none; }
 .host-tool-nav a:hover { text-decoration: underline; }
 .topbar { display: none; }
-.body-grid { grid-template-columns: 250px minmax(0, 1fr); min-height: calc(100vh - 43px); }
+.body-grid { grid-template-columns: 320px minmax(0, 1fr); min-height: calc(100vh - 43px); }
 .sidebar { padding: 20px 16px; border-color: #cfe5f4; }
 .workspace { padding: 22px; }
 .right-rail { display: none; }
