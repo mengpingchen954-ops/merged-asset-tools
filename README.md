@@ -27,6 +27,14 @@ node server.mjs
 
 然后打开 `http://127.0.0.1:4176/`。
 
+## 片形工坊高清碎片
+
+独立碎片使用原始材质图片直接渲染，避免先缩到 1024px 再放大而丢失纹理细节。轮廓经过有限误差的路径简化，以减少放大后的阶梯边缘，并保留孔洞与细小部分。预览、单张 PNG、碎片 ZIP 和组合图使用同一套轮廓及材质坐标。
+
+独立碎片区域可选择标准 2K、高清 4K（默认）或超清 8K；档位表示组合画布尺寸，每块 PNG 按其占比裁切，并保留四周各 16px 透明边距。卡片显示实际导出尺寸。ZIP 的 `manifest.json` 包含倍率、材质原尺寸、每张 PNG 尺寸和输出坐标；原有 `layout` 保持 1024px 工作坐标，`fragments` 坐标包含布局偏移并扣除透明边距，可以直接重组导出的碎片。低分辨率材质本身缺失的细节无法通过提高输出尺寸恢复。
+
+运行 `npm ci` 后使用 `npm run build:pieceforge` 重建。`pieceforge/hd-renderer.js` 保存可维护的高清渲染实现；`scripts/build-pieceforge.mjs` 基于现有发布包 `index-CUd2o1mb.js` 进行带断言的集成并生成 `pieceforge/assets/pieceforge-hd.js`。仓库未包含原始 React 工程，因此保留该发布包作为构建输入。Pages 直接发布已生成的资源。
+
 
 ## CutFrame 一键抠图
 

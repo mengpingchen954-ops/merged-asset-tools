@@ -5,6 +5,7 @@
   "scripts": {
     "build": "npm run build:model",
     "build:model": "node scripts/build-model-compressor.mjs",
+    "build:pieceforge": "node scripts/build-pieceforge.mjs",
     "serve": "node server.mjs"
   },
   "dependencies": {

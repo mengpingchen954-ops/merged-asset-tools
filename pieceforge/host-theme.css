@@ -26,6 +26,9 @@ body * { letter-spacing: 0; }
 .fragment-tile.selected { background: #eef8ff; }
 .fragment-section-head { flex-wrap: wrap; }
 .fragment-actions, .workspace-tools { flex-wrap: wrap; }
+.quality-control { display: flex; align-items: center; gap: 8px; color: #102436; font-size: 12px; }
+.quality-control select { max-width: 100%; border: 1px solid #a9d7f2; border-radius: 6px; padding: 8px; background: #eef8ff; color: #0875b5; font: inherit; }
+.fragment-meta { flex-wrap: wrap; gap: 3px; }
 .layout-editor-board { border-color: #cfe5f4; }
 @media (max-width: 900px) { .body-grid { display: block; padding-bottom: 58px; } .layout-resizer { display: none; } .sidebar { border-right: 0; border-bottom: 1px solid #cfe5f4; } .workspace { padding: 18px 14px; } .control-section { max-width: none; } .result-grid { grid-template-columns: 1fr 1fr; } .board-grid { grid-template-columns: minmax(0, 1fr) 28px minmax(0, 1fr); } .connector { transform: none; height: auto; } .connector-line { width: 100%; } }
 @media (max-width: 540px) { .result-grid, .board-grid { grid-template-columns: 1fr; } .connector { transform: rotate(90deg); height: 24px; } .connector-line { width: 48px; } .workspace-head { display: block; } .workspace-tools { margin-top: 12px; } }
