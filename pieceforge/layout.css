@@ -1,0 +1,43 @@
+html, body { height: 100%; overflow: hidden; }
+.host-tool-nav { height: 42px; padding: 10px 20px; }
+.body-grid { grid-template-columns: min(var(--workflow-width, 529px), 50vw) 12px minmax(0, 1fr); height: calc(100vh - 42px); height: calc(100dvh - 42px); min-height: 0; padding-bottom: 0; }
+.layout-resizer { width: 12px; min-width: 12px; background: #edf7fe; }
+.sidebar { overflow: auto; min-height: 0; gap: 20px; padding: 20px 18px 86px; position: relative; scrollbar-width: thin; }
+.sidebar > * { flex-shrink: 0; }
+.sidebar .side-title { order: -30; }
+.sidebar .stepper { order: -10; display: none; }
+.sidebar .control-section { margin: 0; max-width: none; }
+.sidebar > .control-section:nth-of-type(1) { order: 10; }
+.sidebar > .control-section:nth-of-type(2) { order: 20; }
+.sidebar > .control-section:nth-of-type(3) { order: 30; }
+.sidebar > .control-section:nth-of-type(4) { order: 40; }
+.sidebar > .control-section:nth-of-type(5) { order: 50; }
+.sidebar .upload-art { height: 408px; min-height: 0; }
+.sidebar .upload-art img { object-fit: contain; }
+.sidebar .material-upload { height: 393px; min-height: 0; }
+.sidebar .material-upload > img { height: calc(100% - 48px); object-fit: contain; }
+.sidebar .generate-btn { order: -20; flex-shrink: 0; height: 46px; min-height: 46px; margin: 0; z-index: 12; box-shadow: 0 0 0 8px white, 0 6px 14px #173a5a15; font-size: 14px; position: sticky; top: 0; }
+.sidebar .section-label { font-size: 13px; }
+.sidebar .field-note { font-size: 11px; }
+.workspace { min-height: 0; overflow: auto; padding: 22px; scrollbar-width: thin; }
+.workspace > * { flex-shrink: 0; }
+.workspace-head { order: -10; }
+.results-head { order: 0; margin-top: 0; }
+.result-grid { order: 1; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.canvas-board { order: 11; }
+.fragment-section { order: 21; }
+.result-image { height: 360px; aspect-ratio: auto; }
+.result-image canvas { height: 100%; width: 100%; object-fit: contain; }
+.fragment-grid { grid-template-columns: repeat(auto-fill, minmax(min(125px, 100%), 1fr)); }
+@media (max-width: 900px) {
+  html, body { height: auto; overflow: auto; }
+  .body-grid { display: block; height: auto; min-height: calc(100dvh - 42px); padding-bottom: 80px; }
+  .layout-resizer { display: none; }
+  .sidebar { overflow: visible; padding-bottom: 24px; }
+  .sidebar .generate-btn { position: fixed; top: auto; bottom: 14px; left: 18px; width: calc(100% - 36px); }
+  .workspace { overflow: visible; padding: 18px 14px; }
+  .mobile-tabs { display: none; }
+}
+@media (max-width: 540px) {
+  .result-grid { grid-template-columns: 1fr; }
+}

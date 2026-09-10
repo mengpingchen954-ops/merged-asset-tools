@@ -1,10 +1,15 @@
 import { readFile, writeFile } from 'node:fs/promises';
 import { build, transform } from 'esbuild';
 import { fileURLToPath } from 'node:url';
+import { createHash } from 'node:crypto';
+import { layoutStyles } from './pieceforge-layout.mjs';
 
 const root = fileURLToPath(new URL('../', import.meta.url));
 const legacy = await readFile(new URL('../pieceforge/assets/index-CUd2o1mb.js', import.meta.url), 'utf8');
 let source = (await transform(legacy, { format: 'esm', charset: 'utf8' })).code;
+const layout = JSON.parse(await readFile(new URL('../pieceforge/layout.json', import.meta.url), 'utf8'));
+const layoutCSS = layoutStyles(layout);
+const layoutRevision = createHash('sha256').update(JSON.stringify(layout.settings)).digest('hex').slice(0, 8);
 
 function replaceOnce(before, after) {
   if (source.split(before).length !== 2) throw new Error(`PieceForge integration point changed: ${before.slice(0, 100)}`);
@@ -21,6 +26,10 @@ function replaceFunction(start, next, implementation) {
 replaceFunction('async function It(', 'async function Lt(', 'async function It(file) { return loadMaterialTexture(file); }');
 replaceFunction('function nn(', 'function rn(', 'function nn(mask, regions = null, options = {}) { return renderComposite(mask, regions ? Xt(mask, regions, options) : null, { ...options, palette: Ut }); }');
 replaceFunction('function rn(', 'var an =', 'function rn(mask, regions, options = {}) { return renderPiece(mask, Xt(mask, regions, options), { ...options, palette: Ut }); }');
+replaceOnce('let e3 = Number(window.localStorage.getItem(`pieceforge:workflow-width`));', `let e3 = Number(window.localStorage.getItem(\`pieceforge:workflow-width\`) ?? ${layout.settings.sidebarWidth});`);
+replaceOnce('return Number.isFinite(e3) ? Math.min(560, Math.max(240, e3)) : 320;', `return Number.isFinite(e3) ? Math.min(680, Math.max(280, e3)) : ${layout.settings.sidebarWidth};`);
+replaceOnce('return 320;', `return ${layout.settings.sidebarWidth};`);
+source = source.replaceAll('pieceforge:workflow-width', `pieceforge:workflow-width:${layoutRevision}`);
 replaceOnce('function pn() {', 'function pn() {\n  const [exportScale, setExportScale] = (0, _.useState)(4);');
 replaceOnce('function dn({ fragment: e2,', 'function dn({ exportScale = 4, fragment: e2,');
 replaceOnce('children: [e2.width, ` × `, e2.height, `px`]', 'children: [pieceDimensions(e2, exportScale).width, ` × `, pieceDimensions(e2, exportScale).height, `px`]');
@@ -42,4 +51,5 @@ const result = await build({
   bundle: true, format: 'esm', minify: true, charset: 'utf8', write: false
 });
 await writeFile(new URL('../pieceforge/assets/pieceforge-hd.js', import.meta.url), result.outputFiles[0].contents);
+await writeFile(new URL('../pieceforge/layout.css', import.meta.url), layoutCSS);
 console.log('Built PieceForge HD renderer');

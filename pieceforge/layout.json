@@ -1,0 +1,19 @@
+{
+  "format": "pieceforge-layout",
+  "version": 1,
+  "baseVersion": "f4bc982",
+  "exportedAt": "2026-09-10T01:45:50.049Z",
+  "viewport": { "width": 1399, "height": 810 },
+  "settings": {
+    "sidebarWidth": 529,
+    "sourceHeight": 408,
+    "materialHeight": 393,
+    "sectionGap": 20,
+    "resultHeight": 360,
+    "thumbnailSize": 125,
+    "buttonPosition": "top",
+    "showSteps": false,
+    "sidebarOrder": ["source", "material", "count", "gap", "background"],
+    "workspaceOrder": ["results", "mask", "fragments"]
+  }
+}
