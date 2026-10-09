@@ -1,4 +1,4 @@
-import { compressionArgs, formats, outputName, canKeepOriginal } from './compression.js';
+import { compressionArgs, formats, outputName, canKeepOriginal } from './compression.js?v=2';
 import { formatSize, reduction } from '../video-compressor/compression.js';
 
 const $ = selector => document.querySelector(selector);
@@ -17,7 +17,8 @@ function updateControls() {
   $('#compressButton').textContent = busy ? '正在处理…' : files.some(file => file.blob) ? '重新压缩全部' : '压缩全部';
   $('#clearButton').disabled = busy || !files.length;
   $('#zipButton').disabled = busy || !files.some(file => file.blob);
-  for (const id of ['#fileInput', '#format', '#bitrate', '#channels', '#keepSmaller']) $(id).disabled = busy;
+  for (const id of ['#fileInput', '#profile', '#format', '#channels', '#keepSmaller']) $(id).disabled = busy;
+  $('#bitrate').disabled = busy || $('#profile').value === 'mp3-vbr';
   $('#dropZone').setAttribute('aria-disabled', String(busy));
   const done = files.filter(file => file.blob);
   const total = files.reduce((sum, file) => sum + file.file.size, 0);
@@ -118,7 +119,22 @@ for (const type of ['dragleave', 'drop']) $('#dropZone').addEventListener(type, 
 $('#dropZone').addEventListener('drop', event => addFiles(event.dataTransfer.files));
 window.addEventListener('dragover', event => event.preventDefault());
 window.addEventListener('drop', event => event.preventDefault());
-$('#format').addEventListener('change', () => { $('#formatHelp').textContent = formats[$('#format').value].help; });
+function updateSettings() {
+  $('#formatHelp').textContent = formats[$('#format').value].help;
+  const profile = $('#profile').value;
+  $('#profileHelp').textContent = profile === 'mp3-vbr' ? 'MP3 按声音复杂度自动分配码率，保留立体声。体积取决于素材；重要音乐可选自定义 128–192 kbps。' : profile === 'opus-effects' ? 'Opus 96 kbps 变码率，更适合网页音效，保留立体声。导入游戏引擎前确认支持 Opus；需要 MP3 时选通用方案。' : '自行选择格式、码率与声道。低码率和单声道可能损失细节或空间感，请试听结果。';
+  $('#bitrateHelp').textContent = profile === 'mp3-vbr' ? '当前使用 MP3 VBR 质量档 V5，码率自动分配；此码率选项仅在指定码率方案下生效。' : $('#format').value === 'ogg' ? 'Opus 使用变码率，此处为目标平均码率，实际码率随声音复杂度变化。' : '码率越低，体积越小。语音可用 32–64 kbps，音乐建议 128–192 kbps。';
+  updateControls();
+}
+$('#profile').addEventListener('change', () => {
+  if ($('#profile').value !== 'custom') {
+    $('#format').value = $('#profile').value === 'mp3-vbr' ? 'mp3' : 'ogg';
+    $('#bitrate').value = $('#profile').value === 'mp3-vbr' ? '128' : '96';
+    $('#channels').value = 'keep';
+  }
+  updateSettings();
+});
+for (const id of ['#format', '#bitrate', '#channels']) $(id).addEventListener('change', () => { $('#profile').value = 'custom'; updateSettings(); });
 $('#sourceAudio').addEventListener('play', () => $('#resultAudio').pause());
 $('#resultAudio').addEventListener('play', () => $('#sourceAudio').pause());
 
@@ -183,6 +199,7 @@ $('#compressButton').addEventListener('click', async () => {
   const bitrate = $('#bitrate').value;
   const channels = $('#channels').value;
   const keepSmaller = $('#keepSmaller').checked;
+  const encoding = $('#profile').value === 'mp3-vbr' ? 'vbr' : 'fixed';
   let failures = 0;
   let completed = 0;
   updateControls();
@@ -208,7 +225,7 @@ $('#compressButton').addEventListener('click', async () => {
         const source = file.info.streams.find(stream => stream.codec_type === 'audio');
         file.status = '压缩中…';
         updateRow(file);
-        const exitCode = await worker.exec(compressionArgs(input, output, format, bitrate, channels, source));
+        const exitCode = await worker.exec(compressionArgs(input, output, format, bitrate, channels, source, encoding));
         checkCancelled();
         if (exitCode !== 0) throw new Error('编码失败，文件可能损坏、编码不受支持或浏览器内存不足。');
         const resultInfo = await probe(worker, output, reports[1]);
@@ -223,7 +240,7 @@ $('#compressButton').addEventListener('click', async () => {
         file.resultUrl = URL.createObjectURL(blob);
         file.resultInfo = keptOriginal ? file.info : resultInfo;
         file.outputName = outputName(file.file.name, file.id, format);
-        file.settings = keptOriginal ? '已优化，保留原文件' : `${formats[format].label} · ${bitrate} kbps · ${channels === 'mono' ? '单声道' : '保留声道（最多双声道）'}`;
+        file.settings = keptOriginal ? '已优化，保留原文件' : `${formats[format].label} · ${encoding === 'vbr' ? 'VBR V5 · 自动码率' : format === 'ogg' ? `VBR · 目标 ${bitrate} kbps` : `${bitrate} kbps`} · ${channels === 'mono' ? '单声道' : '保留声道（最多双声道）'}`;
         file.status = keptOriginal ? '已优化，保留原文件' : blob.size < file.file.size ? reduction(file.file.size, blob.size) : '已完成，体积增加';
         completed++;
         $('#progress').value = 100;

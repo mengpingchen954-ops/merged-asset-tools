@@ -31,3 +31,16 @@ test('同名文件不会覆盖，扩展名对应编码格式',()=>{
   assert.equal(outputName('a.wav',1,'mp3'),'01-a-压缩.mp3');
   assert.notEqual(outputName('a.wav',1,'m4a'),outputName('a.mp3',2,'m4a'));
 });
+test('MP3 变码率与 Opus 精细编码保留完整时长和双声道',()=>{
+  const mp3=compressionArgs('in','out','mp3',128,'keep',source,'vbr');
+  assert.equal(mp3[mp3.indexOf('-q:a')+1],'5');
+  assert.ok(!mp3.includes('-b:a'));
+  assert.equal(mp3[mp3.indexOf('-ac')+1],'2');
+  assert.ok(!mp3.includes('-t') && !mp3.includes('-ss'));
+  const opus=compressionArgs('in','out','ogg',96,'keep',source);
+  assert.equal(opus[opus.indexOf('-vbr')+1],'on');
+  assert.equal(opus[opus.indexOf('-compression_level')+1],'10');
+  assert.equal(opus[opus.indexOf('-application')+1],'audio');
+  assert.equal(opus[opus.indexOf('-frame_duration')+1],'10');
+  assert.throws(()=>compressionArgs('in','out','m4a',128,'keep',source,'vbr'));
+});

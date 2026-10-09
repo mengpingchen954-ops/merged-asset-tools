@@ -9,7 +9,7 @@
   <link rel="stylesheet" href="./styles.css?v=1" />
   <script src="../video-compressor/vendor/ffmpeg.js" defer></script>
   <script src="../cocos-html-compressor/vendor/jszip.min.js" defer></script>
-  <script type="module" src="./app.js?v=1"></script>
+  <script type="module" src="./app.js?v=2"></script>
 </head>
 <body>
   <main class="app-shell">
@@ -24,12 +24,15 @@
           <strong>拖入音频</strong><span>或点击选择，可一次添加多个</span><small>MP3 / WAV / M4A / OGG / FLAC 等</small>
         </label>
         <div class="settings">
+          <label for="profile">压缩方案</label>
+          <select id="profile"><option value="mp3-vbr" selected>通用小体积 · MP3 变码率（推荐）</option><option value="opus-effects">网页音效 · Opus 96 kbps</option><option value="custom">自定义 · 指定码率</option></select>
+          <p id="profileHelp">MP3 按声音复杂度自动分配码率，保留立体声。体积取决于素材；重要音乐可选自定义 128–192 kbps。</p>
           <label for="format">输出格式</label>
           <select id="format"><option value="mp3">MP3 · 通用兼容</option><option value="m4a">M4A / AAC · 适合手机</option><option value="ogg">OGG / Opus · 适合网页</option></select>
           <p id="formatHelp">MP3 适合多数播放器与游戏引擎。</p>
           <label for="bitrate">音频码率</label>
-          <select id="bitrate"><option value="32">32 kbps · 语音小体积</option><option value="64">64 kbps · 语音 / 音效</option><option value="96">96 kbps · 更小体积</option><option value="128" selected>128 kbps · 均衡推荐</option><option value="192">192 kbps · 更清晰</option><option value="256">256 kbps · 高音质</option><option value="320">320 kbps · 保留更多细节</option></select>
-          <p>码率越低，体积越小。语音可用 32–64 kbps，音乐建议 128–192 kbps。</p>
+          <select id="bitrate" disabled><option value="32">32 kbps · 语音小体积</option><option value="64">64 kbps · 语音 / 音效</option><option value="96">96 kbps · 更小体积</option><option value="128" selected>128 kbps · 均衡推荐</option><option value="192">192 kbps · 更清晰</option><option value="256">256 kbps · 高音质</option><option value="320">320 kbps · 保留更多细节</option></select>
+          <p id="bitrateHelp">当前使用 MP3 VBR 质量档 V5，码率自动分配；此码率选项仅在指定码率方案下生效。</p>
           <label for="channels">声道</label>
           <select id="channels"><option value="keep">保留原声道（最多双声道）</option><option value="mono">单声道 · 适合语音</option></select>
           <label class="checkbox-row"><input id="keepSmaller" type="checkbox" checked /> 无法缩小时保留原文件</label>

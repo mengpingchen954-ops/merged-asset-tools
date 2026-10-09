@@ -15,11 +15,14 @@ export function outputRate(format, sourceRate, bitrate = 128) {
   return allowed.find(rate => rate >= sourceRate && rate >= minRate) || 48000;
 }
 
-export function compressionArgs(input, output, format, bitrate, channels, source) {
-  if (!formats[format] || !bitrates.includes(Number(bitrate)) || !['keep','mono'].includes(channels)) throw new Error('音频压缩参数无效');
+export function compressionArgs(input, output, format, bitrate, channels, source, encoding = 'fixed') {
+  if (!formats[format] || !bitrates.includes(Number(bitrate)) || !['keep','mono'].includes(channels) || !['fixed','vbr'].includes(encoding) || (encoding === 'vbr' && format !== 'mp3')) throw new Error('音频压缩参数无效');
   if (!source?.channels || !source.sample_rate) throw new Error('无法读取音频声道或采样率');
   const count = channels === 'mono' ? 1 : Math.min(2, source.channels);
-  return ['-i',input,'-map','0:a:0','-vn','-map_metadata','-1','-c:a',formats[format].codec,'-b:a',`${bitrate}k`,
+  return ['-i',input,'-map','0:a:0','-vn','-map_metadata','-1','-c:a',formats[format].codec,
+    ...(encoding === 'vbr' ? ['-q:a','5'] : ['-b:a',`${bitrate}k`]),
+    // ponytail: core 0.12.10 can crash on stereo Opus 20 ms frames; use 10 ms until the bundled core is upgraded.
+    ...(format === 'ogg' ? ['-vbr','on','-compression_level','10','-application','audio','-frame_duration','10'] : []),
     '-ac',String(count),'-ar',String(outputRate(format,Number(source.sample_rate),Number(bitrate))),
     ...(format === 'm4a' ? ['-movflags','+faststart'] : []),output];
 }
