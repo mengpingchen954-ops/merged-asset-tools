@@ -16,6 +16,12 @@
 
 运行 `npm run test:video` 验证编码参数、音频保留与移除、同名文件命名及大小变化显示。FFmpeg 发行包来源和许可证见 `video-compressor/vendor/README.md`。
 
+## 压缩图片
+
+工具台和 CutFrame 均提供 `#image-compress`。支持批量 PNG / JPG / WebP，三档画质、原格式或 PNG / JPG / WebP 转换、前后预览、单张下载和全部 ZIP。保留原尺寸；JPG 输出将透明区域填白。PNG 复用已有 UPNG 与 pako 在 Worker 中量化为 256 / 128 / 64 色，超过画质误差阈值时自动采用原像素 PNG；无损选项保留源 PNG 像素（16 位 PNG 无损模式保留原文件）。JPG / WebP 使用浏览器编码器。保持原格式时选择原文件和输出中较小者。
+
+图片在浏览器本地处理，不连接 TinyPNG 服务，不需要 API 密钥。重新编码会移除元数据；减少颜色或编码质量会损失细节。单张限制 50 MB / 2400 万像素 / 单边 16384 像素，拒绝 APNG 与动画 WebP，避免丢失动画。运行 `npm run test:image` 验证文件签名、尺寸限制、动画检测和结果选择。
+
 ## 在线使用
 
 仓库启用 GitHub Pages 后，打开 Pages 提供的网址即可使用，无需下载安装包。图片和素材默认只在浏览器本地处理，不会上传到服务器。

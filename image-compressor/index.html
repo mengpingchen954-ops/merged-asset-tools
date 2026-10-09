@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>压缩图片</title>
+  <link rel="icon" href="data:," />
+  <link rel="stylesheet" href="../video-compressor/styles.css?v=1" />
+  <link rel="stylesheet" href="./styles.css?v=1" />
+  <script src="../cocos-html-compressor/vendor/jszip.min.js" defer></script>
+  <script type="module" src="./app.js?v=1"></script>
+</head>
+<body>
+  <main class="app-shell">
+    <header class="app-header">
+      <div><h1>压缩图片</h1><p>批量减小图片体积，保留原尺寸</p></div>
+      <label class="file-button">选择图片<input id="fileInput" class="sr-only" type="file" accept="image/png,image/jpeg,image/webp,.png,.jpg,.jpeg,.webp" multiple /></label>
+    </header>
+    <div class="workspace">
+      <aside class="settings-panel" aria-label="图片压缩设置">
+        <label id="dropZone" class="drop-zone" for="fileInput">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8" cy="8" r="2"/><path d="m3 17 6-6 4 4 3-3 5 5"/></svg>
+          <strong>拖入图片</strong><span>或点击选择，可一次添加多张</span><small>PNG / JPG / WebP</small>
+        </label>
+        <div class="settings">
+          <label for="format">输出格式</label>
+          <select id="format"><option value="original">保持原格式</option><option value="image/webp">WebP · 适合网页</option><option value="image/png">PNG · 保留透明背景</option><option value="image/jpeg">JPG · 适合照片</option></select>
+          <label for="quality">压缩档位</label>
+          <select id="quality"><option value="high">高清 · 保留更多细节</option><option value="balanced" selected>均衡 · 推荐日常使用</option><option value="small">小体积 · 允许细节损失</option></select>
+          <p id="qualityHelp">PNG 最多 128 色，色差明显时自动保留原像素；JPG / WebP 使用 82% 编码质量。</p>
+          <label class="checkbox-row"><input id="lossless" type="checkbox" /> PNG 保留原像素（无损）</label>
+          <p id="formatHelp">PNG 和 WebP 支持透明背景。默认保留原尺寸。</p>
+        </div>
+        <button id="compressButton" class="primary-action" type="button" disabled>压缩全部</button>
+        <button id="cancelButton" type="button" hidden>停止压缩</button>
+        <progress id="progress" max="100" value="0" aria-label="批量图片压缩进度" hidden></progress>
+        <p id="status" role="status" aria-live="polite">选择图片后开始压缩。</p>
+        <p class="help">图片仅在浏览器本地处理，原文件不会改变。每张最多 50 MB / 2400 万像素；暂不处理动画图片。</p>
+        <p class="help">压缩会移除重新编码图片的元数据。已优化的图片若无法继续缩小，会保留原文件。减少颜色或降低质量可能损失细节，请查看对比预览。</p>
+      </aside>
+      <section class="results-panel" aria-label="图片压缩结果">
+        <div class="results-head"><div><h2>图片列表</h2><p id="summary">还没有图片</p></div><div class="actions"><button id="clearButton" type="button" disabled>清空</button><button id="zipButton" type="button" disabled>下载全部 ZIP</button></div></div>
+        <div class="table-wrap"><table><thead><tr><th scope="col">图片</th><th scope="col">原大小</th><th scope="col">压缩后</th><th scope="col">状态</th><th scope="col">操作</th></tr></thead><tbody id="fileList"></tbody></table><p id="emptyState" class="empty-state">添加图片，在这里查看压缩前后的大小。</p></div>
+        <section id="preview" class="preview" aria-label="图片对比预览" hidden>
+          <h2 id="previewName">图片预览</h2>
+          <div class="preview-grid"><figure><figcaption>原图片</figcaption><div class="image-stage"><img id="sourceImage" alt="原图片" /></div><p id="sourceInfo"></p></figure><figure><figcaption>压缩后</figcaption><div id="resultStage" class="image-stage" hidden><img id="resultImage" alt="压缩后的图片" /></div><p id="resultInfo">压缩后可查看对比</p></figure></div>
+          <p class="help">棋盘格代表透明区域，不会写入导出图片。预览按显示区域缩放，下载保持原尺寸。</p>
+        </section>
+      </section>
+    </div>
+  </main>
+</body>
+</html>
