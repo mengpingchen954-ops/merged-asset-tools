@@ -8,7 +8,7 @@
   <link rel="stylesheet" href="../video-compressor/styles.css?v=1" />
   <link rel="stylesheet" href="./styles.css?v=1" />
   <script src="../cocos-html-compressor/vendor/jszip.min.js" defer></script>
-  <script type="module" src="./app.js?v=1"></script>
+  <script type="module" src="./app.js?v=2"></script>
 </head>
 <body>
   <main class="app-shell">
@@ -24,10 +24,10 @@
         </label>
         <div class="settings">
           <label for="format">输出格式</label>
-          <select id="format"><option value="original">保持原格式</option><option value="image/webp">WebP · 适合网页</option><option value="image/png">PNG · 保留透明背景</option><option value="image/jpeg">JPG · 适合照片</option></select>
+          <select id="format"><option value="original">保持原格式</option><option value="auto">智能选最小 · 允许 WebP（推荐网页）</option><option value="image/webp">WebP · 适合网页</option><option value="image/png">PNG · 保留透明背景</option><option value="image/jpeg">JPG · 适合照片</option></select>
           <label for="quality">压缩档位</label>
-          <select id="quality"><option value="high">高清 · 保留更多细节</option><option value="balanced" selected>均衡 · 推荐日常使用</option><option value="small">小体积 · 允许细节损失</option></select>
-          <p id="qualityHelp">PNG 最多 128 色，色差明显时自动保留原像素；JPG / WebP 使用 82% 编码质量。</p>
+          <select id="quality"><option value="fine" selected>精细压缩 · 自动检查画质（推荐）</option><option value="high">高清 · 保留更多细节</option><option value="balanced">均衡 · 常规压缩</option><option value="small">小体积 · 允许细节损失</option></select>
+          <p id="qualityHelp">PNG 逐级尝试颜色数；JPG / WebP 自动提高质量直到通过像素误差检查。</p>
           <label class="checkbox-row"><input id="lossless" type="checkbox" /> PNG 保留原像素（无损）</label>
           <p id="formatHelp">PNG 和 WebP 支持透明背景。默认保留原尺寸。</p>
         </div>

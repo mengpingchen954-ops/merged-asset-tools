@@ -2,7 +2,7 @@
   'use strict';
   const definitions = {
     'audio-compress': { title: '音频压缩', description: '批量压缩音频为 MP3、M4A 或 OGG，支持码率、声道设置、前后试听和 ZIP 下载。', src: '../audio-compressor/index.html?v=2' },
-    'image-compress': { title: '压缩图片', description: '批量压缩 PNG、JPG 和 WebP，保留尺寸，支持透明背景、画质设置与 ZIP 下载。', src: '../image-compressor/index.html?v=1' },
+    'image-compress': { title: '压缩图片', description: '批量压缩 PNG、JPG 和 WebP，保留尺寸，支持透明背景、画质设置与 ZIP 下载。', src: '../image-compressor/index.html?v=2' },
     'video-compress': { title: '视频压缩', description: '批量压缩视频为 H.264 MP4，保留原尺寸和帧率，支持画质档位、音频设置与 ZIP 下载。', src: '../video-compressor/index.html?v=2' },
     'vfx-frames': { title: '特效视频扣序列帧', description: '导入黑底发光特效，保留柔光并恢复颜色，截取动作后导出柔和透明 PNG 或加法序列帧。', src: '../green-screen-to-frames/index.html?mode=vfx&v=vfx-video-1' },
     'green-screen': { title: '绿幕视频转序列帧', description: '导入 MP4、MOV 或 GIF，去除纯色背景，调整尺寸与裁剪后导出透明 PNG 序列 ZIP。', src: '../green-screen-to-frames/index.html?v=vfx-video-1' },

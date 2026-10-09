@@ -1,4 +1,4 @@
-import { presets, extensions, detectImage, validateImage, chooseResult, outputName } from './compression.js';
+import { presets, extensions, detectImage, validateImage, chooseResult, chooseSmallest, outputName, pixelError } from './compression.js?v=2';
 import { formatSize, reduction } from '../video-compressor/compression.js';
 
 const $ = selector => document.querySelector(selector);
@@ -10,10 +10,13 @@ let cancelled = false;
 let stopPng = null;
 
 function syncSettings() {
-  const preset = presets[$('#quality').value];
-  $('#qualityHelp').textContent = `PNG ${$('#lossless').checked ? '保留原像素' : `最多 ${preset.colors} 色，色差明显时自动保留原像素`}；JPG / WebP 使用 ${Math.round(preset.quality * 100)}% 编码质量。`;
-  $('#formatHelp').textContent = $('#format').value === 'image/jpeg' ? 'JPG 不支持透明背景，透明区域将填充白色。' : 'PNG 和 WebP 支持透明背景。默认保留原尺寸。';
+  const auto = $('#format').value === 'auto';
+  $('#quality').disabled = busy || auto;
   $('#lossless').disabled = busy || !['original','image/png'].includes($('#format').value);
+  const lossless = !$('#lossless').disabled && $('#lossless').checked;
+  const preset = presets[auto ? 'fine' : $('#quality').value];
+  $('#qualityHelp').textContent = auto || $('#quality').value === 'fine' ? `${auto ? '智能模式使用精细画质检查。' : ''}PNG ${lossless ? '保留原像素' : '逐级尝试 64 / 128 / 256 色，色差明显则保留原像素'}；JPG / WebP 自动提高质量直到通过像素误差检查。` : `PNG ${lossless ? '保留原像素' : `最多 ${preset.colors} 色，色差明显时自动保留原像素`}；JPG / WebP 使用 ${Math.round(preset.quality * 100)}% 编码质量。`;
+  $('#formatHelp').textContent = $('#format').value === 'auto' ? '在原格式、WebP 与原文件中选最小者，保持尺寸和透明背景。结果可能是 WebP，导入游戏引擎前确认支持。' : $('#format').value === 'image/jpeg' ? 'JPG 不支持透明背景，透明区域将填充白色。' : 'PNG 和 WebP 支持透明背景。默认保留原尺寸。';
 }
 
 function updateControls() {
@@ -110,12 +113,12 @@ function checkCancelled() { if (cancelled) throw new Error('已停止'); }
 
 function encodePng(data) {
   return new Promise((resolve, reject) => {
-    const worker = new Worker(new URL('./png-worker.js', import.meta.url));
+    const worker = new Worker(new URL('./png-worker.js?v=2', import.meta.url));
     const finish = (error, result) => {
       clearTimeout(timer);
       worker.terminate();
       stopPng = null;
-      error ? reject(error) : resolve({blob:new Blob([result.encoded], {type:'image/png'}), usedLossless:result.usedLossless});
+      error ? reject(error) : resolve({blob:new Blob([result.encoded], {type:'image/png'}), usedLossless:result.usedLossless, usedColors:result.usedColors});
     };
     const timer = setTimeout(() => finish(new Error('PNG 处理超时，请使用较小图片')), 120000);
     stopPng = () => finish(new Error('已停止'));
@@ -128,7 +131,7 @@ function encodePng(data) {
 async function encodeImage(file, bytes, mime, quality, lossless) {
   const preset = presets[quality];
   if (file.info.mime === 'image/png' && mime === 'image/png') {
-    return encodePng({png:bytes.buffer, width:file.info.width, height:file.info.height, colors:lossless ? 0 : preset.colors, maxError:preset.maxError});
+    return encodePng({png:bytes.slice().buffer, width:file.info.width, height:file.info.height, colors:lossless ? 0 : preset.colors, maxError:preset.maxError,adaptive:quality === 'fine'});
   }
   let bitmap;
   let canvas;
@@ -141,18 +144,29 @@ async function encodeImage(file, bytes, mime, quality, lossless) {
     canvas = document.createElement('canvas');
     canvas.width = bitmap.width;
     canvas.height = bitmap.height;
-    const context = canvas.getContext('2d', {willReadFrequently: mime === 'image/png'});
+    const context = canvas.getContext('2d', {willReadFrequently: mime === 'image/png' || quality === 'fine'});
     if (mime === 'image/jpeg') { context.fillStyle = '#ffffff'; context.fillRect(0,0,canvas.width,canvas.height); }
     context.drawImage(bitmap,0,0);
     bitmap.close();
     bitmap = null;
     if (mime === 'image/png') {
       const rgba = context.getImageData(0,0,canvas.width,canvas.height).data.buffer;
-      return await encodePng({rgba,width:canvas.width,height:canvas.height,colors:lossless ? 0 : preset.colors,maxError:preset.maxError});
+      return await encodePng({rgba,width:canvas.width,height:canvas.height,colors:lossless ? 0 : preset.colors,maxError:preset.maxError,adaptive:quality === 'fine'});
     }
-    const blob = await new Promise((resolve,reject) => canvas.toBlob(blob => blob ? resolve(blob) : reject(new Error('图片编码失败')), mime, preset.quality));
-    if (blob.type !== mime) throw new Error('浏览器不支持该输出格式，请使用新版 Chrome 或 Edge');
-    return {blob};
+    const source = quality === 'fine' ? context.getImageData(0,0,canvas.width,canvas.height).data : null;
+    for (const value of quality === 'fine' ? [.76,.82,.9,.96,1] : [preset.quality]) {
+      checkCancelled();
+      const blob = await new Promise((resolve,reject) => canvas.toBlob(blob => blob ? resolve(blob) : reject(new Error('图片编码失败')), mime, value));
+      if (blob.type !== mime) throw new Error('浏览器不支持该输出格式，请使用新版 Chrome 或 Edge');
+      if (!source) return {blob};
+      const decoded = await createImageBitmap(blob);
+      context.clearRect(0,0,canvas.width,canvas.height);
+      context.drawImage(decoded,0,0);
+      decoded.close();
+      if (pixelError(source,context.getImageData(0,0,canvas.width,canvas.height).data) <= 5) return {blob,checkedQuality:value};
+      context.putImageData(new ImageData(source,canvas.width,canvas.height),0,0);
+    }
+    return {blob:file.file,mime:file.info.mime,keptOriginal:true};
   } finally {
     bitmap?.close();
     if (canvas) { canvas.width = 1; canvas.height = 1; }
@@ -168,7 +182,7 @@ $('#compressButton').addEventListener('click', async () => {
   $('#progress').value = 0;
   const format = $('#format').value;
   const quality = $('#quality').value;
-  const lossless = $('#lossless').checked;
+  const lossless = !$('#lossless').disabled && $('#lossless').checked;
   let completed = 0, failures = 0;
   updateControls();
   try {
@@ -182,17 +196,30 @@ $('#compressButton').addEventListener('click', async () => {
         checkCancelled();
         file.info = validateImage(detectImage(bytes));
         if (selected === file) showPreview(file);
-        const mime = format === 'original' ? file.info.mime : format;
-        const {blob:candidate, usedLossless} = await encodeImage(file,bytes,mime,quality,lossless);
+        const targetMime = ['original','auto'].includes(format) ? file.info.mime : format;
+        const candidate = await encodeImage(file,bytes,targetMime,format === 'auto' ? 'fine' : quality,lossless);
         checkCancelled();
-        if (!candidate.size) throw new Error('未生成图片，请重试');
-        const {blob, keptOriginal} = chooseResult(file.file,candidate,file.info.mime,mime);
+        let result;
+        if (format === 'auto') {
+          const candidates = [{...candidate,mime:candidate.mime || targetMime}];
+          if (file.info.mime !== 'image/webp') {
+            const webp = await encodeImage(file,bytes,'image/webp','fine',false);
+            candidates.push({...webp,mime:webp.mime || 'image/webp'});
+          }
+          result = chooseSmallest(file.file,file.info.mime,candidates);
+        } else {
+          if (candidate.mime && candidate.mime !== targetMime) throw new Error('该格式未通过画质检查，请改用保持原格式或其他档位');
+          result = {...candidate,...chooseResult(file.file,candidate.blob,file.info.mime,targetMime),mime:targetMime};
+        }
+        checkCancelled();
+        const {blob,mime,keptOriginal,usedLossless,usedColors,checkedQuality} = result;
+        if (!blob.size) throw new Error('未生成图片，请重试');
         if (file.resultUrl) URL.revokeObjectURL(file.resultUrl);
         file.blob = blob;
         file.resultUrl = URL.createObjectURL(blob);
         file.mime = mime;
         file.outputName = outputName(file.file.name,file.id,mime);
-        file.settings = keptOriginal ? '保留原文件' : usedLossless ? (lossless ? '保留原像素' : '自动保留原像素') : presets[quality].label;
+        file.settings = keptOriginal ? '保留原文件' : usedLossless ? (lossless ? '保留原像素' : '自动保留原像素') : usedColors ? `${usedColors} 色 · 色差检查通过` : checkedQuality ? `${Math.round(checkedQuality*100)}% 编码质量 · 色差检查通过` : presets[quality].label;
         file.status = keptOriginal ? '已优化，保留原文件' : blob.size >= file.file.size ? '已转换，体积增加' : reduction(file.file.size,blob.size);
         completed++;
         if (selected === file) showPreview(file);

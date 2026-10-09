@@ -1,4 +1,5 @@
 export const presets = {
+  fine: { label: '精细压缩', colors: 256, quality: .82, maxError: 4 },
   high: { label: '高清', colors: 256, quality: .9, maxError: 2 },
   balanced: { label: '均衡', colors: 128, quality: .82, maxError: 4 },
   small: { label: '小体积', colors: 64, quality: .65, maxError: 8 },
@@ -80,13 +81,18 @@ export function chooseResult(original, candidate, sourceMime, targetMime) {
   return sourceMime === targetMime && original.size <= candidate.size ? { blob: original, keptOriginal: true } : { blob: candidate, keptOriginal: false };
 }
 
+export function chooseSmallest(original, sourceMime, candidates) {
+  return [{blob:original,mime:sourceMime,keptOriginal:true},...candidates].reduce((best,item)=>item.blob.size<best.blob.size ? item : best);
+}
+
 export function pixelError(source, result) {
   if (source.length !== result.length || !source.length) throw new Error('图片像素不一致');
   let sum = 0;
   for (let i = 0; i < source.length; i += 4) {
     for (let channel = 0; channel < 3; channel++) {
       const delta = (source[i+channel]*source[i+3] - result[i+channel]*result[i+3]) / 255;
-      sum += delta*delta;
+      const whiteDelta = delta - source[i+3] + result[i+3];
+      sum += Math.max(delta*delta,whiteDelta*whiteDelta);
     }
     const alpha = source[i+3] - result[i+3];
     sum += alpha*alpha;

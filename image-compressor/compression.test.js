@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { detectImage, validateImage, chooseResult, outputName, pixelError } from './compression.js';
+import { detectImage, validateImage, chooseResult, chooseSmallest, outputName, pixelError } from './compression.js';
 
 function png(animated = false) {
   const data = new Uint8Array(animated ? 53 : 33);
@@ -33,4 +33,15 @@ test('画质检查忽略全透明 RGB，检出可见色差和透明度变化', (
   assert.equal(pixelError([255,0,0,255],[255,0,0,255]),0);
   assert.ok(pixelError([255,0,0,255],[0,255,0,255])>100);
   assert.ok(pixelError([255,0,0,255],[255,0,0,0])>100);
+});
+test('智能模式保留原文件兜底，选择带正确格式的最小候选',()=>{
+  const original=new Blob(['12345']);
+  const webp={blob:new Blob(['12']),mime:'image/webp',checkedQuality:.9};
+  assert.equal(chooseSmallest(original,'image/png',[webp]).mime,'image/webp');
+  assert.equal(chooseSmallest(original,'image/png',[webp]).checkedQuality,.9);
+  assert.equal(chooseSmallest(original,'image/png',[{blob:new Blob(['123456']),mime:'image/webp'}]).blob,original);
+});
+test('透明边缘同时检查白底与黑底误差',()=>{
+  assert.ok(pixelError([0,0,0,255],[0,0,0,0])>200);
+  assert.equal(pixelError([0,0,0,0],[255,255,255,0]),0);
 });
