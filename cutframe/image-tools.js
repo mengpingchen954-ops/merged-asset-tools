@@ -1,4 +1,4 @@
-import '../asset-vectorizer/app.js?v=20260907-1';
+import '../asset-vectorizer/app.js?v=20261009-readable1';
 
 const root = document.querySelector('#image-studio');
 const engine = window.AssetVectorizer;

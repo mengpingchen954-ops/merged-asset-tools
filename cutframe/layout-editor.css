@@ -1,18 +1,18 @@
 #layout-edit-toggle { width: 36px; height: 36px; flex: 0 0 36px; }
 .layout-resize-handle[hidden], .layout-editor[hidden] { display: none !important; }
 #layout-edit-toggle[aria-pressed='true'] { background: var(--accent-soft); border-color: var(--accent-strong); color: var(--accent-strong); }
-.layout-editor { position: fixed; z-index: 100; right: 16px; bottom: 16px; width: 290px; max-width: calc(100vw - 24px); max-height: calc(100dvh - 100px); overflow: auto; border: 1px solid #c7cdd4; border-radius: 8px; background: #fff; color: #111317; box-shadow: 0 8px 32px rgb(0 0 0 / 18%); font: 12px/1.5 'Microsoft YaHei', system-ui, sans-serif; }
+.layout-editor { position: fixed; z-index: 100; right: 16px; bottom: 16px; width: 340px; max-width: calc(100vw - 24px); max-height: calc(100dvh - 100px); overflow: auto; border: 1px solid #c7cdd4; border-radius: 8px; background: #fff; color: #111317; box-shadow: 0 8px 32px rgb(0 0 0 / 18%); font: 14px/1.5 'Microsoft YaHei', system-ui, sans-serif; }
 .layout-editor header { display: flex; align-items: center; justify-content: space-between; padding: 12px 14px; border-bottom: 1px solid #dce1e6; }
-.layout-editor h2 { margin: 0; font-size: 14px; }
+.layout-editor h2 { margin: 0; font-size: 18px; }
 .layout-editor button { cursor: pointer; }
 .layout-editor .layout-icon { display: inline-grid; place-items: center; width: 30px; height: 30px; padding: 0; border: 1px solid #dce1e6; border-radius: 5px; background: #fff; color: #111317; }
-.layout-editor svg { width: 16px; height: 16px; }
+.layout-editor svg { width: 20px; height: 20px; }
 .layout-editor-tabs { display: grid; grid-template-columns: 1fr 1fr; padding: 10px 14px 0; gap: 4px; }
 .layout-editor-tabs button { height: 32px; border: 0; border-bottom: 2px solid transparent; background: #f7f8fa; color: #66707a; font: inherit; }
 .layout-editor-tabs [aria-selected='true'] { border-bottom-color: #668300; color: #111317; font-weight: 700; }
 .layout-editor-body { padding: 4px 14px 14px; }
 .layout-editor fieldset { margin: 12px 0 0; padding: 10px 0 0; border: 0; border-top: 1px solid #edf0f3; min-width: 0; }
-.layout-editor legend { max-width: 100%; padding: 0 8px 0 0; color: #66707a; font-size: 11px; overflow-wrap: anywhere; }
+.layout-editor legend { max-width: 100%; padding: 0 8px 0 0; color: #66707a; font-size: 14px; overflow-wrap: anywhere; }
 .layout-field { display: grid; grid-template-columns: minmax(0, 1fr) 76px; align-items: center; gap: 8px; margin-top: 10px; }
 .layout-field input[type='number'] { width: 76px; height: 30px; padding: 0 6px; border: 1px solid #dce1e6; border-radius: 5px; background: #fff; color: #111317; }
 .layout-field input[type='range'] { grid-column: 1 / -1; width: 100%; margin: 0; accent-color: #668300; }
@@ -23,7 +23,7 @@
 .layout-color input { width: 44px; height: 32px; padding: 2px; border: 1px solid #dce1e6; border-radius: 5px; background: #fff; cursor: pointer; }
 .layout-editor footer { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 10px 14px; border-top: 1px solid #dce1e6; }
 .layout-editor footer > div { display: flex; gap: 5px; }
-#layout-save-status { color: #66707a; font-size: 10px; overflow-wrap: anywhere; }
+#layout-save-status { color: #66707a; font-size: 14px; overflow-wrap: anywhere; }
 .layout-resize-handle { position: fixed; z-index: 90; display: block; padding: 0; border: 0; border-radius: 3px; background: rgb(81 139 217 / 24%); touch-action: none; }
 .layout-resize-handle[data-axis='x'] { width: 10px; cursor: col-resize; }
 .layout-resize-handle[data-axis='y'] { height: 10px; cursor: row-resize; }

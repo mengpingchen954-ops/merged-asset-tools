@@ -1993,7 +1993,8 @@ function renderPreview() {
 
   previewCtx.save();
   previewCtx.lineWidth = 1.5;
-  previewCtx.font = "12px Inter, sans-serif";
+  const labelHeight = imageRoot === document ? 18 : 24;
+  previewCtx.font = `${labelHeight - 6}px Inter, sans-serif`;
   previewCtx.textBaseline = "top";
   for (const asset of state.groups) {
     const selected = asset.id === state.selectedId;
@@ -2008,9 +2009,9 @@ function renderPreview() {
     previewCtx.fillStyle = selected ? "#ef4444" : "#28a9f4";
     const tag = String(asset.id).padStart(2, "0");
     const labelWidth = previewCtx.measureText(tag).width + 10;
-    previewCtx.fillRect(bx, Math.max(0, by - 18), labelWidth, 18);
+    previewCtx.fillRect(bx, Math.max(0, by - labelHeight), labelWidth, labelHeight);
     previewCtx.fillStyle = "#ffffff";
-    previewCtx.fillText(tag, bx + 5, Math.max(0, by - 16));
+    previewCtx.fillText(tag, bx + 5, Math.max(0, by - labelHeight) + 2);
   }
   previewCtx.restore();
 }
