@@ -8,7 +8,7 @@
   <link rel="stylesheet" href="./styles.css?v=1" />
   <script src="./vendor/ffmpeg.js" defer></script>
   <script src="../cocos-html-compressor/vendor/jszip.min.js" defer></script>
-  <script type="module" src="./app.js?v=1"></script>
+  <script type="module" src="./app.js?v=2"></script>
 </head>
 <body>
   <main class="app-shell">
@@ -24,10 +24,11 @@
         </label>
         <div class="settings">
           <label for="quality">压缩档位</label>
-          <select id="quality"><option value="20">高清 · 保留更多细节</option><option value="23">均衡 · 推荐日常使用</option><option value="28">小体积 · 允许细节损失</option></select>
-          <p id="qualityHelp">优先保留画质，适合动画、文字与细节较多的视频。</p>
+          <select id="quality"><option value="22" selected>精细压缩 · 推荐，更小且清晰</option><option value="20">高清 · 保留更多细节</option><option value="23">均衡 · 兼顾体积与速度</option><option value="28">小体积 · 允许细节损失</option></select>
+          <p id="qualityHelp">推荐：更精细地编码，在接近高清画质的同时减小体积；处理时间更长。</p>
           <label for="audio">音频</label>
-          <select id="audio"><option value="keep">保留音频</option><option value="remove">移除音频</option></select>
+          <select id="audio"><option value="keep">保留音质 · 原 AAC 音频不重编码</option><option value="compact">压缩音频 · AAC 128 kbps</option><option value="remove">移除音频</option></select>
+          <p id="audioHelp">原 AAC 音频直接保留，其他编码转换为 AAC 128 kbps。音乐或重要音效建议保持此选项。</p>
         </div>
         <button id="compressButton" class="primary-action" type="button" disabled>压缩全部</button>
         <button id="cancelButton" type="button" hidden>停止压缩</button>

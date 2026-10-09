@@ -1,4 +1,4 @@
-import { compressionArgs, presets, outputName, formatSize, reduction } from './compression.js';
+import { compressionArgs, presets, outputName, formatSize, reduction } from './compression.js?v=2';
 
 const $ = selector => document.querySelector(selector);
 const files = [];
@@ -46,7 +46,9 @@ function metadataText(info) {
   const rate = (video.avg_frame_rate || '').split('/').map(Number);
   const fps = rate[1] ? rate[0] / rate[1] : 0;
   const duration = Number(video.duration || info.format?.duration);
-  return `${video.width} × ${video.height}${Number.isFinite(duration) ? ` · ${duration.toFixed(2)} 秒` : ''}${fps ? ` · ${fps.toFixed(2).replace(/\.00$/, '')} 帧/秒` : ''}`;
+  const audio = info.streams.find(stream => stream.codec_type === 'audio');
+  return `${video.width} × ${video.height}${Number.isFinite(duration) ? ` · ${duration.toFixed(2)} 秒` : ''}${fps ? ` · ${fps.toFixed(2).replace(/\.00$/, '')} 帧/秒` : ''}` +
+    (audio ? ` · ${audio.codec_name.toUpperCase()}${Number(audio.bit_rate) ? ` ${Math.round(Number(audio.bit_rate)/1000)} kbps` : ''}` : ' · 无音频');
 }
 
 function showPreview(file) {
@@ -118,6 +120,11 @@ $('#dropZone').addEventListener('drop', event => addFiles(event.dataTransfer.fil
 window.addEventListener('dragover', event => event.preventDefault());
 window.addEventListener('drop', event => event.preventDefault());
 $('#quality').addEventListener('change', () => { $('#qualityHelp').textContent = presets[$('#quality').value].help; });
+$('#audio').addEventListener('change', () => {
+  $('#audioHelp').textContent = $('#audio').value === 'compact' ? '将高码率音频压缩为 AAC 128 kbps，保留采样率（最多 48 kHz）和声道（最多双声道）。低码率 AAC 直接保留；可能损失音频细节，请试听。' : $('#audio').value === 'remove' ? '输出视频不包含声音。' : '原 AAC 音频直接保留，其他编码转换为 AAC 128 kbps。音乐或重要音效建议保持此选项。';
+});
+$('#sourceVideo').addEventListener('play', () => $('#resultVideo').pause());
+$('#resultVideo').addEventListener('play', () => $('#sourceVideo').pause());
 
 function checkCancelled() {
   if (cancelled) throw new Error('已停止');
@@ -200,10 +207,10 @@ $('#compressButton').addEventListener('click', async () => {
         await worker.writeFile(input, bytes);
         file.info = await probe(worker, input, reports[0]);
         if (selected === file) showPreview(file);
-        const audioCodec = file.info.streams.find(stream => stream.codec_type === 'audio')?.codec_name;
+        const sourceAudio = file.info.streams.find(stream => stream.codec_type === 'audio');
         file.status = '压缩中…';
         updateRow(file);
-        const exitCode = await worker.exec(compressionArgs(input, output, quality, audio, audioCodec));
+        const exitCode = await worker.exec(compressionArgs(input, output, quality, audio, sourceAudio));
         checkCancelled();
         if (exitCode !== 0) throw new Error('编码失败，文件可能损坏、编码不受支持或浏览器内存不足。');
         const resultInfo = await probe(worker, output, reports[1]);
@@ -215,7 +222,8 @@ $('#compressButton').addEventListener('click', async () => {
         file.blob = blob;
         file.resultUrl = URL.createObjectURL(blob);
         file.resultInfo = resultInfo;
-        file.settings = `${presets[quality].label} · ${audio === 'remove' ? '已移除音频' : audioCodec ? '保留音频' : '源视频无音频'}`;
+        const copiedAudio = sourceAudio?.codec_name === 'aac' && (audio === 'keep' || !(Number(sourceAudio.bit_rate) > 128000));
+        file.settings = `${presets[quality].label} · ${audio === 'remove' ? '已移除音频' : !sourceAudio ? '源视频无音频' : copiedAudio ? '原 AAC 音频保留' : 'AAC 128 kbps'}`;
         file.status = blob.size < file.file.size ? reduction(file.file.size, blob.size) : '已完成，源视频已较小';
         completed++;
         $('#progress').value = 100;
