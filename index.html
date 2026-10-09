@@ -6,7 +6,7 @@
     <title>素材工具台</title>
     <link rel="icon" href="data:," />
     <link rel="stylesheet" href="./styles.css?v=tool-order-1" />
-    <script src="./app.js?v=vfx-video-1" defer></script>
+    <script src="./app.js?v=video-compress-1" defer></script>
   </head>
   <body>
     <div class="merged-shell">
@@ -103,6 +103,10 @@
           <button class="tool-tab" type="button" data-tool="vfx-frames">
             <span class="tab-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="m12 3 2 6 7 3-7 2-2 7-2-7-7-2 7-3z" /></svg></span>
             <span class="tab-copy"><span class="tab-title">特效视频扣序列帧</span><span class="tab-subtitle">黑底发光 / 柔和透明 / 加法</span></span>
+          </button>
+          <button class="tool-tab" type="button" data-tool="video-compress">
+            <span class="tab-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2" /><path d="m10 9 5 3-5 3z" /></svg></span>
+            <span class="tab-copy"><span class="tab-title">视频压缩</span><span class="tab-subtitle">批量 MP4 / 画质 / 体积优化</span></span>
           </button>
           <button class="tool-tab" type="button" data-tool="gif">
             <span class="tab-icon" aria-hidden="true">
@@ -221,6 +225,12 @@
             data-tool="vfx-frames"
             title="特效视频扣序列帧"
             data-src="./green-screen-to-frames/index.html?mode=vfx&amp;v=vfx-video-1"
+          ></iframe>
+          <iframe
+            class="tool-frame"
+            data-tool="video-compress"
+            title="视频压缩"
+            data-src="./video-compressor/index.html?v=1"
           ></iframe>
           <iframe
             class="tool-frame"

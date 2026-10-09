@@ -1,6 +1,7 @@
 (function () {
   'use strict';
   const definitions = {
+    'video-compress': { title: '视频压缩', description: '批量压缩视频为 H.264 MP4，保留原尺寸和帧率，支持画质档位、音频设置与 ZIP 下载。', src: '../video-compressor/index.html?v=1' },
     'vfx-frames': { title: '特效视频扣序列帧', description: '导入黑底发光特效，保留柔光并恢复颜色，截取动作后导出柔和透明 PNG 或加法序列帧。', src: '../green-screen-to-frames/index.html?mode=vfx&v=vfx-video-1' },
     'green-screen': { title: '绿幕视频转序列帧', description: '导入 MP4、MOV 或 GIF，去除纯色背景，调整尺寸与裁剪后导出透明 PNG 序列 ZIP。', src: '../green-screen-to-frames/index.html?v=vfx-video-1' },
     gif: { title: '序列帧压缩', description: '本地处理 GIF、MP4、PNG 序列与文件夹，压缩 PNG 并导出 Cocos 动画资源。', src: '../gif-to-cocos-tool/index.html?v=vfx-entry-1' },
