@@ -1,7 +1,8 @@
 (function () {
   'use strict';
   const definitions = {
-    'green-screen': { title: '绿幕视频转序列帧', description: '导入 MP4、MOV 或 GIF，去除纯色背景，调整尺寸与裁剪后导出透明 PNG 序列 ZIP。', src: '../green-screen-to-frames/index.html?v=gif-input-1' },
+    'vfx-frames': { title: '特效视频扣序列帧', description: '导入黑底发光特效，保留柔光并恢复颜色，截取动作后导出柔和透明 PNG 或加法序列帧。', src: '../green-screen-to-frames/index.html?mode=vfx&v=vfx-video-1' },
+    'green-screen': { title: '绿幕视频转序列帧', description: '导入 MP4、MOV 或 GIF，去除纯色背景，调整尺寸与裁剪后导出透明 PNG 序列 ZIP。', src: '../green-screen-to-frames/index.html?v=vfx-video-1' },
     gif: { title: '序列帧压缩', description: '本地处理 GIF、MP4、PNG 序列与文件夹，压缩 PNG 并导出 Cocos 动画资源。', src: '../gif-to-cocos-tool/index.html?v=vfx-entry-1' },
     cocos: { title: 'Cocos HTML 压缩', description: '导入 Cocos HTML 或渠道 ZIP，压缩图片与音频，生成 5MB 提交包和横竖屏版本。', src: '../cocos-html-compressor/index.html?v=channel-zip-6' },
     model: { title: 'FBX / GLB 模型压缩', description: '本地转换 FBX、压缩 GLB，支持网格减面与贴图优化，默认适配 Cocos Creator 3.8.3。', src: '../glb-model-optimizer/index.html?mode=model&v=fbx-cocos383-2' },

@@ -13,6 +13,7 @@
       video: { column: 264 },
       image: { column: 296 },
       'green-screen': { column: 396 },
+      'vfx-frames': { column: 396 },
     },
   };
   const modes = [...document.querySelectorAll('.mode-button')].map(el => el.dataset.mode);
@@ -132,7 +133,7 @@
       const scope = doc.querySelector(mode === 'image' ? '#image-studio' : '#video-studio');
       return { column: scope?.querySelector('.control-panel'), workspace: scope?.querySelector('.image-workspace, .studio') };
     }
-    const column = doc.querySelector(mode === 'vfx' ? '.vfx-controls' : mode === 'gif' ? '.drop-panel' : mode === 'green-screen' ? '.inspector' : '.control-panel');
+    const column = doc.querySelector(mode === 'vfx' ? '.vfx-controls' : mode === 'gif' ? '.drop-panel' : ['green-screen', 'vfx-frames'].includes(mode) ? '.inspector' : '.control-panel');
     const upload = doc.querySelector(mode === 'extractor' ? '#dropzone' : mode === 'vfx' ? '#vfxDropZone' : '.drop-zone');
     return { column, upload, workspace: doc.querySelector(mode === 'vfx' ? '.vfx-workspace' : '.workspace') };
   }
@@ -156,7 +157,7 @@
         const size = clamp(config.column, bound.min, bound.max) + 'px';
         const width = doc.defaultView.innerWidth;
         const third = doc === document ? (width > 1040 ? (mode === 'image' ? ' 310px' : ' 300px') : '') : mode === 'gif' && width >= 1300 ? ' 280px' : '';
-        nodes.workspace.style.gridTemplateColumns = mode === 'green-screen' ? `minmax(0, 1fr) ${size}` : `${size} minmax(0, 1fr)${third}`;
+        nodes.workspace.style.gridTemplateColumns = ['green-screen', 'vfx-frames'].includes(mode) ? `minmax(0, 1fr) ${size}` : `${size} minmax(0, 1fr)${third}`;
       } else nodes.workspace.style.removeProperty('grid-template-columns');
     }
     if (nodes.upload) {
@@ -165,7 +166,7 @@
         nodes.upload.style.minHeight = clamp(config.upload, limits('upload', doc, mode).min, 720) + 'px';
         nodes.upload.style.height = 'auto';
       } else { nodes.upload.style.removeProperty('min-height'); nodes.upload.style.removeProperty('height'); }
-      if (mode === 'green-screen') nodes.upload.closest('.preview-panel').style.minHeight = config.upload ? '0px' : '';
+      if (['green-screen', 'vfx-frames'].includes(mode)) nodes.upload.closest('.preview-panel').style.minHeight = config.upload ? '0px' : '';
     }
     if (doc !== document) {
       let theme = doc.getElementById('cutframe-user-theme');
@@ -224,7 +225,7 @@
       node.addEventListener('pointermove', event => {
         if (!drag) return;
         const delta = (key === 'upload' ? event.clientY : event.clientX) - drag.position;
-        updateValue(key, drag.value + delta * (mode === 'green-screen' && key === 'column' ? -1 : 1), doc, mode);
+        updateValue(key, drag.value + delta * (['green-screen', 'vfx-frames'].includes(mode) && key === 'column' ? -1 : 1), doc, mode);
       });
       node.addEventListener('lostpointercapture', () => { drag = null; save(); });
       node.addEventListener('pointerup', event => { if (node.hasPointerCapture(event.pointerId)) node.releasePointerCapture(event.pointerId); });
@@ -251,7 +252,7 @@
           Object.assign(node.style, { left: box.left + 'px', top: box.bottom - 5 + 'px', width: box.width + 'px' });
         } else {
           const top = Math.max(0, box.top);
-          Object.assign(node.style, { left: (mode === 'green-screen' && key === 'column' ? box.left : box.right) - 5 + 'px', top: top + 'px', height: Math.min(win.innerHeight - top, box.bottom - top) + 'px' });
+          Object.assign(node.style, { left: (['green-screen', 'vfx-frames'].includes(mode) && key === 'column' ? box.left : box.right) - 5 + 'px', top: top + 'px', height: Math.min(win.innerHeight - top, box.bottom - top) + 'px' });
         }
         node.setAttribute('aria-valuemin', bound.min); node.setAttribute('aria-valuemax', bound.max); node.setAttribute('aria-valuenow', Math.round(measured(key, doc, mode)));
       }

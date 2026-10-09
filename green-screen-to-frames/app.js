@@ -1,6 +1,16 @@
+import { processVfxPixels } from "./vfx-pixels.js?v=vfx-video-1";
+
+const isEffectVideo = new URLSearchParams(location.search).get("mode") === "vfx";
 const $ = (selector) => document.querySelector(selector);
 
 const elements = {
+  effectMode: $("#effectMode"),
+  blackLevelInput: $("#blackLevelInput"),
+  gainInput: $("#gainInput"),
+  previewBackground: $("#previewBackground"),
+  startTimeInput: $("#startTimeInput"),
+  endTimeInput: $("#endTimeInput"),
+  replaceSource: $("#replaceSource"),
   dropZone: $("#dropZone"),
   videoInput: $("#videoInput"),
   sourceVideo: $("#sourceVideo"),
@@ -122,6 +132,48 @@ function getSettings() {
   };
 }
 
+function getEffectSettings() {
+  return {
+    mode: elements.effectMode.value,
+    blackLevel: Number(elements.blackLevelInput.value) / 100,
+    gain: Number(elements.gainInput.value) / 100,
+  };
+}
+
+function getExportRange() {
+  if (!isEffectVideo) return { start: 0, end: state.duration };
+  const start = Number(elements.startTimeInput.value);
+  const end = Number(elements.endTimeInput.value);
+  if (!elements.startTimeInput.value || !elements.endTimeInput.value
+    || !Number.isFinite(start) || !Number.isFinite(end)
+    || start < 0 || end > state.duration || end <= start) {
+    throw new Error("请设置有效时间范围：开始时间小于结束时间，且不超过素材时长。");
+  }
+  return { start, end };
+}
+
+function updateEffectUi() {
+  const additive = elements.effectMode.value === "additive";
+  $("#effectModeHelp").textContent = additive
+    ? "保留黑底和柔光。导入引擎后使用加法材质；浅色背景上可能发白。"
+    : "去除黑底，同时恢复被黑色压暗的颜色。适合普通透明材质，保留柔和光晕。";
+  $("#blackLevelValue").textContent = `${elements.blackLevelInput.value}%`;
+  $("#gainValue").textContent = `${elements.gainInput.value}%`;
+  if (additive && elements.previewBackground.value === "checker") elements.previewBackground.value = "#19434a";
+  [...elements.previewBackground.options].find(option => option.value === "checker").disabled = additive;
+  const background = elements.previewBackground.value;
+  elements.canvasWrap.style.backgroundImage = background === "checker" ? "" : "none";
+  elements.canvasWrap.style.backgroundColor = background === "checker" ? "" : background;
+  elements.exportLabel.textContent = additive ? "导出加法 PNG 序列 ZIP" : "导出柔和透明 PNG 序列 ZIP";
+  elements.downloadLink.querySelector("span").textContent = additive ? "重新下载加法序列 ZIP" : "重新下载透明序列 ZIP";
+  try {
+    const { start, end } = getExportRange();
+    $("#rangeMeta").textContent = `截取 ${(end - start).toFixed(3)}s · ${Math.ceil((end - start) * getSettings().frameRate - 0.00001)} 帧`;
+  } catch {
+    $("#rangeMeta").textContent = hasLoadedSource() ? "请设置有效的开始和结束时间。" : "可截取一次完整点击动作。";
+  }
+}
+
 function updateValueLabels() {
   elements.thresholdValue.textContent = `${elements.thresholdInput.value}%`;
   elements.softnessValue.textContent = `${elements.softnessInput.value}%`;
@@ -154,6 +206,12 @@ function setExporting(isExporting) {
   elements.cropModeButton.disabled = isExporting || !hasSource;
   elements.resetCropButton.disabled = isExporting || !hasSource;
   elements.playButton.disabled = isExporting || !hasSource;
+  elements.timeInput.disabled = isExporting || !hasSource;
+  elements.videoInput.disabled = isExporting;
+  elements.replaceSource.disabled = isExporting;
+  for (const control of [elements.thresholdInput, elements.softnessInput, elements.spillInput,
+    elements.effectMode, elements.blackLevelInput, elements.gainInput,
+    elements.startTimeInput, elements.endTimeInput]) control.disabled = isExporting || !hasSource;
   updateCropUi();
   updatePlaybackUi();
 }
@@ -166,6 +224,7 @@ function clearExportOutput() {
   elements.downloadLink.classList.add("is-hidden");
   elements.downloadLink.removeAttribute("href");
   elements.downloadLink.removeAttribute("download");
+  if (isEffectVideo) updateEffectUi();
 }
 
 function drawSourceFrame() {
@@ -231,9 +290,39 @@ function applyChromaKey(targetCanvas) {
   targetCanvas.getContext("2d").putImageData(input, 0, 0);
 }
 
+function processFrame(targetCanvas) {
+  if (!isEffectVideo) {
+    applyChromaKey(targetCanvas);
+    return;
+  }
+  const input = sourceContext.getImageData(0, 0, state.sourceWidth, state.sourceHeight);
+  processVfxPixels(input.data, getEffectSettings());
+  targetCanvas.width = state.sourceWidth;
+  targetCanvas.height = state.sourceHeight;
+  targetCanvas.getContext("2d").putImageData(input, 0, 0);
+}
+
 function renderPreview() {
   if (!drawSourceFrame()) return;
-  applyChromaKey(elements.previewCanvas);
+  if (!isEffectVideo) {
+    applyChromaKey(elements.previewCanvas);
+    return;
+  }
+  processFrame(state.keyCanvas);
+  const canvas = elements.previewCanvas;
+  if (canvas.width !== state.sourceWidth || canvas.height !== state.sourceHeight) {
+    canvas.width = state.sourceWidth;
+    canvas.height = state.sourceHeight;
+  }
+  previewContext.clearRect(0, 0, canvas.width, canvas.height);
+  previewContext.save();
+  if (elements.effectMode.value === "additive") {
+    previewContext.fillStyle = elements.previewBackground.value;
+    previewContext.fillRect(0, 0, canvas.width, canvas.height);
+    previewContext.globalCompositeOperation = "lighter";
+  }
+  previewContext.drawImage(state.keyCanvas, 0, 0);
+  previewContext.restore();
 }
 
 function updatePlaybackUi() {
@@ -341,7 +430,7 @@ function updateCropUi() {
   elements.cropModeButton.setAttribute("aria-pressed", String(state.isCropMode));
   elements.cropModeButton.disabled = !hasSource || state.isExporting;
   elements.resetCropButton.disabled = !hasSource || state.isExporting || fullCrop;
-  elements.sampleHint.textContent = state.isCropMode ? "拖动框选裁剪区域" : "点击画面取样背景色";
+  elements.sampleHint.textContent = state.isCropMode ? "拖动框选裁剪区域" : isEffectVideo ? "拖动框选前，请点击裁剪按钮" : "点击画面取样背景色";
 
   if (!hasSource) {
     elements.cropMeta.textContent = "完整画面";
@@ -505,7 +594,7 @@ function finishCropSelection(event) {
 }
 
 function sampleColorAtEvent(event) {
-  if (!state.file || state.isExporting || state.isCropMode) return;
+  if (isEffectVideo || !state.file || state.isExporting || state.isCropMode) return;
   const { x, y } = getSourcePoint(event);
   drawSourceFrame();
   const radius = 4;
@@ -534,6 +623,7 @@ function sampleColorAtEvent(event) {
     b: Math.round(blue / count),
   };
   updateKeyColorUi();
+  clearExportOutput();
   renderPreview();
   setHeaderStatus("已从预览画面取样背景色");
 }
@@ -648,14 +738,20 @@ function initializeLoadedSource() {
   elements.timeValue.textContent = formatDuration(0);
   elements.canvasWrap.classList.remove("is-hidden");
   elements.dropZone.classList.add("is-hidden");
-  sampleBackdropColor();
+  if (isEffectVideo) {
+    elements.startTimeInput.value = "0";
+    elements.endTimeInput.value = String(state.duration);
+    elements.startTimeInput.max = String(state.duration);
+    elements.endTimeInput.max = String(state.duration);
+    updateEffectUi();
+  } else sampleBackdropColor();
   renderPreview();
   requestAnimationFrame(() => {
     updatePreviewStageSize();
     updateCropUi();
   });
   setProgress(0, "预览已生成，可调节参数后导出 ZIP。");
-  setHeaderStatus("已自动取样四角背景色");
+  setHeaderStatus(isEffectVideo ? "黑底特效已加载，可调整透明效果与截取时间" : "已自动取样四角背景色");
   setExporting(false);
 }
 
@@ -723,6 +819,7 @@ async function handleGif(file) {
 }
 
 async function handleVideo(file) {
+  if (state.isExporting || !file) return;
   const sourceType = getSourceType(file);
   if (!sourceType) {
     setProgress(0, "请选择 .mp4、.mov 或 .gif 格式的纯色背景素材。");
@@ -812,7 +909,9 @@ async function exportFrames() {
   stopPlayback();
 
   const { frameRate } = getSettings();
-  const frameCount = Math.max(1, Math.ceil(state.duration * frameRate - 0.00001));
+  let range;
+  try { range = getExportRange(); } catch (error) { setProgress(0, error.message); return; }
+  const frameCount = Math.max(1, Math.ceil((range.end - range.start) * frameRate - 0.00001));
   if (frameCount > MAX_EXPORT_FRAMES) {
     setProgress(0, `当前设置会导出 ${frameCount} 帧，超过 ${MAX_EXPORT_FRAMES} 帧上限。请降低帧率或缩短素材。`);
     return;
@@ -833,18 +932,21 @@ async function exportFrames() {
   const zip = new window.JSZip();
   const frameDigits = Math.max(4, String(frameCount).length);
   const baseName = sanitizeName(state.file.name);
-  const outputFileName = `${baseName}_transparent_png_frames.zip`;
+  const effectSettings = getEffectSettings();
+  const outputKind = isEffectVideo ? (effectSettings.mode === "additive" ? "additive" : "soft_alpha") : "transparent";
+  const outputFileName = `${baseName}_${outputKind}_png_frames.zip`;
+  setExporting(true);
   setHeaderStatus("请选择 ZIP 的保存位置");
   const saveHandle = await requestSaveHandle(outputFileName);
   if (saveHandle === false) {
     setProgress(0, "已取消选择保存位置。");
     setHeaderStatus("导出已取消");
+    setExporting(false);
     return;
   }
 
-  setExporting(true);
   setProgress(0, `正在抠像并编码 0 / ${frameCount} 帧`);
-  setHeaderStatus("正在导出透明 PNG 序列");
+  setHeaderStatus(isEffectVideo ? "正在导出特效 PNG 序列" : "正在导出透明 PNG 序列");
 
   try {
     const addFrame = async (index, gifFrame = null) => {
@@ -853,7 +955,7 @@ async function exportFrames() {
       } else {
         drawSourceFrame();
       }
-      applyChromaKey(state.keyCanvas);
+      processFrame(state.keyCanvas);
       exportContext.clearRect(0, 0, output.width, output.height);
       exportContext.drawImage(
         state.keyCanvas,
@@ -879,7 +981,7 @@ async function exportFrames() {
       let outputIndex = 0;
       await window.decodeGifFrames(state.gifBytes, async ({ data, delayMs }) => {
         const frameEnd = elapsed + delayMs / 1000;
-        while (outputIndex < frameCount && outputIndex / frameRate < frameEnd) {
+        while (outputIndex < frameCount && range.start + outputIndex / frameRate < frameEnd) {
           await addFrame(outputIndex, data);
           outputIndex += 1;
         }
@@ -889,15 +991,36 @@ async function exportFrames() {
       if (outputIndex !== frameCount) throw new Error("未能从 GIF 中抽取完整序列。");
     } else {
       for (let index = 0; index < frameCount; index += 1) {
-        await seekVideo(index / frameRate);
+        await seekVideo(range.start + index / frameRate);
         await addFrame(index);
       }
     }
 
-    setProgress(86, "正在打包透明 PNG 序列 ZIP...");
+    if (isEffectVideo) {
+      const additive = effectSettings.mode === "additive";
+      zip.file("manifest.json", JSON.stringify({
+        source: state.file.name, mode: effectSettings.mode, frameRate, frameCount,
+        startTime: range.start, endTime: range.end, duration: range.end - range.start,
+        width: output.width, height: output.height, crop,
+        sourceWidth: state.sourceWidth, sourceHeight: state.sourceHeight,
+        blackLevel: effectSettings.blackLevel, gain: effectSettings.gain,
+        alpha: additive ? "opaque" : "straight", blend: additive ? "One / One" : "SrcAlpha / OneMinusSrcAlpha",
+        filePattern: `${baseName}_%0${frameDigits}d.png`, firstFrame: 1,
+      }, null, 2));
+      zip.file("使用说明.txt", [
+        "特效视频扣序列帧", "", additive ? "加法序列帧：黑底为正常输出。使用加法材质（源 One，目标 One），不要使用普通透明材质。" : "柔和透明 PNG：已生成连续 Alpha 并恢复颜色。使用直通 Alpha 材质（源 SrcAlpha，目标 OneMinusSrcAlpha）；预乘工作流需由引擎正确转换。",
+        "Cocos：SpriteFrame 序列 + Animation 或播放脚本，配对应混合材质。",
+        "Unity：Sprite/Quad 或 Particle System Texture Sheet Animation，配对应混合材质。",
+        "UE：Flipbook/SubUV 贴图序列；加法版用 Additive 材质，透明版用 Translucent 材质。",
+        `帧率 ${frameRate} fps，共 ${frameCount} 帧。序号从 1 开始。`,
+        "PNG 为独立序列帧，需要时可再打成图集。预览背景未写入导出。",
+        "仅适合黑底发光素材。柔和 Alpha 是由亮度构造，无法恢复视频原始 Alpha；视频压缩损失也无法恢复。实际引擎应核对颜色空间、预乘设置、纹理边缘和材质亮度。",
+      ].join("\n"));
+    }
+    setProgress(86, "正在打包 PNG 序列 ZIP...");
     const zipBlob = await zip.generateAsync(
       { type: "blob", compression: "STORE" },
-      (metadata) => setProgress(86 + metadata.percent * 0.14, "正在打包透明 PNG 序列 ZIP..."),
+      (metadata) => setProgress(86 + metadata.percent * 0.14, "正在打包 PNG 序列 ZIP..."),
     );
     state.outputUrl = URL.createObjectURL(zipBlob);
     elements.downloadLink.href = state.outputUrl;
@@ -907,12 +1030,13 @@ async function exportFrames() {
     if (saveHandle) {
       await saveWithHandle(saveHandle, zipBlob);
       setProgress(100, `完成 ${frameCount} 帧 · ${output.width} x ${output.height} · ZIP ${formatBytes(zipBlob.size)}，已保存。`);
-      setHeaderStatus("透明 PNG 序列已保存");
+      setHeaderStatus(isEffectVideo ? "特效 PNG 序列已保存" : "透明 PNG 序列已保存");
     } else {
       setProgress(100, `完成 ${frameCount} 帧 · ${output.width} x ${output.height} · ZIP ${formatBytes(zipBlob.size)}，点击重新下载。`);
-      setHeaderStatus("透明 PNG 序列已生成，点击重新下载");
+      setHeaderStatus(isEffectVideo ? "特效 PNG 序列已生成" : "透明 PNG 序列已生成，点击重新下载");
+      if (isEffectVideo) elements.downloadLink.click();
     }
-    const finalTime = Math.min((frameCount - 1) / frameRate, Math.max(0, state.duration - 0.001));
+    const finalTime = Math.min(range.start + (frameCount - 1) / frameRate, Math.max(0, state.duration - 0.001));
     elements.timeInput.value = String(finalTime);
     elements.timeValue.textContent = formatDuration(Number(elements.timeInput.value));
     if (state.sourceType === "gif") await seekGif(finalTime);
@@ -927,6 +1051,18 @@ async function exportFrames() {
 }
 
 function bindEvents() {
+  elements.replaceSource.addEventListener("click", () => elements.videoInput.click());
+  for (const input of [elements.effectMode, elements.blackLevelInput, elements.gainInput,
+    elements.startTimeInput, elements.endTimeInput]) {
+    input.addEventListener("input", () => {
+      if (state.isExporting) return;
+      clearExportOutput();
+      updateEffectUi();
+      renderPreview();
+      if (state.file) setProgress(0, "参数已更新，请重新导出 PNG 序列。");
+    });
+  }
+  elements.previewBackground.addEventListener("change", () => { updateEffectUi(); renderPreview(); });
   elements.videoInput.addEventListener("change", (event) => {
     handleVideo(event.target.files?.[0]);
     event.target.value = "";
@@ -988,6 +1124,7 @@ function bindEvents() {
   for (const input of [elements.frameRateInput, elements.outputWidthInput, elements.outputHeightInput]) {
     input.addEventListener("change", () => {
       clearExportOutput();
+      if (isEffectVideo) updateEffectUi();
       if (state.file) setProgress(0, "输出设置已更新，请重新导出 PNG 序列。");
     });
   }
@@ -996,11 +1133,29 @@ function bindEvents() {
 }
 
 function init() {
+  if (isEffectVideo) {
+    document.body.dataset.effectVideo = "true";
+    document.title = "特效视频扣序列帧";
+    $("h1").textContent = "特效视频扣序列帧";
+    $(".brand p").textContent = "保留柔光 · 恢复颜色 · 本地导出";
+    $(".drop-zone strong").textContent = "拖入黑底特效 MP4、MOV 或 GIF";
+    $(".help-text").textContent = "仅适合黑底发光素材。黑底降噪越高，微弱火花越容易消失；建议从 0% 开始。预览背景不影响导出。";
+    $("#chromaControls").hidden = true;
+    for (const node of document.querySelectorAll(".effect-only")) node.hidden = false;
+    elements.sampleHint.hidden = true;
+    elements.previewCanvas.setAttribute("aria-label", "特效预览");
+    elements.previewPanel.setAttribute("aria-label", "特效预览");
+    $(".inspector").setAttribute("aria-label", "特效处理参数");
+    elements.frameRateInput.value = "30";
+    setHeaderStatus("拖入黑底发光特效，导出透明或加法序列帧");
+    updateEffectUi();
+  }
   updateValueLabels();
   updateKeyColorUi();
   updateCropUi();
   updatePlaybackUi();
   bindEvents();
+  setExporting(false);
 }
 
 init();

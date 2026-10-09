@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>绿幕视频转序列帧</title>
     <link rel="icon" href="data:," />
-    <link rel="stylesheet" href="./styles.css?v=crop-output-1" />
+    <link rel="stylesheet" href="./styles.css?v=vfx-video-1" />
   </head>
   <body>
     <main class="app-shell">
@@ -50,12 +50,22 @@
 
         <aside class="inspector" aria-label="抠像参数">
           <section class="source-info">
+            <button id="replaceSource" class="replace-source effect-only" type="button" hidden>选择 / 更换素材</button>
             <span class="section-label">素材信息</span>
             <strong id="videoName">未选择素材</strong>
             <span id="videoMeta">MP4、MOV 或 GIF 将在此浏览器本地处理</span>
           </section>
 
-          <section class="controls">
+          <section id="effectControls" class="controls effect-only" hidden>
+            <label class="control-row"><span>输出方式</span>
+              <select id="effectMode"><option value="transparent">柔和透明 PNG（恢复颜色）</option><option value="additive">加法序列帧（保留黑底）</option></select>
+            </label>
+            <p id="effectModeHelp" class="mode-help"></p>
+            <label class="control-row"><span>黑底降噪 <output id="blackLevelValue" for="blackLevelInput">0%</output></span><input id="blackLevelInput" type="range" min="0" max="10" value="0" step="0.1" /></label>
+            <label class="control-row"><span>亮度 <output id="gainValue" for="gainInput">100%</output></span><input id="gainInput" type="range" min="0" max="200" value="100" /></label>
+            <label class="control-row"><span>预览背景（不影响导出）</span><select id="previewBackground"><option value="checker">透明棋盘</option><option value="#19434a">深色背景</option><option value="#d4e1e6">浅色背景</option><option value="#000000">黑色背景</option></select></label>
+          </section>
+          <section id="chromaControls" class="controls">
             <label class="control-row sample-row">
               <span>取样背景色</span>
               <button id="sampleButton" class="color-control" type="button" title="在预览画面中点击取样背景色">
@@ -95,6 +105,13 @@
             </label>
           </section>
 
+          <section id="effectRange" class="output-settings effect-only" hidden>
+            <div class="dimension-fields">
+              <label><span>开始时间 / 秒</span><input id="startTimeInput" type="number" min="0" step="0.001" value="0" disabled /></label>
+              <label><span>结束时间 / 秒</span><input id="endTimeInput" type="number" min="0" step="0.001" disabled /></label>
+            </div>
+            <p id="rangeMeta" class="mode-help">可截取一次完整点击动作。</p>
+          </section>
           <section class="output-settings">
             <label>
               <span>输出帧率</span>
@@ -170,6 +187,6 @@
     <canvas id="sourceCanvas" class="offscreen" aria-hidden="true"></canvas>
     <script src="../cocos-html-compressor/vendor/jszip.min.js"></script>
     <script src="./gif-decoder.js?v=gif-input-1"></script>
-    <script src="./app.js?v=gif-input-1"></script>
+    <script type="module" src="./app.js?v=vfx-video-1"></script>
   </body>
 </html>

@@ -6,7 +6,7 @@
     <title>素材工具台</title>
     <link rel="icon" href="data:," />
     <link rel="stylesheet" href="./styles.css?v=tool-order-1" />
-    <script src="./app.js?v=separate-pieceforge-1" defer></script>
+    <script src="./app.js?v=vfx-video-1" defer></script>
   </head>
   <body>
     <div class="merged-shell">
@@ -99,6 +99,10 @@
               <span class="tab-title">绿幕视频转序列帧</span>
               <span class="tab-subtitle">任意纯色背景 / 透明 PNG 序列</span>
             </span>
+          </button>
+          <button class="tool-tab" type="button" data-tool="vfx-frames">
+            <span class="tab-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="m12 3 2 6 7 3-7 2-2 7-2-7-7-2 7-3z" /></svg></span>
+            <span class="tab-copy"><span class="tab-title">特效视频扣序列帧</span><span class="tab-subtitle">黑底发光 / 柔和透明 / 加法</span></span>
           </button>
           <button class="tool-tab" type="button" data-tool="gif">
             <span class="tab-icon" aria-hidden="true">
@@ -210,7 +214,13 @@
             class="tool-frame"
             data-tool="green-screen"
             title="绿幕视频转序列帧"
-            data-src="./green-screen-to-frames/index.html?v=gif-input-1"
+            data-src="./green-screen-to-frames/index.html?v=vfx-video-1"
+          ></iframe>
+          <iframe
+            class="tool-frame"
+            data-tool="vfx-frames"
+            title="特效视频扣序列帧"
+            data-src="./green-screen-to-frames/index.html?mode=vfx&amp;v=vfx-video-1"
           ></iframe>
           <iframe
             class="tool-frame"
