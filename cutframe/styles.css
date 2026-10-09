@@ -56,6 +56,7 @@ h1, h2, h3, p { margin: 0; }
 .mode-icon svg { width: 20px; height: 20px; }
 .mode-button > span:nth-child(2) { display: flex; min-width: 0; flex-direction: column; gap: 4px; }
 .mode-button strong { font-size: 16px; }
+.tool-rail .brand-name, .tool-rail .mode-button strong, .tool-rail .privacy-card strong { color: #ffffff; }
 .mode-button small { color: #a4acb8; font-size: 14px; line-height: 1.5; overflow-wrap: anywhere; }
 .mode-button.is-active small { color: #aeb79a; }
 .mode-grip { width: 12px; color: #5d6570; }
