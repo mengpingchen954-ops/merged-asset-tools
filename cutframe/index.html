@@ -29,6 +29,7 @@
         <nav class="mode-switch" aria-label="工具切换">
           <button class="mode-button is-active" type="button" data-mode="image" aria-pressed="true"><span class="mode-icon"><i data-lucide="scan-search"></i></span><span><strong>一键抠图</strong><small>批量抠图 / 分离 / SVG · PNG</small></span></button>
           <button class="mode-button" type="button" data-mode="image-compress" aria-pressed="false"><span class="mode-icon"><i data-lucide="image-down"></i></span><span><strong>压缩图片</strong><small>PNG / JPG / WebP 批量压缩</small></span></button>
+          <button class="mode-button" type="button" data-mode="audio-compress" aria-pressed="false"><span class="mode-icon"><i data-lucide="music-2"></i></span><span><strong>音频压缩</strong><small>MP3 / M4A / OGG 批量压缩</small></span></button>
           <button class="mode-button" type="button" data-mode="video-compress" aria-pressed="false"><span class="mode-icon"><i data-lucide="clapperboard"></i></span><span><strong>视频压缩</strong><small>批量 MP4 / 画质 / 体积优化</small></span></button>
           <button class="mode-button" type="button" data-mode="green-screen" aria-pressed="false"><span class="mode-icon"><i data-lucide="film"></i></span><span><strong>绿幕视频转序列帧</strong><small>纯色背景 / 透明 PNG 序列</small></span></button>
           <button class="mode-button" type="button" data-mode="vfx-frames" aria-pressed="false"><span class="mode-icon"><i data-lucide="sparkles"></i></span><span><strong>特效视频扣序列帧</strong><small>黑底发光 / 柔和透明 / 加法</small></span></button>
@@ -39,7 +40,7 @@
           <button class="mode-button" type="button" data-mode="vfx" aria-pressed="false"><span class="mode-icon"><i data-lucide="sparkles"></i></span><span><strong>特效贴图生成</strong><small>参考图 / 透明 PNG 粒子</small></span></button>
           <button class="mode-button" type="button" data-mode="video" aria-pressed="false"><span class="mode-icon"><i data-lucide="clapperboard"></i></span><span><strong>绿幕转视频</strong><small>去除纯色背景 / WEBM</small></span></button>
         </nav>
-        <select id="mobile-tool-select" aria-label="选择工具"><option value="image">一键抠图</option><option value="image-compress">压缩图片</option><option value="video-compress">视频压缩</option><option value="green-screen">绿幕视频转序列帧</option><option value="vfx-frames">特效视频扣序列帧</option><option value="gif">序列帧压缩</option><option value="cocos">Cocos HTML 压缩</option><option value="model">FBX / GLB 模型压缩</option><option value="extractor">构建包素材提取</option><option value="vfx">特效贴图生成</option><option value="video">绿幕转视频</option></select>
+        <select id="mobile-tool-select" aria-label="选择工具"><option value="image">一键抠图</option><option value="image-compress">压缩图片</option><option value="audio-compress">音频压缩</option><option value="video-compress">视频压缩</option><option value="green-screen">绿幕视频转序列帧</option><option value="vfx-frames">特效视频扣序列帧</option><option value="gif">序列帧压缩</option><option value="cocos">Cocos HTML 压缩</option><option value="model">FBX / GLB 模型压缩</option><option value="extractor">构建包素材提取</option><option value="vfx">特效贴图生成</option><option value="video">绿幕转视频</option></select>
         <p id="tool-order-status" class="sr-only" role="status" aria-live="polite"></p>
         <div class="rail-bottom"><div class="suite-actions"><button id="reload-current-tool" type="button"><i data-lucide="rotate-cw"></i>刷新工具</button><button id="open-current-tool" type="button"><i data-lucide="external-link"></i>单独打开</button></div>
           <div class="privacy-card"><i data-lucide="shield-check"></i><span><strong>本地隐私模式</strong><small>素材不离开浏览器</small></span></div>
@@ -347,7 +348,7 @@
       <div class="dialog-actions"><button class="dialog-secondary" id="cancel-charge" type="button">取消</button><button class="dialog-primary" id="confirm-charge" type="button">确认导出</button></div>
     </dialog>
     <video id="source-video" playsinline muted hidden></video><canvas id="source-canvas" width="1200" height="800" hidden></canvas><canvas id="processed-canvas" width="1200" height="800" hidden></canvas>
-    <script src="https://unpkg.com/lucide@0.468.0/dist/umd/lucide.min.js"></script><script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script><script src="./supabase-config.js?v=20260907-1"></script><script src="./credits.js?v=20260907-1"></script><script src="./tool-suite.js?v=image-compress-1"></script><script src="./app.js?v=20260907-2"></script><script type="module" src="./image-tools.js?v=20261009-readable1"></script>
+    <script src="https://unpkg.com/lucide@0.468.0/dist/umd/lucide.min.js"></script><script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script><script src="./supabase-config.js?v=20260907-1"></script><script src="./credits.js?v=20260907-1"></script><script src="./tool-suite.js?v=audio-compress-1"></script><script src="./app.js?v=20260907-2"></script><script type="module" src="./image-tools.js?v=20261009-readable1"></script>
     <script src="./layout-editor.js?v=vfx-video-1"></script>
   </body>
 </html>

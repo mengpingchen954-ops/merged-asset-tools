@@ -14,6 +14,7 @@ let draggedToolItem = null;
 let draggedToolStartIndex = -1;
 
 const toolLabels = {
+  'audio-compress': '音频压缩',
   'image-compress': '压缩图片',
   'video-compress': '视频压缩',
   cocos: "Cocos HTML 压缩",
@@ -28,6 +29,7 @@ const toolLabels = {
 };
 
 const toolDescriptions = {
+  'audio-compress': '批量压缩音频为 MP3、M4A 或 OGG，支持码率、声道设置、前后试听和 ZIP 下载。',
   'image-compress': '批量压缩 PNG、JPG 和 WebP，保留尺寸，支持透明背景、画质设置与 ZIP 下载。',
   'video-compress': '批量压缩视频为 H.264 MP4，保留原尺寸和帧率，支持画质档位、音频设置与 ZIP 下载。',
   cocos: "拖入 Cocos HTML 或渠道 ZIP，统一压缩图片与 MP3 并导出 5MB 提交包。",

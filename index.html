@@ -6,7 +6,7 @@
     <title>素材工具台</title>
     <link rel="icon" href="data:," />
     <link rel="stylesheet" href="./styles.css?v=tool-order-1" />
-    <script src="./app.js?v=image-compress-1" defer></script>
+    <script src="./app.js?v=audio-compress-1" defer></script>
   </head>
   <body>
     <div class="merged-shell">
@@ -107,6 +107,10 @@
           <button class="tool-tab" type="button" data-tool="image-compress">
             <span class="tab-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2" /><circle cx="8" cy="8" r="2" /><path d="m3 17 6-6 4 4 3-3 5 5" /></svg></span>
             <span class="tab-copy"><span class="tab-title">压缩图片</span><span class="tab-subtitle">PNG / JPG / WebP 批量压缩</span></span>
+          </button>
+          <button class="tool-tab" type="button" data-tool="audio-compress">
+            <span class="tab-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M9 18V5l11-2v13M9 9l11-2" /><ellipse cx="6" cy="18" rx="3" ry="3" /><ellipse cx="17" cy="16" rx="3" ry="3" /></svg></span>
+            <span class="tab-copy"><span class="tab-title">音频压缩</span><span class="tab-subtitle">MP3 / M4A / OGG 批量压缩</span></span>
           </button>
           <button class="tool-tab" type="button" data-tool="video-compress">
             <span class="tab-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2" /><path d="m10 9 5 3-5 3z" /></svg></span>
@@ -235,6 +239,12 @@
             data-tool="image-compress"
             title="压缩图片"
             data-src="./image-compressor/index.html?v=1"
+          ></iframe>
+          <iframe
+            class="tool-frame"
+            data-tool="audio-compress"
+            title="音频压缩"
+            data-src="./audio-compressor/index.html?v=1"
           ></iframe>
           <iframe
             class="tool-frame"

@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>音频压缩</title>
+  <link rel="icon" href="data:," />
+  <link rel="stylesheet" href="../video-compressor/styles.css?v=1" />
+  <link rel="stylesheet" href="./styles.css?v=1" />
+  <script src="../video-compressor/vendor/ffmpeg.js" defer></script>
+  <script src="../cocos-html-compressor/vendor/jszip.min.js" defer></script>
+  <script type="module" src="./app.js?v=1"></script>
+</head>
+<body>
+  <main class="app-shell">
+    <header class="app-header">
+      <div><h1>音频压缩</h1><p>批量减小音频体积，保留完整时长</p></div>
+      <label class="file-button">选择音频<input id="fileInput" class="sr-only" type="file" accept="audio/*,.mp3,.wav,.m4a,.aac,.ogg,.opus,.flac,.wma,.aif,.aiff" multiple /></label>
+    </header>
+    <div class="workspace">
+      <aside class="settings-panel" aria-label="音频压缩设置">
+        <label id="dropZone" class="drop-zone" for="fileInput">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 18V5l11-2v13M9 9l11-2"/><ellipse cx="6" cy="18" rx="3" ry="3"/><ellipse cx="17" cy="16" rx="3" ry="3"/></svg>
+          <strong>拖入音频</strong><span>或点击选择，可一次添加多个</span><small>MP3 / WAV / M4A / OGG / FLAC 等</small>
+        </label>
+        <div class="settings">
+          <label for="format">输出格式</label>
+          <select id="format"><option value="mp3">MP3 · 通用兼容</option><option value="m4a">M4A / AAC · 适合手机</option><option value="ogg">OGG / Opus · 适合网页</option></select>
+          <p id="formatHelp">MP3 适合多数播放器与游戏引擎。</p>
+          <label for="bitrate">音频码率</label>
+          <select id="bitrate"><option value="32">32 kbps · 语音小体积</option><option value="64">64 kbps · 语音 / 音效</option><option value="96">96 kbps · 更小体积</option><option value="128" selected>128 kbps · 均衡推荐</option><option value="192">192 kbps · 更清晰</option><option value="256">256 kbps · 高音质</option><option value="320">320 kbps · 保留更多细节</option></select>
+          <p>码率越低，体积越小。语音可用 32–64 kbps，音乐建议 128–192 kbps。</p>
+          <label for="channels">声道</label>
+          <select id="channels"><option value="keep">保留原声道（最多双声道）</option><option value="mono">单声道 · 适合语音</option></select>
+          <label class="checkbox-row"><input id="keepSmaller" type="checkbox" checked /> 无法缩小时保留原文件</label>
+          <p>仅在编码一致、保留原声道且未改变采样率时保留原文件。</p>
+        </div>
+        <button id="compressButton" class="primary-action" type="button" disabled>压缩全部</button>
+        <button id="cancelButton" type="button" hidden>停止压缩</button>
+        <progress id="progress" max="100" value="0" aria-label="当前音频压缩进度" hidden></progress>
+        <p id="status" role="status" aria-live="polite">选择音频后开始压缩。</p>
+        <p class="help">音频在浏览器本地处理，原文件不会改变。首次使用需加载约 31 MB 引擎，与视频压缩共用。每个文件最多 200 MB。</p>
+        <p class="help">MP3 / AAC / Opus 均为有损编码，低码率会损失音质。多声道会转换为双声道；采样率自动适配编码器，超过 48 kHz 时降至 48 kHz。编码器可能增加少量首尾延迟，请试听结果。</p>
+      </aside>
+      <section class="results-panel" aria-label="音频压缩结果">
+        <div class="results-head"><div><h2>音频列表</h2><p id="summary">还没有音频</p></div><div class="actions"><button id="clearButton" type="button" disabled>清空</button><button id="zipButton" type="button" disabled>下载全部 ZIP</button></div></div>
+        <div class="table-wrap"><table><thead><tr><th scope="col">音频</th><th scope="col">原大小</th><th scope="col">压缩后</th><th scope="col">状态</th><th scope="col">操作</th></tr></thead><tbody id="fileList"></tbody></table><p id="emptyState" class="empty-state">添加音频，在这里查看压缩前后的大小。</p></div>
+        <section id="preview" class="preview" aria-label="音频对比试听" hidden>
+          <h2 id="previewName">音频试听</h2>
+          <div class="preview-grid"><figure><figcaption>原音频</figcaption><audio id="sourceAudio" controls preload="metadata"></audio><p id="sourceInfo"></p></figure><figure><figcaption>压缩后</figcaption><audio id="resultAudio" controls preload="metadata" hidden></audio><p id="resultInfo">压缩后可试听对比</p></figure></div>
+          <p class="help">部分源格式无法在浏览器直接试听，仍可尝试压缩。试听播放器互斥播放，便于比较音质。</p>
+        </section>
+      </section>
+    </div>
+  </main>
+</body>
+</html>

@@ -3,6 +3,7 @@
   "private": true,
   "type": "module",
   "scripts": {
+    "test:audio": "node --test audio-compressor/compression.test.js",
     "test:image": "node --test image-compressor/compression.test.js",
     "test:video": "node --test video-compressor/compression.test.js",
     "test:vfx": "node --test green-screen-to-frames/vfx-pixels.test.js",
